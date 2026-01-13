@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Study Place — Launcher</title>
+  <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:Montserrat,Arial,sans-serif;background:linear-gradient(180deg,#e8f2ff,#f8fbff);min-height:100vh;display:flex;align-items:center;justify-content:center;margin:0}
+    .card{width:880px;max-width:94%;background:white;border-radius:14px;padding:28px;box-shadow:0 28px 80px rgba(3,22,66,0.08);text-align:center}
+    h1{margin:0 0 8px 0;font-size:22px}
+    p.lead{margin:0 0 18px;color:#355a8a}
+    .row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+    a.btn{display:inline-block;padding:10px 16px;border-radius:10px;text-decoration:none;color:white;background:#1d4ed8;font-weight:700}
+    a.ghost{background:transparent;color:#1d4ed8;border:1px solid rgba(29,78,216,0.14)}
+    #status{margin-top:12px;color:#6b87b7;font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Welcome to Study Place</h1>
+    <p class="lead">A lightweight workspace for flashcards, timelines and personal blocks.</p>
+    <div id="controls">
+      <div class="row">
+        <a id="btnIntro" class="btn ghost" href="introduction.html">Introduction</a>
+        <a id="btnLogin" class="btn ghost" href="login.html">Log in</a>
+        <a id="btnSignup" class="btn ghost" href="signup.html">Sign up</a>
+        <a id="btnStudio" class="btn" href="Flashcardcreate.html">Open Studio</a>
+        <a id="btnHomepage" class="btn ghost" href="homepage (3).html">Open Homepage</a>
+      </div>
+    </div>
+    <div id="status">Checking authentication…</div>
+  </div>
+  <script src="assets/auth.js" defer></script>
+  <script>
+    (function(){
+      const status = document.getElementById('status');
+      async function init(){
+        // small delay to allow ssApi to initialize
+        await new Promise(r => setTimeout(r, 250));
+        const token = localStorage.getItem('ss_token');
+        if(!token){ status.textContent = 'Not logged in — use Log in or Sign up.'; return; }
+        status.textContent = 'Authenticated — loading your homepage...';
+        // try refreshing token (if expired) and then fetch blocks as a quick verification
+        try{
+          if(window.ssApi && typeof window.ssApi.refresh === 'function'){
+            await window.ssApi.refresh();
+          }
+        }catch(e){ console.warn('refresh error', e); }
+        // redirect to homepage which will load user blocks
+        setTimeout(()=>{ location.href = 'homepage (3).html'; }, 400);
+      }
+      init();
+    })();
+  </script>
+</body>
+</html>

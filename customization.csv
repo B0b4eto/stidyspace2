@@ -1,0 +1,44 @@
+component,selector,position,background_color,text_color,border_radius,size_notes,notes
+Top Bar,.topbar,sticky top (header),linear-gradient(#0b162f to #081228),#fff,8px,height:varies,Brand and links
+Hero Title,#stickyHero .hero-title,centered,transparent,#fff,none,font-size large,Typed words: 'Organise. Focus. Grow.'
+Title Scene Big Image,.glass-preview img,inside title scene,transparent,n/a,rounded (in markup),image sizing per container,alt text important
+Feature Card,.feature-card,grid cell,linear-gradient(140deg rgba(25,44,92..)),#f3f7ff,26px,padding clamp(22px..32px),hover glow and tilt
+Feature Icon,.feature-icon,in card,transparent,#fff,none,font-size clamp(24px..36px),drop-shadow present
+Skyline Section,.skyline-section,section center,radial gradient backdrop,#f1f6ff,none,spacing via padding,ambient glow via pseudo elements
+Skyline Copy (heading),.skyline-copy h2,left or center text,color rgba(241,246,255,1),#f1f6ff,none,clamp font-size,weight 800
+Skyline Benefits,.skyline-benefits,list/grid layout,item background rgba(18,44,110,0.38),rgba(220,232,255,0.86),18px,flex/pill chips,icons in span
+Skyline Stage Frame,.skyline-stage,stage container,linear-gradient(160deg rgba(12,26,68..)),#f5f9ff,46px,width responsive,ambient rings and glow
+Skyline Clipboard (.home-clipboard),.home-clipboard.skyline-strip,inside stage,linear-gradient(130deg rgba(18,38,92..)),#f9fbff,32px,--clipboard-width var,drag-ready/has-items states
+Clipboard Clock,.home-clipboard-time,grid cell,transparent,#f9fbff,none,large numeric font,text-shadow
+CTA Section,.cta-section,block,linear-gradient(160deg rgba(24,48,96..)),#fff,32px,padding large,contains action buttons
+CTA Buttons,.cta-button.primary / .cta-button.secondary,inline,primary:#fdfcff / secondary:rgba(255,255,255,0.14),text colors contrast,999px pill,consistent sizes and hover transform
+Journey Track,.journey-track,left-aligned progress bar,transparent,#fff,dots with gradient,spacing via padding,progress bar color customizable
+Global Font,body,font-family (Montserrat),n/a,#fff,n/a,n/a,Change font in top-level <style>
+
+# Notes: For each selector above you can expose the properties you want to be able to customize (colors, spacing, radii, sizes). This CSV targets the main visual blocks present in `introduction.html`.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
