@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Log in — Study Space</title>
-  <link rel="stylesheet" href="../assets/skyline.css">
+  <link rel="stylesheet" href="assets/skyline.css">
   <style>
     body{font-family:Montserrat,system-ui,Arial,sans-serif;background:linear-gradient(180deg,#04102a 0%,#06122a 100%);color:#eef6ff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px}
     .auth-card{width:100%;max-width:420px;padding:28px;border-radius:14px;background:rgba(10,18,40,0.66);border:1px solid rgba(120,180,255,0.08);box-shadow:0 20px 60px rgba(4,12,30,0.6)}
@@ -15,26 +15,28 @@
     .btn{padding:10px 14px;border-radius:10px;border:none;cursor:pointer}
     .btn.primary{background:#fff;color:#08122a;font-weight:700}
     .hint{font-size:13px;color:rgba(200,220,255,0.6)}
-    .error{color:#ffb4b4;margin-top:8px}
+    .error{color:#ffb4b4;margin-top:8px;font-size:14px}
   </style>
 </head>
 <body>
-  <main class="auth-card" role="main">
+  <main class="auth-card">
     <h1>Welcome back</h1>
     <form id="loginForm">
       <label for="email">Email</label>
-      <input id="email" name="email" type="email" required autocomplete="email" />
+      <input id="email" name="email" type="email" required />
 
       <label for="password">Password</label>
-      <input id="password" name="password" type="password" required autocomplete="current-password" />
+      <input id="password" name="password" type="password" required />
 
       <div class="actions">
-        <span class="hint">New here? <a href="signup.html">Create account</a></span>
+        <span class="hint">New here? <a href="signup.html" style="color:#fff">Create account</a></span>
         <button class="btn primary" type="submit">Log in</button>
       </div>
-      <div id="loginMessage" class="error" role="status" aria-live="polite"></div>
+      <div id="loginMessage" class="error"></div>
     </form>
   </main>
-  <script src="assets/auth.js" defer></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/auth.js"></script>
 </body>
 </html>
