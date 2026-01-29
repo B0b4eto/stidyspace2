@@ -4064,118 +4064,111 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
 <script>
-    // Универсална функция, която чака Supabase да стане достъпен
-    async function waitForSupabase() {
+    // 1. Изчакване за Supabase (премахва ReferenceError)
+    async function initApp() {
         let attempts = 0;
         while (!window.supabaseClient && attempts < 20) {
-            await new Promise(res => setTimeout(res, 200));
+            await new Promise(r => setTimeout(r, 200));
             attempts++;
         }
-        return !!window.supabaseClient;
+        
+        if (window.supabaseClient) {
+            console.log("✅ Supabase е зареден!");
+            await setupUI();
+            await loadFlashcards();
+            setupSyncObserver();
+        } else {
+            console.error("❌ Supabase не успя да зареди.");
+        }
     }
 
-    // 1. ФУНКЦИЯ ЗА ЗАРЕЖДАНЕ НА ФЛАШКАРТИ
+    // 2. Зареждане на флашкарти от облака
     async function loadFlashcards() {
-        const recentContainer = document.getElementById('recentCards');
-        if (!recentContainer || !window.supabaseClient) return;
+        const container = document.getElementById('recentCards');
+        if (!container) return;
 
-        try {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (!user) return;
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
 
-            const { data: cards } = await supabaseClient
-                .from('flashcards')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false })
-                .limit(5);
+        const { data: cards } = await supabaseClient
+            .from('flashcards')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(5);
 
-            // Чистим старите и добавяме новите
-            const addBtn = recentContainer.querySelector('.card.add');
-            recentContainer.innerHTML = '';
-            if (addBtn) recentContainer.appendChild(addBtn);
+        // Запазваме само бутона "Add New"
+        const addBtn = container.querySelector('.card.add');
+        container.innerHTML = '';
+        if (addBtn) container.appendChild(addBtn);
 
-            if (cards && cards.length > 0) {
-                cards.forEach(card => {
-                    const cardEl = document.createElement('div');
-                    cardEl.className = 'card';
-                    cardEl.innerHTML = `
-                        <div class="card-content" style="text-align:center">
-                            <div style="font-size:14px;font-weight:800">${card.front}</div>
-                            <div class="label">${card.tags ? card.tags.join(', ') : 'Study'}</div>
-                        </div>
-                    `;
-                    cardEl.onclick = () => window.location.href = `Flashcardcreate.html?cardId=${card.id}`;
-                    recentContainer.appendChild(cardEl);
-                });
-            }
-        } catch (err) { console.warn("Cards failed to load:", err); }
+        if (cards && cards.length > 0) {
+            cards.forEach(c => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card';
+                cardDiv.innerHTML = `
+                    <div class="card-content" style="text-align:center">
+                        <div style="font-size:14px;font-weight:800">${c.front}</div>
+                        <div class="label">${c.tags ? c.tags[0] : 'Карта'}</div>
+                    </div>
+                `;
+                cardDiv.onclick = () => window.location.href = `Flashcardcreate.html?cardId=${c.id}`;
+                container.appendChild(cardDiv);
+            });
+        }
     }
 
-    // 2. ПОПРАВКА НА МЕНЮТО (ИКОНИ И ЛОГАУТ)
-    async function fixUI() {
+    // 3. Поправка на иконите и Logout (премахва 404 грешките)
+    async function setupUI() {
         const dropdown = document.querySelector('.profile-dropdown ul');
         if (dropdown) {
             dropdown.innerHTML = `
-                <li><a href="#" onclick="alert('Coming Soon')"><i class="fa-solid fa-pen-to-square"></i> Edit Profile <span class="arrow">></span></a></li>
-                <li><a href="#"><i class="fa-solid fa-gear"></i> Your Account <span class="arrow">></span></a></li>
+                <li><a href="#" onclick="alert('Скоро!')"><i class="fa-solid fa-pen-to-square"></i> Edit Profile <span class="arrow">></span></a></li>
                 <li><a href="#" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout <span class="arrow">></span></a></li>
             `;
         }
         
-        // Сменяме името, ако сме логнати
-        if (window.supabaseClient) {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (user) {
-                const nameHeader = document.querySelector('.user-info h3') || document.querySelector('.dropdown-header h4');
-                if (nameHeader) nameHeader.textContent = user.user_metadata.full_name || user.email.split('@')[0];
-            }
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+            const nameTag = document.querySelector('.user-info h3');
+            if (nameTag) nameTag.textContent = user.user_metadata.full_name || user.email.split('@')[0];
         }
     }
 
     async function handleLogout() {
-        if (window.supabaseClient) {
-            await supabaseClient.auth.signOut();
-            localStorage.clear();
-            window.location.href = 'login.html';
-        }
+        await supabaseClient.auth.signOut();
+        localStorage.clear();
+        window.location.href = 'login.html';
     }
 
-    // ГЛАВЕН СТАРТ
-    document.addEventListener('DOMContentLoaded', async () => {
-        const ready = await waitForSupabase();
-        if (ready) {
-            await fixUI();
-            await loadFlashcards();
-            
-            // Активираме автоматичното записване на блокове (MutationObserver)
-            const container = document.querySelector('.custom-blocks');
-            if (container) {
-                const observer = new MutationObserver((mutations) => {
-                    mutations.forEach(m => {
-                        const target = m.target.closest('.block-item');
-                        if (target) {
-                            clearTimeout(target.saveT);
-                            target.saveT = setTimeout(async () => {
-                                const { data: { user } } = await supabaseClient.auth.getUser();
-                                if (!user) return;
-                                await supabaseClient.from('user_blocks').upsert({
-                                    user_id: user.id,
-                                    block_key: target.getAttribute('data-id') || target.id,
-                                    position: { x: parseFloat(target.getAttribute('data-x')) || 0, y: parseFloat(target.getAttribute('data-y')) || 0 },
-                                    style: { width: target.style.width, height: target.style.height, backgroundColor: target.style.backgroundColor }
-                                }, { onConflict: 'user_id, block_key' });
-                            }, 1000);
-                        }
-                    });
-                });
-                observer.observe(container, { attributes: true, subtree: true, attributeFilter: ['style', 'data-x'] });
-            }
-        } else {
-            console.error("Supabase failed to load after 4 seconds.");
-        }
-    });
+    // 4. Наблюдател за блокове (MutationObserver)
+    function setupSyncObserver() {
+        const container = document.querySelector('.custom-blocks');
+        if (!container) return;
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach(m => {
+                const target = m.target.closest('.block-item');
+                if (target) {
+                    clearTimeout(target.saveT);
+                    target.saveT = setTimeout(async () => {
+                        const { data: { user } } = await supabaseClient.auth.getUser();
+                        await supabaseClient.from('user_blocks').upsert({
+                            user_id: user.id,
+                            block_key: target.getAttribute('data-id') || target.id,
+                            position: { x: parseFloat(target.getAttribute('data-x')) || 0, y: parseFloat(target.getAttribute('data-y')) || 0 },
+                            style: { width: target.style.width, height: target.style.height, backgroundColor: target.style.backgroundColor }
+                        }, { onConflict: 'user_id, block_key' });
+                    }, 1000);
+                }
+            });
+        });
+        observer.observe(container, { attributes: true, subtree: true, attributeFilter: ['style', 'data-x'] });
+    }
+
+    // Стартираме всичко безопасно
+    window.addEventListener('load', initApp);
 </script>
-</body>
+ </body>
 </html>
 
