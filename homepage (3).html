@@ -4064,7 +4064,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
 <style>
-    /* Стилизиране на менюто за изчистване на сините линкове */
+    /* Изчистваме стила на менюто */
     .profile-dropdown ul li a { 
         display: flex !important; 
         align-items: center !important; 
@@ -4079,15 +4079,11 @@
         color: #4a90e2; 
         font-size: 18px; 
     }
-    .profile-dropdown .arrow { 
-        margin-left: auto; 
-        opacity: 0.4; 
-        font-size: 0.8em; 
-    }
+    .profile-dropdown .arrow { margin-left: auto; opacity: 0.4; font-size: 0.8em; }
 </style>
 
 <script>
-    // 1. ФУНКЦИЯ ЗА ИЗХОД (LOGOUT)
+    // 1. ФУНКЦИЯ ЗА ИЗХОД
     async function handleLogout() {
         if (window.supabaseClient) {
             await supabaseClient.auth.signOut();
@@ -4098,37 +4094,35 @@
         }
     }
 
-    // 2. ЗАПИСВАНЕ НА БЛОКОВЕ В ОБЛАКА (CLOUD SAVE)
+    // 2. ЗАПИС В SUPABASE (UPSERT)
     async function cloudSaveBlock(el) {
         if (!window.supabaseClient || !el) return;
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) return;
+        try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) return;
 
-        const blockData = {
-            user_id: user.id,
-            block_key: el.getAttribute('data-id') || el.id,
-            type: el.getAttribute('data-type') || 'custom',
-            position: { 
-                x: parseFloat(el.getAttribute('data-x')) || 0, 
-                y: parseFloat(el.getAttribute('data-y')) || 0 
-            },
-            style: { 
-                backgroundColor: el.style.backgroundColor, 
-                width: el.style.width, 
-                height: el.style.height,
-                transform: el.style.transform 
-            }
-        };
+            const blockData = {
+                user_id: user.id,
+                block_key: el.getAttribute('data-id') || el.id,
+                type: el.getAttribute('data-type') || 'custom',
+                position: { 
+                    x: parseFloat(el.getAttribute('data-x')) || 0, 
+                    y: parseFloat(el.getAttribute('data-y')) || 0 
+                },
+                style: { 
+                    backgroundColor: el.style.backgroundColor, 
+                    width: el.style.width, 
+                    height: el.style.height,
+                    transform: el.style.transform 
+                }
+            };
 
-        const { error } = await supabaseClient
-            .from('user_blocks')
-            .upsert(blockData, { onConflict: 'user_id, block_key' });
-            
-        if (error) console.error("Грешка при синхронизация:", error.message);
+            await supabaseClient.from('user_blocks').upsert(blockData, { onConflict: 'user_id, block_key' });
+        } catch (e) { console.error("Sync error:", e); }
     }
 
-    // 3. ПОПРАВКА НА МЕНЮТО И ИМЕТО
-    async function setupUI() {
+    // 3. ОБНОВЯВАНЕ НА ИНТЕРФЕЙСА (МЕНЮ И ИМЕ)
+    async function setupProfileUI() {
         const list = document.querySelector('.profile-dropdown ul');
         if (list) {
             list.innerHTML = `
@@ -4139,41 +4133,53 @@
                 <li><a href="#" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout <span class="arrow">></span></a></li>
             `;
         }
-
         if (window.supabaseClient) {
             const { data: { user } } = await supabaseClient.auth.getUser();
             if (user) {
-                const nameHeader = document.querySelector('.user-info h3') || document.querySelector('.dropdown-header h4');
+                const nameHeader = document.querySelector('.user-info h3');
                 if (nameHeader) nameHeader.textContent = user.user_metadata.full_name || user.email.split('@')[0];
             }
         }
     }
 
-    // 4. ИНИЦИАЛИЗАЦИЯ И НАБЛЮДЕНИЕ (MUTATION OBSERVER)
+    // 4. СТАРТИРАНЕ И ЗАРЕЖДАНЕ
     document.addEventListener('DOMContentLoaded', () => {
         setTimeout(async () => {
-            await setupUI();
+            await setupProfileUI();
 
-            // Автоматично следене за преместване/промяна на блокове
+            // ЗАРЕЖДАНЕ НА БЛОКОВЕТЕ ОТ ОБЛАКА
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (user) {
+                const { data: blocks } = await supabaseClient.from('user_blocks').select('*').eq('user_id', user.id);
+                if (blocks && blocks.length > 0) {
+                    const container = document.querySelector('.custom-blocks');
+                    if (container) container.innerHTML = ''; 
+                    blocks.forEach(b => {
+                        if (typeof createNewBlock === 'function') {
+                            createNewBlock(b.type, b.style, { blockId: b.block_key, position: b.position, restoring: true });
+                        }
+                    });
+                }
+            }
+
+            // НАБЛЮДАТЕЛ ЗА АВТОМАТИЧНО ЗАПИСВАНЕ
             const container = document.querySelector('.custom-blocks');
             if (container) {
                 const observer = new MutationObserver((mutations) => {
                     mutations.forEach(m => {
-                        const target = m.target.closest('.block-item') || (m.target.classList && m.target.classList.contains('block-item') ? m.target : null);
+                        const target = m.target.closest('.block-item') || (m.target.classList?.contains('block-item') ? m.target : null);
                         if (target) {
                             clearTimeout(target.cloudT);
-                            target.cloudT = setTimeout(() => cloudSaveBlock(target), 1000); // Дебънс 1 сек
+                            target.cloudT = setTimeout(() => cloudSaveBlock(target), 1000);
                         }
                     });
                 });
                 observer.observe(container, { attributes: true, subtree: true, attributeFilter: ['style', 'data-x'] });
             }
-        }, 1500); // Изчакване за зареждане на Supabase
+        }, 1500);
     });
 
-    function openEditProfile() {
-        alert("Редактирането на профила ще е готово след малко!");
-    }
+    function openEditProfile() { alert("Edit Profile прозорецът ще се появи след малко!"); }
 </script>
- </body>
+</body>
 </html>
