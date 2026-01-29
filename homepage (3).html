@@ -4133,5 +4133,115 @@
         alert("Профилът ще може да се редактира скоро!");
     }
 </script>
+ <script>
+    // 1. Функция за извличане на всички текущи блокове от екрана
+    function getAllBlocksData() {
+        const blocks = [];
+        document.querySelectorAll('.block-item').forEach(el => {
+            const blockId = el.getAttribute('data-id');
+            const type = el.getAttribute('data-type') || 'custom';
+            
+            // Взимаме позицията (x, y) от трансформацията или атрибутите
+            const x = parseFloat(el.getAttribute('data-x')) || 0;
+            const y = parseFloat(el.getAttribute('data-y')) || 0;
+            
+            // Взимаме стиловете (цвят, размери)
+            const style = {
+                backgroundColor: el.style.backgroundColor,
+                width: el.style.width,
+                height: el.style.height,
+                color: el.style.color
+            };
+
+            blocks.push({
+                block_key: blockId,
+                type: type,
+                position: { x, y },
+                style: style
+            });
+        });
+        return blocks;
+    }
+
+    // 2. Функция за записване в Supabase
+    async function syncBlocksToSupabase() {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+
+        const blocks = getAllBlocksData();
+
+        for (const block of blocks) {
+            const { error } = await supabaseClient
+                .from('user_blocks')
+                .upsert({
+                    user_id: user.id,
+                    block_key: block.block_key,
+                    type: block.type,
+                    position: block.position,
+                    style: block.style
+                }, { onConflict: 'user_id, block_key' });
+
+            if (error) console.error("Грешка при запис на блок:", error.message);
+        }
+    }
+
+    // 3. Функция за зареждане на блоковете при старт
+    async function loadBlocksFromSupabase() {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+
+        const { data: blocks, error } = await supabaseClient
+            .from('user_blocks')
+            .select('*')
+            .eq('user_id', user.id);
+
+        if (error) {
+            console.error("Грешка при зареждане:", error.message);
+            return;
+        }
+
+        if (blocks && blocks.length > 0) {
+            // Изчистваме съществуващите блокове (по избор, за да няма дублиране)
+            const container = document.querySelector('.custom-blocks');
+            if (container) container.innerHTML = '';
+
+            blocks.forEach(b => {
+                // Използваме твоята оригинална функция createNewBlock
+                // Добавяме параметър restoring: true, за да знае тя да не създава нов ID
+                if (typeof createNewBlock === 'function') {
+                    createNewBlock(b.type, b.style, {
+                        blockId: b.block_key,
+                        position: b.position,
+                        restoring: true
+                    });
+                }
+            });
+        }
+    }
+
+    // 4. "Слушател" за промени - автоматично записва след преместване
+    // Тъй като ползваш interact.js, трябва да викаме синхронизацията след dragend
+    document.addEventListener('dragend', () => {
+        setTimeout(syncBlocksToSupabase, 500); // Малко закъснение, за да се обновят координатите
+    });
+
+    // Ако имаш специфичен бутон за промяна на цвят, добави това и там:
+    // document.querySelector('.color-picker').addEventListener('change', syncBlocksToSupabase);
+
+    // 5. Инициализация при зареждане на страницата
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Изчакваме малко, за да сме сигурни, че Supabase е готов
+        setTimeout(async () => {
+            await loadBlocksFromSupabase();
+            
+            // Заменяме оригиналната функция за запис в localStorage с нашата за облака
+            const originalSave = window.saveUserCustomization;
+            window.saveUserCustomization = function() {
+                if (originalSave) originalSave();
+                syncBlocksToSupabase();
+            };
+        }, 1000);
+    });
+</script>
  </body>
 </html>
