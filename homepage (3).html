@@ -4061,5 +4061,77 @@
             setTimeout(loadUserCustomization, 1200);
         });
     </script>
-</body>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+<style>
+    /* 2. Специфични стилове за новите иконки в твоето меню */
+    .profile-dropdown ul li a {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+    }
+    .profile-dropdown ul li a i {
+        font-size: 18px;
+        width: 20px;
+        color: var(--accent); /* Твоето синьо */
+        text-align: center;
+    }
+    .profile-dropdown .arrow {
+        margin-left: auto;
+        opacity: 0.5;
+    }
+</style>
+
+<script>
+    // 3. Автоматично обновяване на менюто с нови иконки и Logout
+    function fixProfileMenu() {
+        const dropdownUl = document.querySelector('.profile-dropdown ul');
+        if (dropdownUl) {
+            dropdownUl.innerHTML = `
+                <li><a href="#" onclick="openEditProfile()"><i class="fa-solid fa-pen-to-square"></i> Edit Profile <span class="arrow">></span></a></li>
+                <li><a href="#"><i class="fa-solid fa-plug"></i> Connect Apps <span class="arrow">></span></a></li>
+                <li><a href="#"><i class="fa-solid fa-gear"></i> Your Account <span class="arrow">></span></a></li>
+                <li><a href="#"><i class="fa-solid fa-circle-question"></i> Help <span class="arrow">></span></a></li>
+                <li><a href="#" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout <span class="arrow">></span></a></li>
+            `;
+        }
+    }
+
+    // 4. Функция за Logout (Изход)
+    async function handleLogout() {
+        if (typeof supabaseClient !== 'undefined') {
+            const { error } = await supabaseClient.auth.signOut();
+            if (error) {
+                console.error("Грешка при изход:", error.message);
+                alert("Проблем при излизането.");
+            } else {
+                localStorage.clear(); 
+                window.location.href = 'login.html';
+            }
+        } else {
+            // Ако supabaseClient не е дефиниран все още
+            window.location.href = 'login.html';
+        }
+    }
+
+    // Изпълняваме фикса веднага след зареждане
+    document.addEventListener('DOMContentLoaded', () => {
+        fixProfileMenu();
+        
+        // Показване на името на потребителя в менюто
+        if (typeof supabaseClient !== 'undefined') {
+            supabaseClient.auth.getUser().then(({data}) => {
+                if (data.user) {
+                    const nameHeader = document.querySelector('.user-info h3');
+                    if (nameHeader) nameHeader.textContent = data.user.user_metadata.full_name || data.user.email;
+                }
+            });
+        }
+    });
+
+    function openEditProfile() {
+        alert("Профилът ще може да се редактира скоро!");
+    }
+</script>
+ </body>
 </html>
