@@ -1536,21 +1536,16 @@
             }
         });
 
-    // Safe date/time filling
-function updateDateTime(){
+   function updateDateTime(){
     const d = new Date();
-    const opts = {day:'2-digit', month:'short', year:'numeric'};
-    
     const dateEl = document.getElementById('date');
     const timeEl = document.getElementById('time');
-    const calEl = document.getElementById('calendar-day');
-
-    if(dateEl) dateEl.textContent = d.toLocaleDateString('bg-BG', opts);
+    if(dateEl) dateEl.textContent = d.toLocaleDateString('bg-BG');
     if(timeEl) timeEl.textContent = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    if(calEl) calEl.textContent = d.getDate().toString().padStart(2, '0');
 }
 updateDateTime();
 setInterval(updateDateTime, 60000);
+      
        
 
     <script>
@@ -4062,45 +4057,98 @@ setInterval(updateDateTime, 60000);
             // Try to load customization after recent cards render
             setTimeout(loadUserCustomization, 1200);
         });
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+</script> 
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
-<script>
-    // Тази функция ще работи дори ако Supabase се забави
-    function forceFixUI() {
-        const dropdown = document.querySelector('.profile-dropdown ul');
-        if (dropdown) {
-            dropdown.innerHTML = `
-                <li><a href="#" onclick="alert('Coming Soon')"><i class="fa-solid fa-user-pen"></i> Edit Profile</a></li>
-                <li><a href="javascript:void(0)" onclick="logoutNow()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
-            `;
+    <style>
+        /* Оправяме Dropdown-а да е видим и красив */
+        .profile-dropdown-wrap { position: relative; }
+        .profile-dropdown { 
+            display: none; /* Първоначално е скрит */
+            position: absolute; 
+            right: 0; 
+            top: 60px; 
+            background: #fff; 
+            width: 250px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+            border-radius: 15px; 
+            z-index: 9999;
         }
-    }
-
-    async function logoutNow() {
-        console.log("Logout initiated...");
-        if (window.supabaseClient) {
-            await window.supabaseClient.auth.signOut();
+        .profile-dropdown.open { display: block !important; } /* Клас за отваряне */
+        .profile-dropdown ul { list-style: none; padding: 10px 0; margin: 0; }
+        .profile-dropdown ul li a { 
+            display: flex !important; 
+            align-items: center !important; 
+            gap: 12px !important; 
+            padding: 12px 20px !important; 
+            text-decoration: none !important; 
+            color: #333 !important; 
+            transition: 0.2s;
         }
-        localStorage.clear();
-        window.location.href = 'login.html';
-    }
+        .profile-dropdown ul li a:hover { background: #f5f8ff; }
+        .profile-dropdown ul li a i { color: #4a90e2; width: 20px; text-align: center; }
+    </style>
 
-    // Стартираме веднага щом HTML-ът е готов
-    document.addEventListener('DOMContentLoaded', () => {
-        forceFixUI();
-        
-        // Опитваме се да заредим картите след малко
-        setTimeout(async () => {
+    <script>
+        // Функция за Logout
+        async function logoutNow() {
             if (window.supabaseClient) {
-                const { data: { user } } = await supabaseClient.auth.getUser();
-                if (user) {
-                    // Тук добавяме логиката за карти, която обсъждахме
-                    console.log("Logged in as:", user.email);
-                }
+                await window.supabaseClient.auth.signOut();
             }
-        }, 2000);
-    });
-</script>
- </body>
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        // Функция за превключване на менюто (Toggle)
+        function toggleMenu() {
+            const menu = document.querySelector('.profile-dropdown');
+            if (menu) menu.classList.toggle('open');
+        }
+
+        // Поправка на интерфейса
+        function fixUI() {
+            // 1. Слагаме новите икони в менюто
+            const dropdownUl = document.querySelector('.profile-dropdown ul');
+            if (dropdownUl) {
+                dropdownUl.innerHTML = `
+                    <li><a href="#"><i class="fa-solid fa-user-gear"></i> Редактирай профил</a></li>
+                    <li><a href="javascript:void(0)" onclick="logoutNow()"><i class="fa-solid fa-right-from-bracket"></i> Изход</a></li>
+                `;
+            }
+
+            // 2. Свързваме клика върху снимката да отваря менюто
+            const profileImg = document.querySelector('.profile-img, .user-pic');
+            if (profileImg) {
+                profileImg.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleMenu();
+                };
+            }
+
+            // Затваряне при клик навън
+            document.onclick = () => {
+                const menu = document.querySelector('.profile-dropdown');
+                if (menu) menu.classList.remove('open');
+            };
+        }
+
+        // Стартираме всичко
+        document.addEventListener('DOMContentLoaded', () => {
+            fixUI();
+            
+            // Зареждаме името от Supabase
+            setTimeout(async () => {
+                if (window.supabaseClient) {
+                    const { data: { user } } = await supabaseClient.auth.getUser();
+                    if (user) {
+                        const nameTag = document.querySelector('.user-info h3');
+                        if (nameTag) nameTag.textContent = user.user_metadata.full_name || user.email.split('@')[0];
+                    }
+                }
+            }, 1000);
+        });
+    </script>
+</body>
 </html>
+
 
