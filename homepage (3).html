@@ -1529,26 +1529,30 @@
             profileDropdown.classList.toggle("show");
         });
     
-        // Close dropdown on outside click
+    // Close dropdown on outside click
         document.addEventListener("click", (e) => {
-            if (!profileBtn.contains(e.target) && !profileDropdown.contains(e.target)) {
-                profileDropdown.classList.remove("show");
+            const pBtn = document.querySelector('.profile-img, .user-pic');
+            const pDrop = document.querySelector('.profile-dropdown');
+            if (pBtn && pDrop && !pBtn.contains(e.target) && !pDrop.contains(e.target)) {
+                pDrop.classList.remove("show");
+                pDrop.classList.remove("active");
             }
         });
 
-   function updateDateTime(){
-    const d = new Date();
-    const dateEl = document.getElementById('date');
-    const timeEl = document.getElementById('time');
-    if(dateEl) dateEl.textContent = d.toLocaleDateString('bg-BG');
-    if(timeEl) timeEl.textContent = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-}
-updateDateTime();
-setInterval(updateDateTime, 60000);
-      
-       
+        function updateDateTime(){
+            const d = new Date();
+            const dateEl = document.getElementById('date');
+            const timeEl = document.getElementById('time');
+            if(dateEl) dateEl.textContent = d.toLocaleDateString('bg-BG');
+            if(timeEl) timeEl.textContent = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        }
+        updateDateTime();
+        setInterval(updateDateTime, 60000);
+    // Край на основния скрипт блок
+    </script>
 
     <script>
+        // Стартираме Clipboard логиката в нов, чист блок
         (function(){
             const clipboard = document.getElementById('homeClipboard');
             const capsule = document.getElementById('homeClipboardCapsule');
@@ -1556,9 +1560,8 @@ setInterval(updateDateTime, 60000);
             const list = document.getElementById('homeClipboardList');
             const countEl = document.getElementById('homeClipboardCount');
             const emptyEl = document.getElementById('homeClipboardEmpty');
-            if(!clipboard || !capsule || !panel || !list){
-                return;
-            }
+            
+            if(!clipboard || !capsule || !panel || !list) return;
 
             const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             const clipboardElementMap = new Map();
@@ -4054,86 +4057,59 @@ setInterval(updateDateTime, 60000);
                     }
                 }catch(err){ console.warn('Failed to load user customization', err); }
             }
-            // Try to load customization after recent cards render
-            setTimeout(loadUserCustomization, 1200);
+          <script>
+        // Изчакваме всичко да зареди
+        window.addEventListener('load', () => {
+            console.log("🚀 Инициализиране на интерфейса...");
+            setupDashboardUI();
         });
-</script> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
-    <style>
-        /* Оправяме видимостта на менюто */
-        .profile-dropdown { 
-            display: none; 
-            position: absolute; 
-            right: 20px; 
-            top: 70px; 
-            background: white; 
-            border-radius: 12px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
-            width: 220px; 
-            z-index: 99999; 
-            padding: 10px 0;
-        }
-        .profile-dropdown.active { display: block !important; }
-        .profile-dropdown ul { list-style: none; padding: 0; margin: 0; }
-        .profile-dropdown ul li a { 
-            display: flex !important; 
-            align-items: center !important; 
-            padding: 12px 20px !important; 
-            gap: 12px; 
-            color: #333 !important; 
-            text-decoration: none !important;
-            font-size: 14px;
-        }
-        .profile-dropdown ul li a:hover { background: #f8faff; }
-        .profile-dropdown ul li a i { color: #4a90e2; width: 20px; text-align: center; }
-    </style>
-
-    <script>
-        // Функция за Logout
-        async function logoutNow() {
-            if (window.supabaseClient) {
-                await window.supabaseClient.auth.signOut();
-            }
-            localStorage.clear();
-            window.location.href = 'login.html';
-        }
-
-        // Главна функция за оправяне на UI
-        async function initializeUI() {
-            const profileImg = document.querySelector('.user-pic, .profile-img');
+        async function setupDashboardUI() {
+            // 1. Поправка на Dropdown менюто
+            const profileBtn = document.querySelector('.user-pic, .profile-img');
             const dropdown = document.querySelector('.profile-dropdown');
-
-            // 1. Отваряне/затваряне на менюто
-            if (profileImg && dropdown) {
-                profileImg.style.cursor = 'pointer';
-                profileImg.onclick = (e) => {
+            
+            if (profileBtn && dropdown) {
+                profileBtn.onclick = (e) => {
                     e.stopPropagation();
                     dropdown.classList.toggle('active');
                 };
                 document.addEventListener('click', () => dropdown.classList.remove('active'));
             }
 
-            // 2. Слагаме новите икони в менюто
+            // 2. Смяна на иконите (премахваме 404 грешките)
             const menuList = document.querySelector('.profile-dropdown ul');
             if (menuList) {
                 menuList.innerHTML = `
                     <li><a href="#"><i class="fa-solid fa-user-gear"></i> Настройки</a></li>
-                    <li><a href="javascript:void(0)" onclick="logoutNow()"><i class="fa-solid fa-right-from-bracket"></i> Изход</a></li>
+                    <li><a href="javascript:void(0)" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Изход</a></li>
                 `;
             }
 
-            // 3. Зареждаме името от Supabase (ако е зареден)
+            // 3. Зареждане на името от Supabase
             if (window.supabaseClient) {
-                const { data: { user } } = await supabaseClient.auth.getUser();
-                if (user) {
-                    const nameTag = document.querySelector('.user-info h3');
-                    if (nameTag) nameTag.textContent = user.user_metadata.full_name || user.email.split('@')[0];
-                }
+                try {
+                    const { data: { user } } = await supabaseClient.auth.getUser();
+                    if (user) {
+                        const nameH3 = document.querySelector('.user-info h3');
+                        if (nameH3) nameH3.textContent = user.user_metadata.full_name || user.email.split('@')[0];
+                    }
+                } catch (err) { console.warn("Supabase auth error", err); }
             }
         }
 
-        // Стартираме, когато всичко е заредено
-        window.addEventListener('load', initializeUI);
+        async function handleLogout() {
+            if (window.supabaseClient) await supabaseClient.auth.signOut();
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
     </script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <style>
+        .profile-dropdown.active { display: block !important; opacity: 1 !important; visibility: visible !important; }
+        .profile-dropdown ul li a i { width: 20px; color: #4a90e2; margin-right: 10px; }
+    </style>
 </body>
 </html>
