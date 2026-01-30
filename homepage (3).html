@@ -4054,62 +4054,73 @@
                         // Re-apply block sizes/positions persistence helpers
                         loadBlockDimensions();
                         loadBlockPositions();
-                    }
-                }catch(err){ console.warn('Failed to load user customization', err); }
-            }
-          <script>
-        // Изчакваме всичко да зареди
-        window.addEventListener('load', () => {
-            console.log("🚀 Инициализиране на интерфейса...");
-            setupDashboardUI();
-        });
+       } catch(err) { 
+            console.warn('Failed to load user customization', err); 
+        }
+    }
+    // Изчакваме малко, за да се рендерират елементите, преди да заредим позициите им
+    setTimeout(loadUserCustomization, 1200);
+</script>
 
-        async function setupDashboardUI() {
-            // 1. Поправка на Dropdown менюто
-            const profileBtn = document.querySelector('.user-pic, .profile-img');
-            const dropdown = document.querySelector('.profile-dropdown');
-            
-            if (profileBtn && dropdown) {
-                profileBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    dropdown.classList.toggle('active');
-                };
-                document.addEventListener('click', () => dropdown.classList.remove('active'));
-            }
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
-            // 2. Смяна на иконите (премахваме 404 грешките)
-            const menuList = document.querySelector('.profile-dropdown ul');
-            if (menuList) {
-                menuList.innerHTML = `
-                    <li><a href="#"><i class="fa-solid fa-user-gear"></i> Настройки</a></li>
-                    <li><a href="javascript:void(0)" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Изход</a></li>
-                `;
-            }
+<style>
+    /* Поправка на иконите и менюто */
+    .profile-dropdown ul li a {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding: 10px 20px !important;
+        color: #333 !important;
+        text-decoration: none !important;
+    }
+    .profile-dropdown ul li a i {
+        width: 20px;
+        text-align: center;
+        color: #4a90e2;
+        font-size: 16px;
+    }
+</style>
 
-            // 3. Зареждане на името от Supabase
+<script>
+    // 1. Поправка на Logout и 404 грешката
+    async function handleLogout() {
+        console.log("Излизане...");
+        if (window.supabaseClient) {
+            await window.supabaseClient.auth.signOut();
+        }
+        localStorage.clear();
+        // Увери се, че файлът ти е login.html, а не log-in.html
+        window.location.href = 'login.html'; 
+    }
+
+    // 2. Функция за иконите
+    function setupMenuContent() {
+        const menuList = document.querySelector('.profile-dropdown ul');
+        if (menuList) {
+            menuList.innerHTML = `
+                <li><a href="#"><i class="fa-solid fa-user-pen"></i> Редактирай профил</a></li>
+                <li><a href="#"><i class="fa-solid fa-gear"></i> Настройки</a></li>
+                <li><a href="javascript:void(0)" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Изход</a></li>
+            `;
+        }
+    }
+
+    // Стартираме всичко безопасно
+    window.addEventListener('load', () => {
+        setupMenuContent();
+        
+        // Махаме името "Your Name" и слагаме реалното
+        setTimeout(async () => {
             if (window.supabaseClient) {
-                try {
-                    const { data: { user } } = await supabaseClient.auth.getUser();
-                    if (user) {
-                        const nameH3 = document.querySelector('.user-info h3');
-                        if (nameH3) nameH3.textContent = user.user_metadata.full_name || user.email.split('@')[0];
-                    }
-                } catch (err) { console.warn("Supabase auth error", err); }
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                    const nameTag = document.querySelector('.user-info h3') || document.querySelector('.profile-dropdown h4');
+                    if (nameTag) nameTag.textContent = user.user_metadata.full_name || user.email.split('@')[0];
+                }
             }
-        }
-
-        async function handleLogout() {
-            if (window.supabaseClient) await supabaseClient.auth.signOut();
-            localStorage.clear();
-            window.location.href = 'login.html';
-        }
-    </script>
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    
-    <style>
-        .profile-dropdown.active { display: block !important; opacity: 1 !important; visibility: visible !important; }
-        .profile-dropdown ul li a i { width: 20px; color: #4a90e2; margin-right: 10px; }
-    </style>
+        }, 1500);
+    });
+</script>
 </body>
 </html>
