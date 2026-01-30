@@ -1536,20 +1536,22 @@
             }
         });
 
-          
-        // simple date/time filling
-        function updateDateTime(){
-            const d=new Date();
-            const opts={day:'2-digit',month:'short',year:'numeric'};
-            document.getElementById('date').textContent = d.toLocaleDateString('bg-BG',opts);
-            document.getElementById('time').textContent = d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-            
-            // Update calendar day
-            document.getElementById('calendar-day').textContent = d.getDate().toString().padStart(2, '0');
-        }
-        updateDateTime();
-        setInterval(updateDateTime,60000);
-    </script>
+    // Safe date/time filling
+function updateDateTime(){
+    const d = new Date();
+    const opts = {day:'2-digit', month:'short', year:'numeric'};
+    
+    const dateEl = document.getElementById('date');
+    const timeEl = document.getElementById('time');
+    const calEl = document.getElementById('calendar-day');
+
+    if(dateEl) dateEl.textContent = d.toLocaleDateString('bg-BG', opts);
+    if(timeEl) timeEl.textContent = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    if(calEl) calEl.textContent = d.getDate().toString().padStart(2, '0');
+}
+updateDateTime();
+setInterval(updateDateTime, 60000);
+       
 
     <script>
         (function(){
@@ -4060,114 +4062,44 @@
             // Try to load customization after recent cards render
             setTimeout(loadUserCustomization, 1200);
         });
-    </script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
 <script>
-    // 1. Изчакване за Supabase (премахва ReferenceError)
-    async function initApp() {
-        let attempts = 0;
-        while (!window.supabaseClient && attempts < 20) {
-            await new Promise(r => setTimeout(r, 200));
-            attempts++;
-        }
-        
-        if (window.supabaseClient) {
-            console.log("✅ Supabase е зареден!");
-            await setupUI();
-            await loadFlashcards();
-            setupSyncObserver();
-        } else {
-            console.error("❌ Supabase не успя да зареди.");
-        }
-    }
-
-    // 2. Зареждане на флашкарти от облака
-    async function loadFlashcards() {
-        const container = document.getElementById('recentCards');
-        if (!container) return;
-
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) return;
-
-        const { data: cards } = await supabaseClient
-            .from('flashcards')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(5);
-
-        // Запазваме само бутона "Add New"
-        const addBtn = container.querySelector('.card.add');
-        container.innerHTML = '';
-        if (addBtn) container.appendChild(addBtn);
-
-        if (cards && cards.length > 0) {
-            cards.forEach(c => {
-                const cardDiv = document.createElement('div');
-                cardDiv.className = 'card';
-                cardDiv.innerHTML = `
-                    <div class="card-content" style="text-align:center">
-                        <div style="font-size:14px;font-weight:800">${c.front}</div>
-                        <div class="label">${c.tags ? c.tags[0] : 'Карта'}</div>
-                    </div>
-                `;
-                cardDiv.onclick = () => window.location.href = `Flashcardcreate.html?cardId=${c.id}`;
-                container.appendChild(cardDiv);
-            });
-        }
-    }
-
-    // 3. Поправка на иконите и Logout (премахва 404 грешките)
-    async function setupUI() {
+    // Тази функция ще работи дори ако Supabase се забави
+    function forceFixUI() {
         const dropdown = document.querySelector('.profile-dropdown ul');
         if (dropdown) {
             dropdown.innerHTML = `
-                <li><a href="#" onclick="alert('Скоро!')"><i class="fa-solid fa-pen-to-square"></i> Edit Profile <span class="arrow">></span></a></li>
-                <li><a href="#" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout <span class="arrow">></span></a></li>
+                <li><a href="#" onclick="alert('Coming Soon')"><i class="fa-solid fa-user-pen"></i> Edit Profile</a></li>
+                <li><a href="javascript:void(0)" onclick="logoutNow()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
             `;
-        }
-        
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (user) {
-            const nameTag = document.querySelector('.user-info h3');
-            if (nameTag) nameTag.textContent = user.user_metadata.full_name || user.email.split('@')[0];
         }
     }
 
-    async function handleLogout() {
-        await supabaseClient.auth.signOut();
+    async function logoutNow() {
+        console.log("Logout initiated...");
+        if (window.supabaseClient) {
+            await window.supabaseClient.auth.signOut();
+        }
         localStorage.clear();
         window.location.href = 'login.html';
     }
 
-    // 4. Наблюдател за блокове (MutationObserver)
-    function setupSyncObserver() {
-        const container = document.querySelector('.custom-blocks');
-        if (!container) return;
-
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach(m => {
-                const target = m.target.closest('.block-item');
-                if (target) {
-                    clearTimeout(target.saveT);
-                    target.saveT = setTimeout(async () => {
-                        const { data: { user } } = await supabaseClient.auth.getUser();
-                        await supabaseClient.from('user_blocks').upsert({
-                            user_id: user.id,
-                            block_key: target.getAttribute('data-id') || target.id,
-                            position: { x: parseFloat(target.getAttribute('data-x')) || 0, y: parseFloat(target.getAttribute('data-y')) || 0 },
-                            style: { width: target.style.width, height: target.style.height, backgroundColor: target.style.backgroundColor }
-                        }, { onConflict: 'user_id, block_key' });
-                    }, 1000);
+    // Стартираме веднага щом HTML-ът е готов
+    document.addEventListener('DOMContentLoaded', () => {
+        forceFixUI();
+        
+        // Опитваме се да заредим картите след малко
+        setTimeout(async () => {
+            if (window.supabaseClient) {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                    // Тук добавяме логиката за карти, която обсъждахме
+                    console.log("Logged in as:", user.email);
                 }
-            });
-        });
-        observer.observe(container, { attributes: true, subtree: true, attributeFilter: ['style', 'data-x'] });
-    }
-
-    // Стартираме всичко безопасно
-    window.addEventListener('load', initApp);
+            }
+        }, 2000);
+    });
 </script>
  </body>
 </html>
