@@ -4057,35 +4057,34 @@ setInterval(updateDateTime, 60000);
             // Try to load customization after recent cards render
             setTimeout(loadUserCustomization, 1200);
         });
-</script> 
-     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+</script> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
     <style>
-        /* Оправяме Dropdown-а да е видим и красив */
-        .profile-dropdown-wrap { position: relative; }
+        /* Оправяме видимостта на менюто */
         .profile-dropdown { 
-            display: none; /* Първоначално е скрит */
+            display: none; 
             position: absolute; 
-            right: 0; 
-            top: 60px; 
-            background: #fff; 
-            width: 250px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
-            border-radius: 15px; 
-            z-index: 9999;
+            right: 20px; 
+            top: 70px; 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
+            width: 220px; 
+            z-index: 99999; 
+            padding: 10px 0;
         }
-        .profile-dropdown.open { display: block !important; } /* Клас за отваряне */
-        .profile-dropdown ul { list-style: none; padding: 10px 0; margin: 0; }
+        .profile-dropdown.active { display: block !important; }
+        .profile-dropdown ul { list-style: none; padding: 0; margin: 0; }
         .profile-dropdown ul li a { 
             display: flex !important; 
             align-items: center !important; 
-            gap: 12px !important; 
             padding: 12px 20px !important; 
-            text-decoration: none !important; 
+            gap: 12px; 
             color: #333 !important; 
-            transition: 0.2s;
+            text-decoration: none !important;
+            font-size: 14px;
         }
-        .profile-dropdown ul li a:hover { background: #f5f8ff; }
+        .profile-dropdown ul li a:hover { background: #f8faff; }
         .profile-dropdown ul li a i { color: #4a90e2; width: 20px; text-align: center; }
     </style>
 
@@ -4099,56 +4098,42 @@ setInterval(updateDateTime, 60000);
             window.location.href = 'login.html';
         }
 
-        // Функция за превключване на менюто (Toggle)
-        function toggleMenu() {
-            const menu = document.querySelector('.profile-dropdown');
-            if (menu) menu.classList.toggle('open');
-        }
+        // Главна функция за оправяне на UI
+        async function initializeUI() {
+            const profileImg = document.querySelector('.user-pic, .profile-img');
+            const dropdown = document.querySelector('.profile-dropdown');
 
-        // Поправка на интерфейса
-        function fixUI() {
-            // 1. Слагаме новите икони в менюто
-            const dropdownUl = document.querySelector('.profile-dropdown ul');
-            if (dropdownUl) {
-                dropdownUl.innerHTML = `
-                    <li><a href="#"><i class="fa-solid fa-user-gear"></i> Редактирай профил</a></li>
+            // 1. Отваряне/затваряне на менюто
+            if (profileImg && dropdown) {
+                profileImg.style.cursor = 'pointer';
+                profileImg.onclick = (e) => {
+                    e.stopPropagation();
+                    dropdown.classList.toggle('active');
+                };
+                document.addEventListener('click', () => dropdown.classList.remove('active'));
+            }
+
+            // 2. Слагаме новите икони в менюто
+            const menuList = document.querySelector('.profile-dropdown ul');
+            if (menuList) {
+                menuList.innerHTML = `
+                    <li><a href="#"><i class="fa-solid fa-user-gear"></i> Настройки</a></li>
                     <li><a href="javascript:void(0)" onclick="logoutNow()"><i class="fa-solid fa-right-from-bracket"></i> Изход</a></li>
                 `;
             }
 
-            // 2. Свързваме клика върху снимката да отваря менюто
-            const profileImg = document.querySelector('.profile-img, .user-pic');
-            if (profileImg) {
-                profileImg.onclick = (e) => {
-                    e.stopPropagation();
-                    toggleMenu();
-                };
+            // 3. Зареждаме името от Supabase (ако е зареден)
+            if (window.supabaseClient) {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                    const nameTag = document.querySelector('.user-info h3');
+                    if (nameTag) nameTag.textContent = user.user_metadata.full_name || user.email.split('@')[0];
+                }
             }
-
-            // Затваряне при клик навън
-            document.onclick = () => {
-                const menu = document.querySelector('.profile-dropdown');
-                if (menu) menu.classList.remove('open');
-            };
         }
 
-        // Стартираме всичко
-        document.addEventListener('DOMContentLoaded', () => {
-            fixUI();
-            
-            // Зареждаме името от Supabase
-            setTimeout(async () => {
-                if (window.supabaseClient) {
-                    const { data: { user } } = await supabaseClient.auth.getUser();
-                    if (user) {
-                        const nameTag = document.querySelector('.user-info h3');
-                        if (nameTag) nameTag.textContent = user.user_metadata.full_name || user.email.split('@')[0];
-                    }
-                }
-            }, 1000);
-        });
+        // Стартираме, когато всичко е заредено
+        window.addEventListener('load', initializeUI);
     </script>
 </body>
 </html>
-
-
