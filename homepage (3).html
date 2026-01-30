@@ -2097,6 +2097,8 @@
                 block.style.setProperty('--block-border', border);
                 block.style.setProperty('--block-shadow', shadow);
                 block.dataset.blockColor = normalized;
+
+                if (typeof syncBlockToCloud === 'function') { syncBlockToCloud(block); }
             }
 
             function getCustomBlocksData() {
@@ -3960,107 +3962,118 @@
                 if(!text) return '';
                 return text.length <= limit ? text : text.slice(0, limit) + '…';
             }
-            async function renderRecentCards(){
-                if(!recentContainer || !window.ssApi) return;
-                try{
-                    const resp = await ssApi.getRecentFlashcards();
-                    if(!resp || !resp.ok) return;
-                    const cards = resp.cards || [];
-                    const addBtn = recentContainer.querySelector('.card.add');
-                    recentContainer.innerHTML = '';
-                    if(addBtn) recentContainer.appendChild(addBtn);
-                    if(cards.length === 0){
-                        const placeholder = document.createElement('div');
-                        placeholder.className = 'card';
-                        placeholder.innerHTML = '<div class="card-content" style="text-align:center"><div style="font-size:14px;font-weight:800">Няма последни карти</div><div class="label">Започнете с Нова</div></div>';
-                        recentContainer.appendChild(placeholder);
-                    } else {
-                        cards.forEach(c => {
-                            const item = document.createElement('div');
-                            item.className = 'card';
-                            item.dataset.id = c.id || '';
-                            const content = document.createElement('div');
-                            content.className = 'card-content';
-                            content.style.textAlign = 'center';
-                            const front = document.createElement('div');
-                            front.style.fontSize = '14px'; front.style.fontWeight = '800';
-                            front.textContent = stripAndSnippet(c.front || (c.metadata && c.metadata.front) || '');
-                            const label = document.createElement('div');
-                            label.className = 'label';
-                            label.textContent = c.tags || '';
-                            content.appendChild(front); content.appendChild(label);
-                            item.appendChild(content);
-                            item.addEventListener('click', () => { window.location.href = `Flashcardcreate.html?cardId=${encodeURIComponent(c.id)}`; });
-                            recentContainer.appendChild(item);
-                        });
-                        // If URL requested a highlightCard, apply visual highlight and remove after timeout
-                        try{
-                            const params = new URLSearchParams(location.search);
-                            const highlight = params.get('highlightCard');
-                            if(highlight){
-                                const hit = recentContainer.querySelector(`.card[data-id="${highlight}"]`);
-                                if(hit){
-                                    hit.classList.add('selected');
-                                    try{ hit.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){}
-                                    setTimeout(() => { hit.classList.remove('selected'); }, 3500);
-                                }
-                            }
-                        }catch(e){/* ignore */}
-                    }
-                }catch(err){
-                    console.warn('Failed to load recent flashcards', err);
-                }
-            }
-            // Attempt initial render and refresh every minute
-            setTimeout(renderRecentCards, 800);
-            setInterval(renderRecentCards, 60000);
-            // Load user customization (blocks, theme) when authenticated
-            async function loadUserCustomization(){
-                if(!window.ssApi) return;
-                const token = localStorage.getItem('ss_token');
-                if(!token) return; // not logged in
-                try{
-                    const resp = await ssApi.getBlocks();
-                    if(!resp || !resp.ok) return;
-                    const blocksFromServer = resp.blocks || [];
-                    // Apply global theme if present
-                    const themeBlock = blocksFromServer.find(b => b.block_key === 'global_theme');
-                    if(themeBlock && themeBlock.style){
-                        try{
-                            const style = themeBlock.style;
-                            Object.keys(style).forEach(k => {
-                                try{ document.documentElement.style.setProperty('--' + k, style[k]); }catch(e){}
-                            });
-                        }catch(e){ console.warn('apply theme failed', e); }
-                    }
-                    // Restore custom blocks (ignore global_theme)
-                    const customBlocksFromServer = blocksFromServer.filter(b => b.block_key && b.block_key !== 'global_theme');
-                    if(customBlocksFromServer.length){
-                        // Clear any previously restored server blocks to avoid duplicates
-                        // We'll rely on createNewBlock to place them respecting given positions
-                        for(const b of customBlocksFromServer){
-                            try{
-                                const cfg = Object.assign({}, b.style || {});
-                                const pos = b.position || {};
-                                // Use numeric id as stable block identifier when possible
-                                const blockId = b.id || b.block_key || ('block_' + Date.now());
-                                // createNewBlock(type, config, options)
-                                // Use block_key as type hint; fallback to 'custom'
-                                const type = b.block_key || 'custom';
-                                createNewBlock(type, cfg, { blockId: String(blockId), position: pos, restoring: true });
-                            }catch(e){ console.warn('restore block failed', e); }
-                        }
-                        blocks = document.querySelectorAll('.custom-block');
-                        // Re-apply block sizes/positions persistence helpers
-                        loadBlockDimensions();
-                        loadBlockPositions();
-       } catch(err) { 
-            console.warn('Failed to load user customization', err); 
+          // 1. ЗАРЕЖДАНЕ НА КАРТИ ОТ SUPABASE
+async function renderRecentCards() {
+    const container = document.getElementById('recentCards');
+    if (!container || !window.supabaseClient) return;
+
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+
+        const { data: cards, error } = await supabaseClient
+            .from('flashcards')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+        if (error) throw error;
+
+        const addBtn = container.querySelector('.card.add');
+        container.innerHTML = '';
+        if (addBtn) container.appendChild(addBtn);
+
+        if (cards && cards.length > 0) {
+            cards.forEach(card => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card';
+                cardDiv.innerHTML = `
+                    <div class="card-content" style="text-align:center">
+                        <div style="font-size:14px;font-weight:800;margin-bottom:5px;">${card.front}</div>
+                        <div class="label" style="font-size:10px;opacity:0.7;">${card.tags ? card.tags[0] : 'Карта'}</div>
+                    </div>
+                `;
+                cardDiv.onclick = () => window.location.href = `Flashcardcreate.html?id=${card.id}`;
+                container.appendChild(cardDiv);
+            });
         }
-    }
-    // Изчакваме малко, за да се рендерират елементите, преди да заредим позициите им
-    setTimeout(loadUserCustomization, 1200);
-</script>
+    } catch (err) { console.warn('Cards load error:', err); }
+}
+
+async function syncBlockToCloud(el) {
+    if (!window.supabaseClient || !el) return;
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+
+        const blockId = el.getAttribute('data-id') || el.id;
+        const blockData = {
+            user_id: user.id,
+            block_key: blockId,
+            type: el.getAttribute('data-type') || 'custom',
+            position: { 
+                x: parseFloat(el.getAttribute('data-x')) || 0, 
+                y: parseFloat(el.getAttribute('data-y')) || 0 
+            },
+            style: {
+                width: el.style.width,
+                height: el.style.height,
+                backgroundColor: el.style.backgroundColor || ''
+            }
+        };
+
+        // Записваме в базата данни
+        await supabaseClient.from('user_blocks').upsert(blockData, { onConflict: 'user_id, block_key' });
+    } catch (err) { console.warn('Sync failed:', err); }
+}
+
+// Функциите за запис при местене/оразмеряване
+function saveBlockPositions() { document.querySelectorAll('.block-item, .custom-block').forEach(syncBlockToCloud); }
+function saveBlockDimensions() { document.querySelectorAll('.block-item, .custom-block').forEach(syncBlockToCloud); }
+            
+// Заместваме старите локални функции
+function saveBlockPositions() { document.querySelectorAll('.block-item, .custom-block').forEach(syncBlockToCloud); }
+function saveBlockDimensions() { document.querySelectorAll('.block-item, .custom-block').forEach(syncBlockToCloud); }
+
+// 3. ЗАРЕЖДАНЕ НА ПЕРСОНАЛИЗАЦИЯТА ПРИ СТАРТ
+async function loadUserCustomization() {
+    if (!window.supabaseClient) return;
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+
+        const { data: blocks, error } = await supabaseClient
+            .from('user_blocks')
+            .select('*')
+            .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        if (blocks && blocks.length > 0) {
+            const container = document.querySelector('.custom-blocks');
+            if (container) container.innerHTML = ''; 
+
+            blocks.forEach(b => {
+                if (typeof createNewBlock === 'function') {
+                    createNewBlock(b.type || 'custom', b.style, {
+                        blockId: b.block_key,
+                        position: b.position,
+                        restoring: true
+                    });
+                }
+            });
+        }
+    } catch (err) { console.warn('Restore failed:', err); }
+}
+
+// Инициализация
+setTimeout(renderRecentCards, 800);
+setInterval(renderRecentCards, 60000);
+setTimeout(loadUserCustomization, 1200);
+    
+    </script>
+                                  
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
