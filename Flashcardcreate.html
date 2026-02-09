@@ -3,1168 +3,376 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flashcard Skyline Studio</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/skyline.css">
+    <title>Skyline Flashcard Studio</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
     <style>
-        :root{
-            --bg-gradient:
-                linear-gradient(180deg, rgba(32, 102, 255, 0.72), rgba(255, 255, 255, 0.5)),
-                url('assets/bg-silk.jpg') center/cover no-repeat;
-            --glass: rgba(255,255,255,0.22);
-            --glass-strong: rgba(255,255,255,0.35);
-            --text-primary:#0b1630;
-            --text-muted:rgba(255,255,255,0.72);
-            --accent:#1d4ed8;
-            --accent-soft:#60a5fa;
-            --ai-accent: #8b5cf6;
-            --card-size:clamp(320px,58vw,540px);
+        /* --- APPLE-STYLE CSS --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 50% 10%, #1a1a1a 0%, #000000 100%);
+            height: 100vh;
+            overflow: hidden;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
-        *{box-sizing:border-box;margin:0;padding:0;}
-
-        body{
-            font-family: 'Inter', system-ui, -apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-            min-height:100vh;
-            background:var(--bg-gradient);
-            color:#f6fbff;
-            display:flex;
-            justify-content:center;
-            padding:36px clamp(20px,6vw,60px);
-        }
-
-        .frame{
-            width:min(1200px,100%);
-            display:flex;
-            flex-direction:column;
-            gap:48px;
-        }
-
-        .skyline-bar{
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
-            gap:24px;
-        }
-
-        .skyline-center{
-            flex:1;
-            display:flex;
-            justify-content:center;
-        }
-
-        .nav-btn,
-        .profile-btn{
-            width:60px;
-            height:60px;
-            border-radius:50%;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            text-decoration:none;
-            color:#f6fbff;
-            background:linear-gradient(180deg, rgba(255,255,255,0.22), rgba(220,230,255,0.08));
-            border:1px solid rgba(255,255,255,0.32);
-            box-shadow:0 28px 68px rgba(3,22,66,0.34);
-            backdrop-filter:blur(14px);
-            transition:transform 200ms cubic-bezier(.2,.9,.3,1), box-shadow 200ms ease;
-        }
-
-        .nav-btn:hover,
-        .profile-btn:hover{transform:translateY(-3px);box-shadow:0 36px 82px rgba(3,22,66,0.4);}
-
-        .nav-btn span{font-size:22px;font-weight:700;}
-
-        .profile-initials{
-            width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-soft));display:flex;align-items:center;justify-content:center;font-weight:700;letter-spacing:0.3px;
-        }
-
-        #homeClipboard{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:1200;margin:0;}
-
-        /* Dynamic Island / Skyline Capsule */
-        .home-clipboard-capsule{display:flex;align-items:center;gap:12px;padding:10px 18px;border-radius:999px;background:#000;color:#fff;border:0;box-shadow:0 10px 30px rgba(2,6,23,0.45);transition:all 0.6s cubic-bezier(0.16,1,0.3,1);cursor:pointer}
-        .home-clipboard-capsule .home-clipboard-clock{display:none}
-        .home-clipboard-capsule .home-clipboard-label{font-weight:600}
-        .home-clipboard-capsule.expanded{padding:16px 20px;border-radius:18px;min-width:360px;background:linear-gradient(180deg,#000,#0a0a0a);box-shadow:0 30px 80px rgba(2,6,23,0.6)}
-        .home-clipboard-panel{position:absolute;top:78px;left:50%;transform:translateX(-50%);min-width:380px;max-width:720px;background:rgba(0,0,0,0.92);color:#fff;border-radius:16px;padding:12px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 40px 100px rgba(2,6,23,0.6);opacity:0;pointer-events:none;transition:all 0.32s cubic-bezier(0.16,1,0.3,1)}
-        .home-clipboard-panel.open{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(6px)}
-        .home-clipboard-panel h3{margin:0;color:#fff}
-        .home-clipboard-list{list-style:none;padding:8px;display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto}
-        .skyline-file-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:rgba(255,255,255,0.03);cursor:pointer;border:1px solid rgba(255,255,255,0.04);color:#fff}
-        .home-clipboard-capsule.drag-over{transform:scale(1.02);box-shadow:0 40px 120px rgba(2,6,23,0.7)}
-
-        main{display:flex;flex-direction:column;align-items:center;gap:40px;}
-
-        .card-stage{display:flex;flex-direction:column;align-items:center;gap:24px;}
-
-        .flashcard-frame{width:var(--card-size);height:calc(var(--card-size) * 0.62);perspective:1400px;position:relative;}
-        .flashcard-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);} 
-        .flashcard-inner.flipped{transform:rotateY(180deg);} 
-
-        /* Success glow on save */
-        .flashcard.saved { box-shadow: 0 24px 80px rgba(24,160,88,0.18) !important; border: 1px solid rgba(24,160,88,0.18) !important; transition: box-shadow 420ms ease, border-color 420ms ease; }
-
-        .flashcard-face{
-            position:absolute;
-            inset:0;
-            border-radius:20px;
-            padding:28px clamp(20px,3.6vw,34px);
-            background: rgba(255,255,255,0.7);
+        /* Glassmorphism Classes */
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(20px);
-            border:1px solid rgba(255,255,255,0.3);
-            box-shadow:0 24px 64px rgba(3,22,66,0.12);
-            display:flex;
-            flex-direction:column;
-            justify-content:space-between;
-            color:var(--text-primary);
-            backface-visibility:hidden;
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         }
 
-        .flashcard-face.back{transform:rotateY(180deg);}
-
-        .editable{
-            flex:1;
-            width:100%;
-            font-size:clamp(20px,2.6vw,28px);
-            line-height:1.45;
-            outline:none;
-            border:none;
-            background:transparent;
-            color:inherit;
-            white-space:pre-wrap;
-            overflow:auto;
+        /* Skyline Dynamic Island */
+        #skyline-island {
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 50;
+        }
+        
+        #skyline-island.expanded {
+            width: 380px !important;
+            height: 260px !important;
+            border-radius: 28px !important;
+            background: rgba(15, 15, 15, 0.95);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
         }
 
-        .editable:empty:before{content:attr(data-placeholder);color:rgba(12,30,58,0.35);}
-
-        .card-toolbar{display:flex;gap:14px;justify-content:center;}
-        .card-toolbar button{border:none;border-radius:14px;padding:12px 24px;font-size:13px;font-weight:600;cursor:pointer;transition:transform 180ms ease, box-shadow 180ms ease;backdrop-filter: blur(10px);background:rgba(255,255,255,0.72);color:var(--text-primary)}
-        .card-toolbar button.primary{background:linear-gradient(135deg,var(--accent),var(--accent-soft));color:#fff;box-shadow:0 22px 48px rgba(29,78,216,0.32);}
-        .card-toolbar button.secondary{background:rgba(255,255,255,0.8);color:var(--text-primary);box-shadow:0 18px 42px rgba(3,22,66,0.22);}
-        .card-toolbar button:hover{transform:translateY(-2px);}
-
-        .card-status{min-height:18px;font-size:12px;color:var(--text-muted);text-align:center;}
-
-        .summary-section{width:min(100%,960px);background:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.3);border-radius:18px;padding:28px clamp(22px,4vw,44px);backdrop-filter:blur(20px);box-shadow:0 28px 80px rgba(3,22,66,0.12);color:var(--text-primary)}
-        .summary-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;}
-        .summary-header h2{margin:0;font-size:20px;color:#f6fbff;letter-spacing:0.02em;}
-        .summary-header span{font-size:13px;color:rgba(255,255,255,0.72);}
-
-        .summary-list{list-style:none;margin:0;padding:0;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}
-        .summary-item{border-radius:22px;padding:20px;background:rgba(255,255,255,0.26);border:1px solid rgba(255,255,255,0.36);box-shadow:0 28px 64px rgba(3,22,66,0.34);display:flex;flex-direction:column;gap:12px;color:#0b1630;transition:transform 200ms ease, box-shadow 200ms ease;}
-        .summary-item:hover{transform:translateY(-3px);box-shadow:0 36px 82px rgba(3,22,66,0.38);}
-        .summary-item.selected{outline:3px solid rgba(29,78,216,0.16);box-shadow:0 40px 120px rgba(29,78,216,0.18);transform:translateY(-4px);animation:selectedFade 3.5s ease forwards}
-        @keyframes selectedFade{0%{transform:translateY(-6px);box-shadow:0 50px 140px rgba(29,78,216,0.22);outline:3px solid rgba(29,78,216,0.22)}60%{transform:translateY(-3px);box-shadow:0 36px 100px rgba(29,78,216,0.16)}100%{transform:none;box-shadow:0 28px 64px rgba(3,22,66,0.34);outline:3px solid rgba(29,78,216,0.08)}}
-        /* Modal preview */
-        .card-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:1000;background:rgba(6,18,40,0.6);backdrop-filter:blur(6px)}
-        .card-modal.open{display:flex}
-        .card-modal-inner{width:min(900px,92%);max-width:980px;background:linear-gradient(180deg,#fff,#f3f9ff);border-radius:18px;padding:20px;box-shadow:0 40px 120px rgba(2,18,40,0.5);color:#07203a}
-        .card-modal-row{display:flex;gap:12px}
-        .card-modal-face{flex:1;padding:18px;border-radius:12px;background:#fff;border:1px solid rgba(6,30,60,0.06)}
-        .card-modal-controls{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
-        .card-modal button{padding:8px 12px;border-radius:10px;border:0;cursor:pointer}
-        .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-soft));color:#fff}
-        .btn-ghost{background:transparent;border:1px solid rgba(6,30,60,0.06)}
-        .summary-front{font-weight:600;font-size:14px;line-height:1.35;}
-        .summary-back{font-size:13px;color:rgba(12,30,58,0.72);line-height:1.45;}
-        .summary-meta{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:rgba(12,30,58,0.6);text-transform:uppercase;letter-spacing:0.4px;}
-        .summary-actions{display:flex;gap:8px;}
-        .summary-actions button{flex:1;border:none;border-radius:12px;padding:8px 10px;font-size:11px;font-weight:600;background:rgba(255,255,255,0.75);color:#0b1630;cursor:pointer;transition:transform 160ms ease, background 160ms ease;}
-        .summary-actions button:hover{transform:translateY(-1px);background:#fff;}
-        .summary-actions button.delete{color:#a02424;background:rgba(255,255,255,0.65);}        
-
-        @media (max-width:720px){
-            .skyline-bar{flex-direction:column;gap:18px;}
-            .skyline-center{width:100%;}
-            #homeClipboard{width:100%;}
-            .flashcard-frame{width:100%;}
-            .card-toolbar{flex-direction:column;}
+        /* 3D Flashcard Logic */
+        .stage {
+            perspective: 1200px;
         }
-        /* AI button and loading/spinner styles */
-        .ai-btn{background: linear-gradient(135deg, #8b5cf6, #d946ef); color: #fff; border: none; font-weight: bold; box-shadow:0 20px 48px rgba(107,33,168,0.12);display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px}
-        .ai-btn:active{transform:scale(0.96)}
-        .ai-loading-pulse{animation: pulse 1.5s infinite; opacity:0.7}
-        .ai-btn.loading{opacity:0.9;pointer-events:none}
-        .ai-btn .ai-spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.28);border-top-color:#fff;animation:spin 900ms linear infinite;display:inline-block}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
-        /* Flashcard-level loading overlay */
-        .flashcard-loading-overlay{position:absolute;inset:0;border-radius:28px;background:linear-gradient(180deg,rgba(255,255,255,0.7),rgba(255,255,255,0.5));display:flex;align-items:center;justify-content:center;z-index:60}
-        .flashcard-loading-overlay .loader-inner{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text-primary);font-weight:700}
-        .flashcard-loading-overlay .loader-dots{display:inline-block}
-        .flashcard-loading-overlay .loader-dots span{display:inline-block;width:8px;height:8px;border-radius:8px;background:rgba(6,18,40,0.12);margin:0 3px;animation:loaderPulse 900ms infinite}
-        .flashcard-loading-overlay .loader-dots span:nth-child(2){animation-delay:120ms}
-        .flashcard-loading-overlay .loader-dots span:nth-child(3){animation-delay:240ms}
-        @keyframes loaderPulse{0%{transform:scale(0.85);opacity:0.6}50%{transform:scale(1.15);opacity:1}100%{transform:scale(0.85);opacity:0.6}}
-        /* Capsule & file list styles */
-        .home-clipboard-capsule.drag-over{outline:2px dashed rgba(255,255,255,0.38);transform:translateY(-4px)}
-        .home-clipboard-list{list-style:none;padding:12px;display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto}
-        .skyline-file-item{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;background:rgba(255,255,255,0.06);cursor:pointer;border:1px solid rgba(255,255,255,0.04)}
-        .skyline-file-item .file-icon{min-width:30px;text-align:center}
-        .flashcard-frame.drop-target{outline:3px dashed rgba(29,78,216,0.18)}
-        .flashcard.ripple::after{content:'';position:absolute;inset:0;border-radius:28px;background:radial-gradient(circle at center, rgba(139,92,246,0.12), transparent 40%);transform:scale(0);animation:rippleAnim 720ms ease-out;pointer-events:none}
-        @keyframes rippleAnim{0%{transform:scale(0);opacity:1}100%{transform:scale(1.2);opacity:0}}
+        
+        .flashcard {
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .flashcard.flipped {
+            transform: rotateY(180deg);
+        }
+        
+        .face {
+            backface-visibility: hidden;
+            position: absolute;
+            inset: 0;
+            border-radius: 24px;
+        }
+        
+        .back {
+            transform: rotateY(180deg);
+        }
+
+        /* Animations */
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(139, 92, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+        }
+        
+        .ai-thinking {
+            animation: pulse-glow 2s infinite;
+        }
+
+        /* Scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
     </style>
-    <script src="assets/shared-clipboard.js" defer></script>
-    <script src="assets/auth.js" defer></script>
 </head>
-<body>
-    <!-- Top-centered Skyline Island (Dynamic Island) -->
-    <div id="skyline-island" aria-hidden="false" style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:1300;">
-        <button id="skyline-island-btn" aria-label="Skyline" style="background:#000;color:#fff;border-radius:30px;padding:10px 20px;border:0;box-shadow:0 12px 36px rgba(0,0,0,0.6);backdrop-filter:blur(6px);">Skyline</button>
-    </div>
-    <div class="frame">
-        <div class="skyline-bar">
-            <a href="homepage.html" class="nav-btn" title="Назад" aria-label="Назад">
-                <span>←</span>
-            </a>
-            <div class="skyline-center">
-                <div id="homeClipboard" class="home-clipboard" role="region" aria-label="Skyline Clipboard">
-                    <button type="button" id="homeClipboardCapsule" class="home-clipboard-capsule" aria-expanded="false" aria-controls="homeClipboardPanel">
-                        <div class="home-clipboard-clock">
-                            <span class="home-clipboard-date" id="homeClipboardDate">—</span>
-                            <span class="home-clipboard-time" id="homeClipboardTime">—</span>
-                        </div>
-                        <span class="home-clipboard-label">Skyline Clipboard</span>
-                        <span class="home-clipboard-count" id="homeClipboardCount" aria-hidden="true">0</span>
-                        <span class="home-clipboard-open-hint">Drop files or double tap</span>
-                    </button>
-                    <div class="home-clipboard-panel" id="homeClipboardPanel" aria-hidden="true">
-                        <div class="home-clipboard-panel-head">
-                            <h3>Saved Files</h3>
-                            <span id="homeClipboardMeta">Свободно място</span>
-                        </div>
-                        <p class="home-clipboard-empty" id="homeClipboardEmpty">Плъзни файлове върху Skyline, за да ги запазиш за всяка страница.</p>
-                        <ul class="home-clipboard-list" id="homeClipboardList"></ul>
+<body class="selection:bg-purple-500 selection:text-white">
+
+    <div id="skyline-island" class="fixed top-6 h-[40px] w-[140px] bg-black rounded-full flex items-center justify-center cursor-pointer hover:scale-105 shadow-2xl overflow-hidden group border border-white/5">
+        
+        <div class="island-closed flex items-center gap-2 text-xs font-medium text-gray-300 pointer-events-none group-hover:text-white transition-colors">
+            <i data-lucide="cloud" class="w-4 h-4 text-purple-400"></i>
+            <span>Skyline Hub</span>
+        </div>
+
+        <div class="island-expanded hidden w-full h-full flex flex-col p-5 opacity-0 transition-opacity duration-300 delay-100">
+            <div class="flex justify-between items-center mb-3 border-b border-white/10 pb-2">
+                <span class="text-sm font-bold text-white flex items-center gap-2">
+                    <i data-lucide="library" class="w-4 h-4 text-purple-400"></i> Library
+                </span>
+                <span class="text-[10px] text-gray-500 uppercase tracking-wider">Drag & Drop</span>
+            </div>
+            
+            <div id="file-drop-zone" class="flex-1 border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center text-gray-500 text-xs hover:border-purple-500/50 hover:bg-purple-500/5 transition-all relative overflow-hidden group-drop">
+                <div id="file-list" class="absolute inset-0 overflow-y-auto p-2 custom-scroll space-y-2 text-left w-full">
+                    <div class="h-full flex flex-col items-center justify-center text-center p-4">
+                        <i data-lucide="upload-cloud" class="w-6 h-6 mb-2 opacity-50"></i>
+                        <p>Drop files here to store</p>
                     </div>
                 </div>
             </div>
-                        <div style="display:flex;gap:12px;align-items:center">
-                            <button id="saveLayoutBtn" class="nav-btn" title="Save layout">💾</button>
-                            <button id="loadLayoutBtn" class="nav-btn" title="Load layout">⤴</button>
-                            <div class="profile-btn" title="Профил"><div class="profile-initials">BC</div></div>
-                        </div>
         </div>
+    </div>
 
-        <main>
-            <section class="card-stage" aria-live="polite">
-                <div class="flashcard-frame" id="cardFrame">
-                    <div class="flashcard-inner" id="flashcard">
-                        <article class="flashcard-face front" aria-label="Предна страна">
-                            <div class="editable" id="frontEditable" contenteditable="true" data-placeholder="Напиши въпроса тук…" spellcheck="false"></div>
-                        </article>
-                        <article class="flashcard-face back" aria-label="Задна страна">
-                            <div class="editable" id="backEditable" contenteditable="true" data-placeholder="Добави отговора тук…" spellcheck="false"></div>
-                        </article>
-                    </div>
+    <div class="stage flex-1 flex items-center justify-center w-full mt-12">
+        
+        <div id="flashcard-container" class="flashcard w-[500px] h-[320px] relative">
+            
+            <div class="face front glass flex flex-col p-8 justify-between bg-black/40">
+                <div class="flex justify-between items-center opacity-60 hover:opacity-100 transition-opacity">
+                    <div class="text-[10px] font-bold text-purple-400 uppercase tracking-[0.2em]">Front Side</div>
+                    <i data-lucide="scan-face" class="w-4 h-4 text-white"></i>
                 </div>
-                <div class="card-toolbar">
-                    <button type="button" class="primary" id="saveCard">Запази</button>
-                    <button type="button" class="secondary" id="newCard">Нова карта</button>
-                    <button type="button" class="secondary ai-btn" id="aiGenerate">🪄 AI Генериране</button>
-                    <button type="button" class="secondary" id="flipCard">Завърти</button>
-                </div>
-                <p class="card-status" id="cardStatus">Двукратно щракване обръща картата.</p>
-            </section>
+                
+                <textarea id="front-input" class="w-full flex-1 bg-transparent resize-none border-none outline-none text-2xl text-center placeholder-gray-600 text-white font-light mt-4" placeholder="Type a concept or drop an image..."></textarea>
+                
+                <button id="ai-btn" class="mt-6 w-full py-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium text-sm shadow-lg backdrop-blur-md transform active:scale-[0.98] transition-all flex items-center justify-center gap-2 group">
+                    <i data-lucide="sparkles" class="w-4 h-4 text-purple-400 group-hover:rotate-12 transition-transform"></i>
+                    <span class="bg-gradient-to-r from-purple-200 to-white bg-clip-text text-transparent font-bold">Generate with AI</span>
+                </button>
+            </div>
 
-            <section class="summary-section" aria-live="polite">
-                <div class="summary-header">
-                    <h2>Колекция</h2>
-                    <span id="summaryMeta">0 карти</span>
+            <div class="face back glass flex flex-col p-8 justify-between bg-black/90 border-purple-500/20">
+                <div class="flex justify-between items-center opacity-60">
+                    <div class="text-[10px] font-bold text-green-400 uppercase tracking-[0.2em]">Answer</div>
+                    <button id="flip-back-btn" class="hover:text-white transition-colors"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
                 </div>
-                <ul class="summary-list" id="summaryList"></ul>
-            </section>
-        </main>
+                
+                <textarea id="back-output" class="w-full flex-1 bg-transparent resize-none border-none outline-none text-lg text-center text-gray-200 leading-relaxed mt-4 font-light" placeholder="AI result..."></textarea>
+                
+                <div class="mt-6 flex gap-3">
+                    <button onclick="saveCard()" class="flex-1 py-2.5 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-300 text-xs font-bold uppercase tracking-wider transition-all border border-green-500/20">Save Card</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-10 px-6 py-3 rounded-full glass border-white/10 text-sm font-medium transform translate-y-32 opacity-0 transition-all duration-500 flex items-center gap-3 shadow-2xl z-50">
+        <span id="toast-icon" class="text-lg">✅</span>
+        <span id="toast-msg" class="text-gray-200">Notification</span>
     </div>
 
     <script>
-        (function(){
-            const LS_CARDS = 'flashcardStudio_cards_v2';
-            const LS_DRAFT = 'flashcardStudio_draft_v3';
+        // --- 1. CONFIGURATION ---
+        const WORKER_URL = "https://curly-mountain-4c28.boy05geo.workers.dev";
+        
+        // Твоите Supabase данни
+        const SUPABASE_URL = "https://zfqpfhtbpfdudbpqzbbg.supabase.co"; 
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE"; 
 
-            const clockDate = document.getElementById('homeClipboardDate');
-            const clockTime = document.getElementById('homeClipboardTime');
-            const clipboardMeta = document.getElementById('homeClipboardMeta');
-            const clipboardList = document.getElementById('homeClipboardList');
+        // Инициализация
+        lucide.createIcons();
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log("🚀 Supabase Connected to project: zfqpfhtbpfdudbpqzbbg");
 
-            const flashcard = document.getElementById('flashcard');
-            const frontEditable = document.getElementById('frontEditable');
-            const backEditable = document.getElementById('backEditable');
-            const saveButton = document.getElementById('saveCard');
-            const newButton = document.getElementById('newCard');
-            const flipButton = document.getElementById('flipCard');
-            const cardStatus = document.getElementById('cardStatus');
-            const summaryList = document.getElementById('summaryList');
-            const summaryMeta = document.getElementById('summaryMeta');
+        // UI елементи
+        const island = document.getElementById('skyline-island');
+        const closedContent = island.querySelector('.island-closed');
+        const expandedContent = island.querySelector('.island-expanded');
+        const card = document.getElementById('flashcard-container');
+        const aiBtn = document.getElementById('ai-btn');
+        const frontInput = document.getElementById('front-input');
+        const backOutput = document.getElementById('back-output');
+        const fileZone = document.getElementById('file-drop-zone');
+        const fileList = document.getElementById('file-list');
 
-            let cards = [];
-            let editingId = null;
-            let statusTimer = null;
-            let clipboardObserver = null;
-            let clipboardInstance = null;
+        // Зареди файловете веднага
+        loadFilesFromLibrary();
 
-            function updateClock(){
-                const now = new Date();
-                if(clockDate){
-                    clockDate.textContent = now.toLocaleDateString('bg-BG',{ day:'2-digit', month:'2-digit', year:'numeric' });
-                }
-                if(clockTime){
-                    clockTime.textContent = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-                }
+        // --- 2. DYNAMIC ISLAND LOGIC ---
+        island.addEventListener('click', (e) => {
+            if (e.target.closest('#file-list') || e.target.closest('#file-drop-zone')) return;
+            toggleIsland();
+        });
+
+        function toggleIsland() {
+            island.classList.toggle('expanded');
+            if (island.classList.contains('expanded')) {
+                closedContent.style.opacity = '0';
+                setTimeout(() => {
+                    expandedContent.classList.remove('hidden');
+                    void expandedContent.offsetWidth; 
+                    expandedContent.style.opacity = '1';
+                }, 200);
+            } else {
+                expandedContent.style.opacity = '0';
+                setTimeout(() => {
+                    expandedContent.classList.add('hidden');
+                    closedContent.style.opacity = '1';
+                }, 200);
             }
-            // Layout save/load helpers
-            const saveLayoutBtn = document.getElementById('saveLayoutBtn');
-            const loadLayoutBtn = document.getElementById('loadLayoutBtn');
-            function collectTheme(){
-                const vars = ['--accent','--accent-soft','--glass','--glass-strong','--card-size','--text-primary'];
-                const root = getComputedStyle(document.documentElement);
-                const style = {};
-                vars.forEach(v => {
-                    const val = root.getPropertyValue(v).trim();
-                    if(val) style[v.replace(/--/,'')] = val;
-                });
-                return style;
-            }
-            async function saveLayout(){
-                if(!window.ssApi) return alert('Auth helper not loaded');
-                const style = collectTheme();
-                const blocks = [{ block_key: 'global_theme', position: {}, style }];
-                const resp = await ssApi.saveBlocks(blocks);
-                if(resp && resp.ok) alert('Layout saved'); else alert('Save failed');
-            }
-            async function loadLayout(){
-                if(!window.ssApi) return alert('Auth helper not loaded');
-                const resp = await ssApi.getBlocks();
-                if(!resp || !resp.ok) return alert('Load failed');
-                const blocks = resp.blocks || [];
-                const theme = blocks.find(b => b.block_key === 'global_theme');
-                if(theme && theme.style){
-                    Object.keys(theme.style).forEach(k => {
-                        try{ document.documentElement.style.setProperty('--' + k, theme.style[k]); }catch(e){}
-                    });
-                    alert('Layout applied');
+        }
+
+        // --- 3. UPLOAD FILE TO SUPABASE (SKYLINE) ---
+        fileZone.addEventListener('dragover', (e) => { e.preventDefault(); fileZone.classList.add('bg-white/10'); });
+        fileZone.addEventListener('dragleave', (e) => { e.preventDefault(); fileZone.classList.remove('bg-white/10'); });
+        fileZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            fileZone.classList.remove('bg-white/10');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                showToast("⏳ Uploading to Skyline...", "☁️");
+                
+                // Качване в Supabase Storage
+                // ВАЖНО: Увери се, че имаш bucket 'skyline_files' в Supabase!
+                const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+                const { data, error } = await supabase.storage
+                    .from('skyline_files')
+                    .upload(fileName, file);
+
+                if (error) {
+                    console.error('Upload error:', error);
+                    showToast("Error uploading file. Check Bucket!", "❌");
                 } else {
-                    alert('No saved layout found');
+                    showToast("File saved to Library!", "🎉");
+                    // Вземи публичния URL
+                    const { data: publicUrlData } = supabase.storage.from('skyline_files').getPublicUrl(fileName);
+                    addFileToList(file.name, publicUrlData.publicUrl, file.type);
                 }
             }
-            if(saveLayoutBtn) saveLayoutBtn.addEventListener('click', saveLayout);
-            if(loadLayoutBtn) loadLayoutBtn.addEventListener('click', loadLayout);
+        });
 
-            function showStatus(message){
-                if(statusTimer){ clearTimeout(statusTimer); }
-                cardStatus.textContent = message;
-                statusTimer = setTimeout(() => {
-                    cardStatus.textContent = 'Двукратно щракване обръща картата.';
-                }, 3200);
+        // --- 4. FLASHCARD & AI LOGIC ---
+        card.addEventListener('dblclick', () => card.classList.toggle('flipped'));
+        document.getElementById('flip-back-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            card.classList.remove('flipped');
+        });
+
+        // AI BUTTON
+        aiBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const prompt = frontInput.value;
+            if (!prompt) return showToast("Type something first!", "✍️");
+
+            // UI State
+            const originalContent = aiBtn.innerHTML;
+            aiBtn.innerHTML = `<i data-lucide="loader-2" class="animate-spin w-4 h-4"></i> <span class="text-purple-300">Thinking...</span>`;
+            aiBtn.disabled = true;
+            card.classList.add('ai-thinking');
+
+            try {
+                // Call Cloudflare Worker
+                const response = await fetch(WORKER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+
+                if (!response.ok) throw new Error('AI Error');
+                const data = await response.json();
+                
+                backOutput.value = data.answer || "No answer generated.";
+                
+                card.classList.remove('ai-thinking');
+                card.classList.add('flipped');
+                showToast("AI Generated Answer!", "✨");
+
+            } catch (err) {
+                console.error(err);
+                showToast("AI Connection Failed", "⚠️");
+            } finally {
+                aiBtn.innerHTML = originalContent;
+                aiBtn.disabled = false;
+                lucide.createIcons();
             }
+        });
 
-            let dirtyCards = false;
-            let lastSavedCardsChecksum = '';
-            function persistCards(){
-                localStorage.setItem(LS_CARDS, JSON.stringify(cards));
-                dirtyCards = true;
-            }
-
-            function persistDraft(){
-                const draft = {
-                    front: frontEditable.innerHTML.trim(),
-                    back: backEditable.innerHTML.trim(),
-                    editingId
+        // DRAG IMAGE ON CARD (VISION)
+        card.addEventListener('dragover', (e) => e.preventDefault());
+        card.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            
+            // Ако е пуснат файл от компютъра
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    setCardImage(event.target.result);
                 };
-                localStorage.setItem(LS_DRAFT, JSON.stringify(draft));
+                reader.readAsDataURL(files[0]);
             }
-
-            // Autosave: send cards and theme to server every 5s when dirty
-            let dirtyLayout = false;
-            let lastThemeSnapshot = null;
-            function collectThemeSnapshot(){
-                try{ return JSON.stringify(collectTheme()); }catch(e){ return null }
+            // Ако е пуснат линк от Skyline библиотеката
+            else {
+                const imageUrl = e.dataTransfer.getData('text/plain');
+                if (imageUrl) setCardImage(imageUrl);
             }
+        });
 
-            async function autosaveTick(){
-                if(!window.ssApi) return; // not configured
-                const token = localStorage.getItem('ss_token');
-                if(!token) return; // not logged in
+        function setCardImage(url) {
+            const frontFace = document.querySelector('.front');
+            frontFace.style.backgroundImage = `url(${url})`;
+            frontFace.style.backgroundSize = 'cover';
+            frontFace.style.backgroundBlendMode = 'overlay';
+            frontInput.value = "[Image Loaded] Analyze this image...";
+            showToast("Image loaded! Click Generate.", "📸");
+        }
 
-                // Autosave current draft/card first (per-card upsert)
-                try{
-                    const draftFront = frontEditable.innerHTML.trim();
-                    const draftBack = backEditable.innerHTML.trim();
-                    if(draftFront || draftBack){
-                        const now = Date.now();
-                        const cardObj = {
-                            id: editingId || (crypto.randomUUID ? crypto.randomUUID() : `card-${now}-${Math.random().toString(16).slice(2)}`),
-                            front: draftFront,
-                            back: draftBack,
-                            tags: '',
-                            metadata: {},
-                            createdAt: now,
-                            updatedAt: now
-                        };
-                        // Use ssApi.saveFlashcard if available (upsert), otherwise fallback to create/update
-                        try {
-                            showStatus('Syncing...');
-                            let r = null;
-                            if (window.ssApi && typeof window.ssApi.saveFlashcard === 'function') {
-                                r = await window.ssApi.saveFlashcard(cardObj);
-                            } else if (editingId && window.ssApi && typeof window.ssApi.updateFlashcard === 'function') {
-                                r = await window.ssApi.updateFlashcard(editingId, cardObj);
-                            } else if (!editingId && window.ssApi && typeof window.ssApi.createFlashcard === 'function') {
-                                r = await window.ssApi.createFlashcard(cardObj);
-                            }
-                            if (r && r.ok) {
-                                // normalize return
-                                const newId = (r.card && r.card.id) || cardObj.id || (r.id || null);
-                                if (!editingId && newId) editingId = newId;
-                                if (!cards.find(c => c.id === editingId)) {
-                                    cards.unshift({ id: newId || cardObj.id, front: cardObj.front, back: cardObj.back, tags: '', createdAt: Date.now(), updatedAt: Date.now() });
-                                }
-                                persistCards(); persistDraft(); showStatus('Автозапазено (чернова)');
-                            }
-                        } catch(e) { console.warn('autosave save failed', e); }
-                    }
-                }catch(e){ console.warn('autosave draft error', e); }
-
-                // Cards batch (fallback)
-                if(dirtyCards){
-                    try{
-                        const resp = await ssApi.saveFlashcards(cards);
-                        if(resp && resp.ok){ dirtyCards = false; lastSavedCardsChecksum = JSON.stringify(cards); showStatus('Автозапазено (карти)'); }
-                    }catch(e){ console.warn('autosave cards failed', e); }
-                }
-
-                // Layout/theme
-                const snap = collectThemeSnapshot();
-                if(snap && snap !== lastThemeSnapshot){
-                    try{
-                        const style = JSON.parse(snap);
-                        const blocks = [{ block_key: 'global_theme', position: {}, style }];
-                        const r = await ssApi.saveBlocks(blocks);
-                        if(r && r.ok){ lastThemeSnapshot = snap; showStatus('Автозапазено (шаблон)'); }
-                    }catch(e){ console.warn('autosave layout failed', e); }
-                }
+        // --- 5. HELPERS ---
+        async function loadFilesFromLibrary() {
+            const { data, error } = await supabase.storage.from('skyline_files').list();
+            if (data && data.length > 0) {
+                const list = document.getElementById('file-list');
+                list.innerHTML = ''; // Clear empty state
+                data.forEach(file => {
+                    const { data: urlData } = supabase.storage.from('skyline_files').getPublicUrl(file.name);
+                    addFileToList(file.name, urlData.publicUrl, file.metadata?.mimetype || 'file');
+                });
             }
+        }
 
-            let autosaveInterval = null;
-            function startAutosave(){
-                if(autosaveInterval) return;
-                lastThemeSnapshot = collectThemeSnapshot();
-                autosaveInterval = setInterval(autosaveTick, 5000);
-                // attempt initial autosave after short delay
-                setTimeout(autosaveTick, 1200);
-            }
+        function addFileToList(name, url, type) {
+            const div = document.createElement('div');
+            div.className = "flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/10 cursor-grab active:cursor-grabbing text-xs text-gray-300 truncate transition-colors border border-transparent hover:border-white/5";
+            div.draggable = true;
+            
+            let icon = "file";
+            if (type.includes('image')) icon = "image";
+            if (type.includes('pdf')) icon = "file-text";
+            if (type.includes('audio')) icon = "music";
 
-            // Start autosave when user is active on the page
-            window.addEventListener('load', () => {
-                startAutosave();
+            div.innerHTML = `<i data-lucide="${icon}" class="w-3 h-3 text-purple-400"></i> <span class="truncate w-full">${name}</span>`;
+            
+            div.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', url);
             });
 
-            function resetCard(){
-                editingId = null;
-                flashcard.classList.remove('flipped');
-                frontEditable.innerHTML = '';
-                backEditable.innerHTML = '';
-                persistDraft();
-                showStatus('Започна нова карта.');
-            }
+            document.getElementById('file-list').appendChild(div);
+            lucide.createIcons();
+        }
 
-            function loadState(){
-                try{
-                    const stored = JSON.parse(localStorage.getItem(LS_CARDS) || '[]');
-                    cards = Array.isArray(stored) ? stored : [];
-                }catch(err){ cards = []; }
+        async function saveCard() {
+            const front = frontInput.value;
+            const back = backOutput.value;
+            
+            // Запис в базата данни (Table: cards)
+            const { error } = await supabase
+                .from('cards') // Увери се, че имаш таблица 'cards'
+                .insert([{ front, back, created_at: new Date() }]);
 
-                try{
-                    const draft = JSON.parse(localStorage.getItem(LS_DRAFT) || 'null');
-                    if(draft){
-                        editingId = draft.editingId || null;
-                        frontEditable.innerHTML = draft.front || '';
-                        backEditable.innerHTML = draft.back || '';
-                    }
-                }catch(err){/* ignore */}
+            if (!error) showToast("Card saved to Deck!", "💾");
+            else console.error(error);
+        }
 
-                renderSummary();
-            }
-
-            function snippet(html, limit = 110){
-                const text = (html || '').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
-                if(text.length <= limit) return text;
-                return `${text.slice(0, limit)}…`;
-            }
-
-            function renderSummary(){
-                summaryList.innerHTML = '';
-                if(!cards.length){
-                    const empty = document.createElement('li');
-                    empty.className = 'summary-item';
-                    empty.innerHTML = '<div class="summary-front">Все още няма запазени карти.</div><div class="summary-back">Попълни картата и натисни „Запази“, за да я добавиш.</div>';
-                    summaryList.appendChild(empty);
-                    summaryMeta.textContent = '0 карти';
-                    return;
-                }
-
-                cards.forEach(card => {
-                    const item = document.createElement('li');
-                    item.className = 'summary-item';
-                    item.dataset.id = card.id;
-                    item.innerHTML = `
-                        <div class="summary-front">${snippet(card.front)}</div>
-                        <div class="summary-back">${snippet(card.back)}</div>
-                        <div class="summary-meta"><span>${new Date(card.updatedAt).toLocaleString('bg-BG',{ hour:'2-digit', minute:'2-digit', day:'2-digit', month:'short' })}</span><span>${card.tags ? card.tags : 'Без маркер'}</span></div>
-                        <div class="summary-actions">
-                            <button type="button" data-action="edit">Редакция</button>
-                            <button type="button" data-action="duplicate">Дублирай</button>
-                            <button type="button" data-action="delete" class="delete">Изтрий</button>
-                        </div>`;
-                    summaryList.appendChild(item);
-                });
-                summaryMeta.textContent = `${cards.length} ${cards.length === 1 ? 'карта' : 'карти'}`;
-            }
-
-            function buildCardObject(){
-                const front = frontEditable.innerHTML.trim();
-                const back = backEditable.innerHTML.trim();
-                if(!front || !back){
-                    showStatus('Нужни са текст и на двете страни.');
-                    return null;
-                }
-                const base = editingId ? cards.find(c => c.id === editingId) : null;
-                const now = Date.now();
-                return {
-                    id: editingId || (crypto.randomUUID ? crypto.randomUUID() : `card-${now}-${Math.random().toString(16).slice(2)}`),
-                    front,
-                    back,
-                    tags: base ? base.tags : '',
-                    createdAt: base ? base.createdAt : now,
-                    updatedAt: now
-                };
-            }
-
-            function saveCard(){
-                const card = buildCardObject();
-                if(!card) return;
-                const token = localStorage.getItem('ss_token');
-                return (async () => {
-                    // prefer single upsert API if available
-                    try{
-                        showStatus('Syncing...');
-                        let resp = null;
-                        if(window.ssApi && typeof window.ssApi.saveFlashcard === 'function'){
-                            resp = await window.ssApi.saveFlashcard(card);
-                        } else if(window.ssApi && editingId && typeof window.ssApi.updateFlashcard === 'function'){
-                            resp = await window.ssApi.updateFlashcard(editingId, card);
-                        } else if(window.ssApi && !editingId && typeof window.ssApi.createFlashcard === 'function'){
-                            resp = await window.ssApi.createFlashcard(card);
-                        }
-
-                        if(resp && resp.ok){
-                            // success path
-                            const newId = (resp.card && resp.card.id) || resp.id || card.id;
-                            if(!editingId) editingId = newId;
-                            const idx = cards.findIndex(c => c.id === editingId);
-                            if(idx !== -1){ cards[idx] = Object.assign(cards[idx], card); }
-                            else { cards.unshift({ id: newId, front: card.front, back: card.back, tags: card.tags || '', createdAt: card.createdAt || Date.now(), updatedAt: card.updatedAt || Date.now() }); }
-                            persistCards(); renderSummary(); showStatus('Картата е записана.');
-                            // show success glow briefly
-                            try{ const frame = document.getElementById('cardFrame'); if(frame){ frame.classList.add('saved'); setTimeout(()=>frame.classList.remove('saved'), 900); } } catch(e){}
-                        } else {
-                            // fallback to local save
-                            if(editingId){ const idx = cards.findIndex(c => c.id === editingId); if(idx !== -1){ cards[idx] = card; } }
-                            else { cards.unshift(card); }
-                            persistCards(); renderSummary(); showStatus('Картата е записана (локално).');
-                            try{ const frame = document.getElementById('cardFrame'); if(frame){ frame.classList.add('saved'); setTimeout(()=>frame.classList.remove('saved'), 900); } } catch(e){}
-                        }
-                    }catch(e){
-                        console.warn('saveCard remote failed', e);
-                        if(editingId){ const idx = cards.findIndex(c => c.id === editingId); if(idx !== -1){ cards[idx] = card; } }
-                        else { cards.unshift(card); }
-                        persistCards(); renderSummary(); showStatus('Картата е записана (локално).');
-                        try{ const frame = document.getElementById('cardFrame'); if(frame){ frame.classList.add('saved'); setTimeout(()=>frame.classList.remove('saved'), 900); } } catch(e){}
-                    } finally {
-                        editingId = editingId || card.id;
-                        persistDraft();
-                    }
-                })();
-            }
-
-            function startEdit(id){
-                const card = cards.find(c => c.id === id);
-                if(!card) return;
-                editingId = id;
-                flashcard.classList.remove('flipped');
-                frontEditable.innerHTML = card.front;
-                backEditable.innerHTML = card.back;
-                persistDraft();
-                // smooth scroll to the card stage for context on small screens
-                try{ const stage = document.querySelector('.card-stage'); if(stage) stage.scrollIntoView({ behavior: 'smooth', block: 'start' }); }catch(e){}
-                showStatus('Редакция на избраната карта.');
-                setTimeout(()=>{ try{ frontEditable.focus({ preventScroll:true }); }catch(e){} }, 320);
-            }
-
-            function deleteCard(id){
-                const idx = cards.findIndex(c => c.id === id);
-                if(idx === -1) return;
-                const token = localStorage.getItem('ss_token');
-                if(token && window.ssApi && typeof window.ssApi.deleteFlashcard === 'function'){
-                    (async ()=>{
-                        try{
-                            await ssApi.deleteFlashcard(id);
-                        }catch(e){ console.warn('remote delete failed', e); }
-                        cards.splice(idx, 1);
-                        persistCards();
-                        renderSummary();
-                        if(editingId === id){ resetCard(); } else { showStatus('Картата е изтрита.'); }
-                    })();
-                } else {
-                    cards.splice(idx, 1);
-                    persistCards();
-                    renderSummary();
-                    if(editingId === id){ resetCard(); } else { showStatus('Картата е изтрита.'); }
-                }
-            }
-
-            function duplicateCard(id){
-                const card = cards.find(c => c.id === id);
-                if(!card) return;
-                const now = Date.now();
-                const duplicate = {
-                    ...card,
-                    id: crypto.randomUUID ? crypto.randomUUID() : `card-${now}-${Math.random().toString(16).slice(2)}`,
-                    createdAt: now,
-                    updatedAt: now
-                };
-                cards.unshift(duplicate);
-                persistCards();
-                renderSummary();
-                showStatus('Създадена е дубликат карта.');
-            }
-
-            function handleEditableInput(){
-                persistDraft();
-            }
-
-            function updateClipboardMeta(){
-                if(!clipboardMeta) return;
-                const count = clipboardList ? clipboardList.children.length : 0;
-                clipboardMeta.textContent = count ? `${count} ${count === 1 ? 'елемент' : 'елемента'}` : 'Свободно място';
-            }
-
-            function initClipboard(){
-                if(typeof window.initStudyClipboard !== 'function'){
-                    console.warn('[Flashcard Studio] Shared clipboard script не е намерен.');
-                    return;
-                }
-                clipboardInstance = window.initStudyClipboard({
-                    rootId:'homeClipboard',
-                    capsuleId:'homeClipboardCapsule',
-                    panelId:'homeClipboardPanel',
-                    listId:'homeClipboardList',
-                    countId:'homeClipboardCount',
-                    emptyId:'homeClipboardEmpty'
-                });
-
-                if(clipboardList && typeof MutationObserver === 'function'){
-                    clipboardObserver = new MutationObserver(updateClipboardMeta);
-                    clipboardObserver.observe(clipboardList, { childList:true });
-                    updateClipboardMeta();
-                }
-            }
-
-            /* Skyline file storage helpers and drag/drop */
-            const SKYLINE_BUCKET = 'skyline_files';
-
-            async function uploadFilesToSkyline(files) {
-                const uploaded = [];
-                for (const f of files) {
-                    try {
-                        // prefer ssApi.uploadToBucket(bucket, file) if available
-                        if (window.ssApi && typeof window.ssApi.uploadToBucket === 'function') {
-                            const res = await window.ssApi.uploadToBucket(SKYLINE_BUCKET, f);
-                            if (res && res.ok && res.url) {
-                                uploaded.push({ name: f.name, url: res.url, mime: f.type, size: f.size, id: res.id || Date.now() });
-                                continue;
-                            }
-                        }
-                        // fallback: store a data URL locally (only for small images)
-                        if (f.type.startsWith('image/')) {
-                            const data = await new Promise((resolve, reject) => {
-                                const reader = new FileReader();
-                                reader.onload = () => resolve(reader.result);
-                                reader.onerror = reject;
-                                reader.readAsDataURL(f);
-                            });
-                            const localItem = { name: f.name, url: data, mime: f.type, size: f.size, id: 'local-' + Date.now() };
-                            const list = JSON.parse(localStorage.getItem('skyline_files') || '[]');
-                            list.unshift(localItem);
-                            localStorage.setItem('skyline_files', JSON.stringify(list));
-                            uploaded.push(localItem);
-                        }
-                    } catch (err) { console.warn('Upload failed', err); }
-                }
-                await refreshSkylineFiles();
-                return uploaded;
-            }
-
-            async function refreshSkylineFiles(){
-                const listEl = document.getElementById('homeClipboardList');
-                if (!listEl) return;
-                listEl.innerHTML = '';
-                let files = [];
-                try {
-                    if (window.ssApi && typeof window.ssApi.listFiles === 'function') {
-                        const r = await window.ssApi.listFiles(SKYLINE_BUCKET);
-                        if (r && r.ok && Array.isArray(r.files)) files = r.files;
-                    }
-                } catch(e) { console.warn('listFiles failed', e); }
-                if (!files.length) {
-                    try { files = JSON.parse(localStorage.getItem('skyline_files') || '[]'); } catch(e){ files = []; }
-                }
-                files.forEach(f => {
-                    const li = document.createElement('li');
-                    li.className = 'skyline-file-item';
-                    li.draggable = true;
-                    li.dataset.url = f.url;
-                    li.dataset.mime = f.mime || '';
-                    li.innerHTML = `<span class="file-icon">${fileIconForMime(f.mime || '')}</span><span class="file-name">${escapeHtml(f.name)}</span>`;
-                    li.addEventListener('dragstart', e => {
-                        try { e.dataTransfer.setData('text/uri-list', f.url); e.dataTransfer.setData('text/plain', f.url); } catch(err){}
-                    });
-                    li.addEventListener('click', () => {
-                        // open file in new tab when clicked
-                        try { window.open(f.url, '_blank'); } catch(e){}
-                    });
-                    listEl.appendChild(li);
-                });
-                const count = listEl.children.length || 0;
-                const countEl = document.getElementById('homeClipboardCount'); if (countEl) { countEl.textContent = String(count); if(count) countEl.parentElement?.classList?.add('has-items'); }
-            }
-
-            // Helper to obtain GROQ API key from env or ssApi
-            async function getGroqKey(){
-                if(window.GROQ_API_KEY) return window.GROQ_API_KEY;
-                if(window.ssApi && typeof window.ssApi.getSecret === 'function'){
-                    try{ const s = await window.ssApi.getSecret('GROQ_API_KEY'); if(s && (s.value || s.key)) return s.value || s.key; }catch(e){}
-                }
-                // fallback to localStorage if user stored it there
-                try{ const ls = localStorage.getItem('GROQ_API_KEY'); if(ls) return ls; }catch(e){}
-                return null;
-            }
-
-            function fileIconForMime(mime){
-                if (!mime) return '📄';
-                if (mime.startsWith('image/')) return '🖼️';
-                if (mime.startsWith('audio/')) return '🎵';
-                if (mime === 'application/pdf') return '📕';
-                return '📁';
-            }
-
-            function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-            // Capsule drag & drop handlers
-            const capsule = document.getElementById('homeClipboardCapsule');
-            const capsulePanel = document.getElementById('homeClipboardPanel');
-            if (capsule) {
-                const CLOSE_PANEL_DELAY = 280;
-                let closePanelTimer = null;
-                function openCapsulePanel(){
-                    capsule.classList.add('expanded');
-                    capsule.setAttribute('aria-expanded','true');
-                    if(capsulePanel){ capsulePanel.classList.add('open'); capsulePanel.setAttribute('aria-hidden','false'); }
-                    // refresh listing when opening
-                    refreshSkylineFiles().catch(()=>{});
-                }
-                function closeCapsulePanel(){
-                    capsule.classList.remove('expanded');
-                    capsule.setAttribute('aria-expanded','false');
-                    if(capsulePanel){ capsulePanel.classList.remove('open'); capsulePanel.setAttribute('aria-hidden','true'); }
-                }
-                capsule.addEventListener('click', () => {
-                    const expanded = capsule.classList.contains('expanded');
-                    if(!expanded) openCapsulePanel(); else closeCapsulePanel();
-                });
-                capsule.addEventListener('dragover', e => { e.preventDefault(); capsule.classList.add('drag-over'); openCapsulePanel(); });
-                capsule.addEventListener('dragleave', e => { capsule.classList.remove('drag-over'); if(closePanelTimer) clearTimeout(closePanelTimer); closePanelTimer = setTimeout(()=>{ capsule.classList.remove('drag-over'); closeCapsulePanel(); }, CLOSE_PANEL_DELAY); });
-                capsule.addEventListener('drop', async (e) => {
-                    e.preventDefault(); capsule.classList.remove('drag-over'); openCapsulePanel();
-                    const dt = e.dataTransfer;
-                    if (!dt) return;
-                    const files = Array.from(dt.files || []);
-                    if (files.length) {
-                        try{ await uploadFilesToSkyline(files); showStatus('Файловете са качени.'); }catch(e){ console.warn('upload failed', e); showStatus('Качването неуспешно'); }
-                    }
-                });
-                // close panel when clicking outside
-                document.addEventListener('click', (ev) => {
-                    try{
-                        if(!capsule.contains(ev.target) && !capsulePanel.contains(ev.target)) closeCapsulePanel();
-                    }catch(e){}
-                });
-            }
-
-            // Wire top skyline island button to open the capsule (if present)
-            try{
-                const skylineBtn = document.getElementById('skyline-island-btn');
-                if(skylineBtn){ skylineBtn.addEventListener('click', (e) => { e.preventDefault(); try{ capsule && capsule.click(); }catch(e){} }); }
-            }catch(e){}
-
-            // allow dropping files onto flashcard
-            const flashcardFrame = document.getElementById('cardFrame');
-            const flashcardEl = document.getElementById('flashcard');
-            function attachCardDropTarget(targetEl){
-                if(!targetEl) return;
-                targetEl.addEventListener('dragover', e => { e.preventDefault(); targetEl.classList.add('drop-target'); });
-                targetEl.addEventListener('dragleave', e => { targetEl.classList.remove('drop-target'); });
-                targetEl.addEventListener('drop', async (e) => {
-                    e.preventDefault(); targetEl.classList.remove('drop-target');
-                    const dt = e.dataTransfer;
-                    if (!dt) return;
-                    // check for URL from skyline list
-                    const url = dt.getData('text/uri-list') || dt.getData('text/plain');
-                    if (url) {
-                        await handleFileDropOnCard(url);
-                        return;
-                    }
-                    const files = Array.from(dt.files || []);
-                    if (files.length) {
-                        // upload first file and handle
-                        const uploaded = await uploadFilesToSkyline([files[0]]);
-                        if (uploaded && uploaded.length) await handleFileDropOnCard(uploaded[0].url);
-                    }
-                });
-            }
-            attachCardDropTarget(flashcardFrame);
-            attachCardDropTarget(flashcardEl);
-
-            async function handleFileDropOnCard(url){
-                if (!url) return;
-                // ripple animation
-                try { flashcard.classList.add('ripple'); setTimeout(()=>flashcard.classList.remove('ripple'), 800); } catch(e){}
-                // if it's an image, send to worker with vision model
-                const isImage = url.match(/\.(png|jpg|jpeg|gif|webp|bmp|svg)(\?.*)?$/i) || url.startsWith('data:image/');
-                if (isImage) {
-                    showStatus('AI vision обработва изображението...');
-                    try {
-                        const key = await getGroqKey();
-                        const headers = { 'Content-Type': 'application/json' };
-                        if(key) headers['Authorization'] = `Bearer ${key}`;
-                        const res = await fetch('https://curly-mountain-4c28.boy05geo.workers.dev', {
-                            method: 'POST', headers, body: JSON.stringify({ image_url: url, model: 'llama-3.2-11b-vision-preview' })
-                        });
-                        if (!res.ok) throw new Error('vision failed');
-                        const data = await res.json();
-                        const answer = data && (data.answer || data.text || data.result);
-                        if (answer) {
-                            backEditable.innerHTML = answer;
-                            persistDraft();
-                            await saveCard();
-                            flashcard.classList.add('flipped');
-                            showStatus('AI vision генерира отговор.');
-                        } else { showStatus('AI vision не върна резултат'); }
-                    } catch(err){ console.warn('vision error', err); showStatus('Грешка при връзката с AI'); }
-                } else {
-                    // non-image: just add link to back
-                    backEditable.innerHTML = `<a href="${url}" target="_blank">Отворете прикачения файл</a>`;
-                    persistDraft(); await saveCard(); showStatus('Файл добавен към картата.');
-                }
-                // auto-sync to blocks if available
-                try { if (typeof window.syncBlockToCloud === 'function') window.syncBlockToCloud(document.querySelector('.custom-block')); } catch(e){}
-            }
-
-            // initial refresh
-            setTimeout(() => refreshSkylineFiles(), 800);
-
-            frontEditable.addEventListener('input', handleEditableInput);
-            backEditable.addEventListener('input', handleEditableInput);
-
-            // Modal markup + logic
-            const modal = (function(){
-                const div = document.createElement('div');
-                div.className = 'card-modal';
-                div.innerHTML = `
-                    <div class="card-modal-inner" role="dialog" aria-modal="true">
-                        <div class="card-modal-row">
-                            <div style="flex:0 0 160px;margin-right:12px" id="modalPreviewWrap"></div>
-                            <div style="flex:1">
-                                <div class="card-modal-face" id="modalFront"></div>
-                                <div style="height:12px"></div>
-                                <div class="card-modal-face" id="modalBack"></div>
-                            </div>
-                        </div>
-                        <div class="card-modal-controls">
-                            <button id="modalCopyLink" class="btn-ghost">Copy link</button>
-                            <button id="modalOpenHomepage" class="btn-ghost">Open on homepage</button>
-                            <button id="modalEdit" class="btn-primary">Edit in studio</button>
-                            <button id="modalClose" class="btn-ghost">Close</button>
-                        </div>
-                    </div>`;
-                document.body.appendChild(div);
-                return div;
-            })();
-
-            function openCardModal(card){
-                const f = modal.querySelector('#modalFront');
-                const b = modal.querySelector('#modalBack');
-                f.innerHTML = card.front || '';
-                b.innerHTML = card.back || '';
-                // render thumbnail if attachments present
-                const previewWrap = modal.querySelector('#modalPreviewWrap');
-                if(previewWrap){
-                    previewWrap.innerHTML = '';
-                    const attachments = (card.metadata && card.metadata.attachments) || [];
-                    const thumb = attachments.length ? (attachments[0].remoteUrl || attachments[0].url || attachments[0].src || attachments[0]) : null;
-                    if(thumb){
-                        const img = document.createElement('img');
-                        img.src = thumb;
-                        img.alt = 'preview';
-                        img.style.width = '160px';
-                        img.style.height = '160px';
-                        img.style.objectFit = 'cover';
-                        img.style.borderRadius = '8px';
-                        previewWrap.appendChild(img);
-                    } else {
-                        const box = document.createElement('div');
-                        box.style.width = '160px';
-                        box.style.height = '160px';
-                        box.style.display = 'flex';
-                        box.style.alignItems = 'center';
-                        box.style.justifyContent = 'center';
-                        box.style.background = '#f6f8fb';
-                        box.style.border = '1px solid #e6eef8';
-                        box.style.borderRadius = '8px';
-                        box.textContent = 'No preview';
-                        previewWrap.appendChild(box);
-                    }
-                }
-                const openBtn = modal.querySelector('#modalOpenHomepage');
-                const editBtn = modal.querySelector('#modalEdit');
-                const closeBtn = modal.querySelector('#modalClose');
-                // set up handlers
-                openBtn.onclick = () => {
-                    const home = 'homepage (3).html';
-                    const url = `${home}?highlightCard=${encodeURIComponent(card.id)}`;
-                    // open in same tab
-                    window.location.href = url;
-                };
-                const copyBtn = modal.querySelector('#modalCopyLink');
-                copyBtn.onclick = async () => {
-                    const home = 'homepage (3).html';
-                    const url = `${location.origin}${location.pathname.replace(/[^\/]*$/, '')}${home}?highlightCard=${encodeURIComponent(card.id)}`;
-                    try{
-                        await navigator.clipboard.writeText(url);
-                        showStatus('Deep link copied to clipboard');
-                    }catch(e){
-                        // fallback: create temporary textarea
-                        const ta = document.createElement('textarea'); ta.value = url; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); showStatus('Deep link copied'); }catch(_){ showStatus('Copy failed'); } ta.remove();
-                    }
-                };
-                editBtn.onclick = () => {
-                    modal.classList.remove('open');
-                    // ensure the card is in the list then edit
-                    const existing = cards.find(c => c.id === card.id);
-                    if(!existing){ cards.unshift(card); persistCards(); renderSummary(); }
-                    startEdit(card.id);
-                    // highlight briefly
-                    const li = summaryList.querySelector(`[data-id="${card.id}"]`);
-                    if(li){ li.classList.add('selected'); setTimeout(()=> li.classList.remove('selected'), 3500); try{ li.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){} }
-                };
-                closeBtn.onclick = () => { modal.classList.remove('open'); };
-                modal.classList.add('open');
-            }
-
-            flashcard.addEventListener('dblclick', (event) => {
-                if(event.target.closest('button')) return;
-                flashcard.classList.toggle('flipped');
-            });
-
-            saveButton.addEventListener('click', saveCard);
-            newButton.addEventListener('click', resetCard);
-            flipButton.addEventListener('click', () => flashcard.classList.toggle('flipped'));
-
-            // AI generation: hook up button and logic
-            const aiButton = document.getElementById('aiGenerate') || document.getElementById('aiGenerateBtn');
-            function _ensureFlashcardLoader() {
-                let overlay = document.querySelector('.flashcard-loading-overlay');
-                if (!overlay) {
-                    overlay = document.createElement('div');
-                    overlay.className = 'flashcard-loading-overlay';
-                    overlay.innerHTML = `<div class="loader-inner"><div class="loader-dots"><span></span><span></span><span></span></div><div class="loader-text">Generating…</div></div>`;
-                    const frame = document.getElementById('cardFrame');
-                    if (frame) frame.appendChild(overlay);
-                }
-                return overlay;
-            }
-
-            function setFlashcardLoading(show) {
-                const overlay = _ensureFlashcardLoader();
-                overlay.style.display = show ? 'flex' : 'none';
-            }
-
-            /* subtle pulse while AI thinking */
-            .flashcard.ai-pulse{box-shadow:0 30px 100px rgba(139,92,246,0.06);animation:cardPulse 1400ms infinite}
-            @keyframes cardPulse{0%{transform:translateZ(0)}50%{transform:translateY(-2px)}100%{transform:translateZ(0)}}
-
-            async function handleAIGenerate() {
-                const frontText = (frontEditable && frontEditable.innerText || '').trim();
-                if (!frontText) { showStatus('Моля, напиши въпрос първо!'); return; }
-                const btn = document.getElementById('aiGenerate');
-
-                async function getGroqKey(){
-                    if(window.GROQ_API_KEY) return window.GROQ_API_KEY;
-                    if(window.ssApi && typeof window.ssApi.getSecret === 'function'){
-                        try{ const s = await window.ssApi.getSecret('GROQ_API_KEY'); if(s && (s.value || s.key)) return s.value || s.key; }catch(e){}
-                    }
-                    return null;
-                }
-
-                // Loading UI
-                try {
-                    if(btn){ btn.dataset.prev = btn.textContent; btn.classList.add('loading'); let sp = btn.querySelector('.ai-spinner'); if(!sp){ sp = document.createElement('span'); sp.className = 'ai-spinner'; btn.prepend(sp); } btn.disabled = true; }
-                    flashcard.classList.add('ai-pulse');
-                } catch(e){}
-
-                try {
-                    const key = await getGroqKey();
-                    const headers = { 'Content-Type': 'application/json' };
-                    if(key) headers['Authorization'] = `Bearer ${key}`;
-                    const resp = await fetch('https://curly-mountain-4c28.boy05geo.workers.dev', {
-                        method: 'POST', headers, body: JSON.stringify({ prompt: frontText })
-                    });
-                    if (!resp.ok) throw new Error('AI response not ok');
-                    const data = await resp.json();
-                    const answer = data && (data.answer || data.text || data.result);
-                    if (answer) {
-                        backEditable.innerHTML = answer;
-                        persistDraft();
-                        try { await saveCard(); } catch(e){}
-                        try { flashcard.classList.add('flipped'); } catch(e){}
-                        showStatus('AI генерира отговора успешно!');
-                    } else {
-                        showStatus('AI не върна отговор');
-                    }
-                } catch (err) {
-                    console.warn('AI worker error', err);
-                    showStatus('Грешка при връзката с AI');
-                } finally {
-                    try { if(btn){ btn.classList.remove('loading'); const sp = btn.querySelector('.ai-spinner'); if(sp) sp.remove(); btn.disabled = false; btn.textContent = btn.dataset.prev || '🪄 AI Генериране'; } }catch(e){}
-                    try { flashcard.classList.remove('ai-pulse'); } catch(e){}
-                }
-            }
-            if (aiButton) aiButton.addEventListener('click', handleAIGenerate);
-
-            summaryList.addEventListener('click', (event) => {
-                const actionBtn = event.target.closest('button');
-                const item = event.target.closest('.summary-item');
-                if(!item || !actionBtn) return;
-                const id = item.dataset.id;
-                const action = actionBtn.dataset.action;
-                if(action === 'edit') startEdit(id);
-                if(action === 'delete') deleteCard(id);
-                if(action === 'duplicate') duplicateCard(id);
-            });
-
-            document.addEventListener('keydown', (event) => {
-                if((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's'){
-                    event.preventDefault();
-                    saveCard();
-                }
-                if(event.key === 'Escape'){
-                    clipboardInstance?.close?.();
-                }
-                // Ctrl+Enter to save (or Cmd+Enter)
-                if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-                    event.preventDefault();
-                    saveCard();
-                }
-                // Space to flip when not typing in an editable area
-                if (event.code === 'Space') {
-                    const active = document.activeElement;
-                    const isTyping = active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
-                    if (!isTyping) {
-                        event.preventDefault();
-                        flashcard.classList.toggle('flipped');
-                    }
-                }
-            });
-
-            window.addEventListener('beforeunload', () => {
-                if(clipboardObserver){
-                    clipboardObserver.disconnect();
-                }
-            }, { once:true });
-
-            updateClock();
-            setInterval(updateClock, 60000);
-            loadState();
-            // If page opened with ?cardId=..., try to load that card from server and auto-select it
-            (function(){
-                // Ensure a minimal ssApi exists so uploads/listing work in testing
-                if(!window.ssApi){
-                    window.ssApi = {};
-                }
-                if(!window.ssApi.uploadToBucket){
-                    window.ssApi.uploadToBucket = async function(bucket, file){
-                        // store small images in localStorage under skyline_files
-                        try{
-                            if(!file) return { ok:false };
-                            if(file.type && file.type.startsWith('image/')){
-                                const data = await new Promise((res, rej) => {
-                                    const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file);
-                                });
-                                const list = JSON.parse(localStorage.getItem('skyline_files') || '[]');
-                                const item = { id: 'local-' + Date.now(), name: file.name, url: data, mime: file.type, size: file.size };
-                                list.unshift(item);
-                                localStorage.setItem('skyline_files', JSON.stringify(list));
-                                return { ok:true, url: data, id: item.id };
-                            }
-                        }catch(e){ console.warn('ssApi.uploadToBucket fallback failed', e); }
-                        return { ok:false };
-                    };
-                }
-                if(!window.ssApi.listFiles){
-                    window.ssApi.listFiles = async function(bucket){
-                        try{ const list = JSON.parse(localStorage.getItem('skyline_files') || '[]'); return { ok:true, files: list }; }catch(e){ return { ok:false, files:[] }; }
-                    };
-                }
-                if(!window.ssApi.getSecret){
-                    window.ssApi.getSecret = async function(name){ return null; };
-                }
-                try{
-                    const params = new URLSearchParams(location.search);
-                    const cardId = params.get('cardId') || params.get('id');
-                    if(cardId && window.ssApi && typeof window.ssApi.getFlashcard === 'function'){
-                        ssApi.getFlashcard(cardId).then(resp => {
-                            if(resp && resp.ok && resp.card){
-                                const c = resp.card;
-                                // Normalize server fields to local shape and ensure it's present in local list
-                                const local = cards.find(x => x.id === c.id);
-                                const now = Date.now();
-                                const mapped = {
-                                    id: c.id,
-                                    front: c.front || (c.metadata && c.metadata.front) || '',
-                                    back: c.back || (c.metadata && c.metadata.back) || '',
-                                    tags: c.tags || '',
-                                    createdAt: c.created_at ? new Date(c.created_at).getTime() : now,
-                                    updatedAt: c.updated_at ? new Date(c.updated_at).getTime() : now
-                                };
-                                if(!local){
-                                    cards.unshift(mapped);
-                                } else {
-                                    Object.assign(local, mapped);
-                                }
-                                renderSummary();
-                                // Instead of auto-scrolling and forcing edit, open a preview modal
-                                openCardModal(mapped);
-                                showStatus('Картата е заредена за преглед.');
-                            }
-                        }).catch(e => { console.warn('failed to load card', e); });
-                    }
-                }catch(e){/* ignore */}
-            })();
-            initClipboard();
-            updateClipboardMeta();
-        })();
+        function showToast(msg, icon = "✅") {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').innerText = icon;
+            t.style.transform = "translateY(0)";
+            t.style.opacity = "1";
+            setTimeout(() => {
+                t.style.transform = "translateY(128px)";
+                t.style.opacity = "0";
+            }, 3000);
+        }
     </script>
 </body>
 </html>
