@@ -4,375 +4,100 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skyline Flashcard Studio</title>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script src="https://unpkg.com/lucide@latest"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-
     <style>
-        /* --- APPLE-STYLE CSS --- */
-        body {
-            font-family: 'Inter', sans-serif;
-            background: radial-gradient(circle at 50% 10%, #1a1a1a 0%, #000000 100%);
-            height: 100vh;
-            overflow: hidden;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        /* Glassmorphism Classes */
-        .glass {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-        }
-
-        /* Skyline Dynamic Island */
-        #skyline-island {
-            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-            z-index: 50;
-        }
-        
-        #skyline-island.expanded {
-            width: 380px !important;
-            height: 260px !important;
-            border-radius: 28px !important;
-            background: rgba(15, 15, 15, 0.95);
-            border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-        }
-
-        /* 3D Flashcard Logic */
-        .stage {
-            perspective: 1200px;
-        }
-        
-        .flashcard {
-            transform-style: preserve-3d;
-            transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        
-        .flashcard.flipped {
-            transform: rotateY(180deg);
-        }
-        
-        .face {
-            backface-visibility: hidden;
-            position: absolute;
-            inset: 0;
-            border-radius: 24px;
-        }
-        
-        .back {
-            transform: rotateY(180deg);
-        }
-
-        /* Animations */
-        @keyframes pulse-glow {
-            0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
-            70% { box-shadow: 0 0 0 15px rgba(139, 92, 246, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
-        }
-        
-        .ai-thinking {
-            animation: pulse-glow 2s infinite;
-        }
-
-        /* Scrollbar */
-        .custom-scroll::-webkit-scrollbar { width: 4px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        body { font-family: 'Inter', sans-serif; background: radial-gradient(circle at 50% 10%, #1a1a1a 0%, #000000 100%); height: 100vh; overflow: hidden; color: white; display: flex; flex-direction: column; align-items: center; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        #skyline-island { transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; }
+        #skyline-island.expanded { width: 380px !important; height: 260px !important; border-radius: 28px !important; background: rgba(15, 15, 15, 0.95); }
+        .stage { perspective: 1200px; }
+        .flashcard { transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; }
+        .flashcard.flipped { transform: rotateY(180deg); }
+        .face { backface-visibility: hidden; position: absolute; inset: 0; border-radius: 24px; padding: 2rem; }
+        .back { transform: rotateY(180deg); }
     </style>
 </head>
-<body class="selection:bg-purple-500 selection:text-white">
+<body>
 
-    <div id="skyline-island" class="fixed top-6 h-[40px] w-[140px] bg-black rounded-full flex items-center justify-center cursor-pointer hover:scale-105 shadow-2xl overflow-hidden group border border-white/5">
-        
-        <div class="island-closed flex items-center gap-2 text-xs font-medium text-gray-300 pointer-events-none group-hover:text-white transition-colors">
-            <i data-lucide="cloud" class="w-4 h-4 text-purple-400"></i>
-            <span>Skyline Hub</span>
+    <div id="skyline-island" class="fixed top-6 h-[40px] w-[140px] bg-black rounded-full flex items-center justify-center cursor-pointer border border-white/5">
+        <div class="island-closed flex items-center gap-2 text-xs font-medium text-gray-300">
+            <i data-lucide="cloud" class="w-4 h-4 text-purple-400"></i> Skyline Hub
         </div>
-
-        <div class="island-expanded hidden w-full h-full flex flex-col p-5 opacity-0 transition-opacity duration-300 delay-100">
-            <div class="flex justify-between items-center mb-3 border-b border-white/10 pb-2">
-                <span class="text-sm font-bold text-white flex items-center gap-2">
-                    <i data-lucide="library" class="w-4 h-4 text-purple-400"></i> Library
-                </span>
-                <span class="text-[10px] text-gray-500 uppercase tracking-wider">Drag & Drop</span>
-            </div>
-            
-            <div id="file-drop-zone" class="flex-1 border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center text-gray-500 text-xs hover:border-purple-500/50 hover:bg-purple-500/5 transition-all relative overflow-hidden group-drop">
-                <div id="file-list" class="absolute inset-0 overflow-y-auto p-2 custom-scroll space-y-2 text-left w-full">
-                    <div class="h-full flex flex-col items-center justify-center text-center p-4">
-                        <i data-lucide="upload-cloud" class="w-6 h-6 mb-2 opacity-50"></i>
-                        <p>Drop files here to store</p>
-                    </div>
-                </div>
-            </div>
+        <div class="island-expanded hidden w-full h-full p-5 opacity-0 flex flex-col">
+            <div class="text-sm font-bold border-b border-white/10 pb-2 mb-2">Library</div>
+            <div id="file-list" class="flex-1 overflow-y-auto text-xs text-gray-400">Drop files here...</div>
         </div>
     </div>
 
-    <div class="stage flex-1 flex items-center justify-center w-full mt-12">
-        
-        <div id="flashcard-container" class="flashcard w-[500px] h-[320px] relative">
-            
-            <div class="face front glass flex flex-col p-8 justify-between bg-black/40">
-                <div class="flex justify-between items-center opacity-60 hover:opacity-100 transition-opacity">
-                    <div class="text-[10px] font-bold text-purple-400 uppercase tracking-[0.2em]">Front Side</div>
-                    <i data-lucide="scan-face" class="w-4 h-4 text-white"></i>
-                </div>
-                
-                <textarea id="front-input" class="w-full flex-1 bg-transparent resize-none border-none outline-none text-2xl text-center placeholder-gray-600 text-white font-light mt-4" placeholder="Type a concept or drop an image..."></textarea>
-                
-                <button id="ai-btn" class="mt-6 w-full py-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium text-sm shadow-lg backdrop-blur-md transform active:scale-[0.98] transition-all flex items-center justify-center gap-2 group">
-                    <i data-lucide="sparkles" class="w-4 h-4 text-purple-400 group-hover:rotate-12 transition-transform"></i>
-                    <span class="bg-gradient-to-r from-purple-200 to-white bg-clip-text text-transparent font-bold">Generate with AI</span>
-                </button>
+    <div class="stage flex-1 flex items-center justify-center w-full">
+        <div id="card" class="flashcard w-[500px] h-[320px] relative">
+            <div class="face front glass flex flex-col justify-between">
+                <div class="text-[10px] font-bold text-purple-400 uppercase tracking-widest">Front</div>
+                <textarea id="front-in" class="bg-transparent border-none outline-none text-2xl text-center flex-1 mt-4" placeholder="Type something..."></textarea>
+                <button id="ai-gen" class="w-full py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all font-bold">Generate with AI</button>
             </div>
-
-            <div class="face back glass flex flex-col p-8 justify-between bg-black/90 border-purple-500/20">
-                <div class="flex justify-between items-center opacity-60">
-                    <div class="text-[10px] font-bold text-green-400 uppercase tracking-[0.2em]">Answer</div>
-                    <button id="flip-back-btn" class="hover:text-white transition-colors"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
-                </div>
-                
-                <textarea id="back-output" class="w-full flex-1 bg-transparent resize-none border-none outline-none text-lg text-center text-gray-200 leading-relaxed mt-4 font-light" placeholder="AI result..."></textarea>
-                
-                <div class="mt-6 flex gap-3">
-                    <button onclick="saveCard()" class="flex-1 py-2.5 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-300 text-xs font-bold uppercase tracking-wider transition-all border border-green-500/20">Save Card</button>
-                </div>
+            <div class="face back glass flex flex-col justify-between bg-black/80">
+                <div class="text-[10px] font-bold text-green-400 uppercase tracking-widest">Answer</div>
+                <textarea id="back-out" class="bg-transparent border-none outline-none text-lg text-center flex-1 mt-4"></textarea>
+                <button onclick="saveToSupabase()" class="w-full py-2 bg-green-500/20 rounded-lg text-xs font-bold uppercase">Save Card</button>
             </div>
-
         </div>
-    </div>
-
-    <div id="toast" class="fixed bottom-10 px-6 py-3 rounded-full glass border-white/10 text-sm font-medium transform translate-y-32 opacity-0 transition-all duration-500 flex items-center gap-3 shadow-2xl z-50">
-        <span id="toast-icon" class="text-lg">✅</span>
-        <span id="toast-msg" class="text-gray-200">Notification</span>
     </div>
 
     <script>
-        // --- 1. CONFIGURATION ---
-        const WORKER_URL = "https://curly-mountain-4c28.boy05geo.workers.dev";
-        
-        // Твоите Supabase данни
-        const SUPABASE_URL = "https://zfqpfhtbpfdudbpqzbbg.supabase.co"; 
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE"; 
+        // Коректна инициализация БЕЗ конфликти
+        const S_URL = "https://zfqpfhtbpfdudbpqzbbg.supabase.co";
+        const S_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE";
+        const supabaseClient = window.supabase.createClient(S_URL, S_KEY); // Променено име
 
-        // Инициализация
+        const WORKER_URL = "https://curly-mountain-4c28.boy05geo.workers.dev"; //
+
         lucide.createIcons();
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        console.log("🚀 Supabase Connected to project: zfqpfhtbpfdudbpqzbbg");
 
-        // UI елементи
-        const island = document.getElementById('skyline-island');
-        const closedContent = island.querySelector('.island-closed');
-        const expandedContent = island.querySelector('.island-expanded');
-        const card = document.getElementById('flashcard-container');
-        const aiBtn = document.getElementById('ai-btn');
-        const frontInput = document.getElementById('front-input');
-        const backOutput = document.getElementById('back-output');
-        const fileZone = document.getElementById('file-drop-zone');
-        const fileList = document.getElementById('file-list');
+        // Анимация на картата
+        const cardEl = document.getElementById('card');
+        cardEl.addEventListener('dblclick', () => cardEl.classList.toggle('flipped'));
 
-        // Зареди файловете веднага
-        loadFilesFromLibrary();
-
-        // --- 2. DYNAMIC ISLAND LOGIC ---
-        island.addEventListener('click', (e) => {
-            if (e.target.closest('#file-list') || e.target.closest('#file-drop-zone')) return;
-            toggleIsland();
-        });
-
-        function toggleIsland() {
-            island.classList.toggle('expanded');
-            if (island.classList.contains('expanded')) {
-                closedContent.style.opacity = '0';
-                setTimeout(() => {
-                    expandedContent.classList.remove('hidden');
-                    void expandedContent.offsetWidth; 
-                    expandedContent.style.opacity = '1';
-                }, 200);
-            } else {
-                expandedContent.style.opacity = '0';
-                setTimeout(() => {
-                    expandedContent.classList.add('hidden');
-                    closedContent.style.opacity = '1';
-                }, 200);
-            }
-        }
-
-        // --- 3. UPLOAD FILE TO SUPABASE (SKYLINE) ---
-        fileZone.addEventListener('dragover', (e) => { e.preventDefault(); fileZone.classList.add('bg-white/10'); });
-        fileZone.addEventListener('dragleave', (e) => { e.preventDefault(); fileZone.classList.remove('bg-white/10'); });
-        fileZone.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            fileZone.classList.remove('bg-white/10');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                const file = files[0];
-                showToast("⏳ Uploading to Skyline...", "☁️");
-                
-                // Качване в Supabase Storage
-                // ВАЖНО: Увери се, че имаш bucket 'skyline_files' в Supabase!
-                const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-                const { data, error } = await supabase.storage
-                    .from('skyline_files')
-                    .upload(fileName, file);
-
-                if (error) {
-                    console.error('Upload error:', error);
-                    showToast("Error uploading file. Check Bucket!", "❌");
-                } else {
-                    showToast("File saved to Library!", "🎉");
-                    // Вземи публичния URL
-                    const { data: publicUrlData } = supabase.storage.from('skyline_files').getPublicUrl(fileName);
-                    addFileToList(file.name, publicUrlData.publicUrl, file.type);
-                }
-            }
-        });
-
-        // --- 4. FLASHCARD & AI LOGIC ---
-        card.addEventListener('dblclick', () => card.classList.toggle('flipped'));
-        document.getElementById('flip-back-btn').addEventListener('click', (e) => {
+        // AI Генериране
+        document.getElementById('ai-gen').addEventListener('click', async (e) => {
             e.stopPropagation();
-            card.classList.remove('flipped');
-        });
-
-        // AI BUTTON
-        aiBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const prompt = frontInput.value;
-            if (!prompt) return showToast("Type something first!", "✍️");
-
-            // UI State
-            const originalContent = aiBtn.innerHTML;
-            aiBtn.innerHTML = `<i data-lucide="loader-2" class="animate-spin w-4 h-4"></i> <span class="text-purple-300">Thinking...</span>`;
-            aiBtn.disabled = true;
-            card.classList.add('ai-thinking');
+            const prompt = document.getElementById('front-in').value;
+            if(!prompt) return alert("Write something!");
 
             try {
-                // Call Cloudflare Worker
-                const response = await fetch(WORKER_URL, {
+                const res = await fetch(WORKER_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: prompt })
+                    body: JSON.stringify({ prompt: prompt, model: "llama-3.2-11b-vision-preview" }) //
                 });
-
-                if (!response.ok) throw new Error('AI Error');
-                const data = await response.json();
-                
-                backOutput.value = data.answer || "No answer generated.";
-                
-                card.classList.remove('ai-thinking');
-                card.classList.add('flipped');
-                showToast("AI Generated Answer!", "✨");
-
+                const data = await res.json();
+                document.getElementById('back-out').value = data.answer || data.result || data.text; // Поддръжка на различни формати
+                cardEl.classList.add('flipped');
             } catch (err) {
-                console.error(err);
-                showToast("AI Connection Failed", "⚠️");
-            } finally {
-                aiBtn.innerHTML = originalContent;
-                aiBtn.disabled = false;
-                lucide.createIcons();
+                alert("AI Error: Check CORS in Worker!");
             }
         });
 
-        // DRAG IMAGE ON CARD (VISION)
-        card.addEventListener('dragover', (e) => e.preventDefault());
-        card.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const files = e.dataTransfer.files;
-            
-            // Ако е пуснат файл от компютъра
-            if (files.length > 0 && files[0].type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    setCardImage(event.target.result);
-                };
-                reader.readAsDataURL(files[0]);
-            }
-            // Ако е пуснат линк от Skyline библиотеката
-            else {
-                const imageUrl = e.dataTransfer.getData('text/plain');
-                if (imageUrl) setCardImage(imageUrl);
-            }
+        // Запис в Supabase
+        async function saveToSupabase() {
+            const front = document.getElementById('front-in').value;
+            const back = document.getElementById('back-out').value;
+            const { error } = await supabaseClient.from('cards').insert([{ front, back }]); //
+            if(!error) alert("Saved to Supabase!");
+            else alert("Error: Have you created the 'cards' table?");
+        }
+
+        // Капсула анимация
+        const island = document.getElementById('skyline-island');
+        island.addEventListener('click', () => {
+            island.classList.toggle('expanded');
+            const exp = island.querySelector('.island-expanded');
+            exp.classList.toggle('hidden');
+            exp.style.opacity = island.classList.contains('expanded') ? '1' : '0';
         });
-
-        function setCardImage(url) {
-            const frontFace = document.querySelector('.front');
-            frontFace.style.backgroundImage = `url(${url})`;
-            frontFace.style.backgroundSize = 'cover';
-            frontFace.style.backgroundBlendMode = 'overlay';
-            frontInput.value = "[Image Loaded] Analyze this image...";
-            showToast("Image loaded! Click Generate.", "📸");
-        }
-
-        // --- 5. HELPERS ---
-        async function loadFilesFromLibrary() {
-            const { data, error } = await supabase.storage.from('skyline_files').list();
-            if (data && data.length > 0) {
-                const list = document.getElementById('file-list');
-                list.innerHTML = ''; // Clear empty state
-                data.forEach(file => {
-                    const { data: urlData } = supabase.storage.from('skyline_files').getPublicUrl(file.name);
-                    addFileToList(file.name, urlData.publicUrl, file.metadata?.mimetype || 'file');
-                });
-            }
-        }
-
-        function addFileToList(name, url, type) {
-            const div = document.createElement('div');
-            div.className = "flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/10 cursor-grab active:cursor-grabbing text-xs text-gray-300 truncate transition-colors border border-transparent hover:border-white/5";
-            div.draggable = true;
-            
-            let icon = "file";
-            if (type.includes('image')) icon = "image";
-            if (type.includes('pdf')) icon = "file-text";
-            if (type.includes('audio')) icon = "music";
-
-            div.innerHTML = `<i data-lucide="${icon}" class="w-3 h-3 text-purple-400"></i> <span class="truncate w-full">${name}</span>`;
-            
-            div.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('text/plain', url);
-            });
-
-            document.getElementById('file-list').appendChild(div);
-            lucide.createIcons();
-        }
-
-        async function saveCard() {
-            const front = frontInput.value;
-            const back = backOutput.value;
-            
-            // Запис в базата данни (Table: cards)
-            const { error } = await supabase
-                .from('cards') // Увери се, че имаш таблица 'cards'
-                .insert([{ front, back, created_at: new Date() }]);
-
-            if (!error) showToast("Card saved to Deck!", "💾");
-            else console.error(error);
-        }
-
-        function showToast(msg, icon = "✅") {
-            const t = document.getElementById('toast');
-            document.getElementById('toast-msg').innerText = msg;
-            document.getElementById('toast-icon').innerText = icon;
-            t.style.transform = "translateY(0)";
-            t.style.opacity = "1";
-            setTimeout(() => {
-                t.style.transform = "translateY(128px)";
-                t.style.opacity = "0";
-            }, 3000);
-        }
     </script>
 </body>
 </html>
