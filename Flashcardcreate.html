@@ -6,7 +6,7 @@
     <title>Flashcard Skyline Studio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/skyline.css">
     <style>
         :root{
@@ -19,13 +19,14 @@
             --text-muted:rgba(255,255,255,0.72);
             --accent:#1d4ed8;
             --accent-soft:#60a5fa;
+            --ai-accent: #8b5cf6;
             --card-size:clamp(320px,58vw,540px);
         }
 
         *{box-sizing:border-box;margin:0;padding:0;}
 
         body{
-            font-family:'Montserrat',Arial,sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
             min-height:100vh;
             background:var(--bg-gradient);
             color:#f6fbff;
@@ -80,24 +81,40 @@
             width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-soft));display:flex;align-items:center;justify-content:center;font-weight:700;letter-spacing:0.3px;
         }
 
-        #homeClipboard{margin:0 auto;}
+        #homeClipboard{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:1200;margin:0;}
+
+        /* Dynamic Island / Skyline Capsule */
+        .home-clipboard-capsule{display:flex;align-items:center;gap:12px;padding:10px 18px;border-radius:999px;background:#000;color:#fff;border:0;box-shadow:0 10px 30px rgba(2,6,23,0.45);transition:all 0.6s cubic-bezier(0.16,1,0.3,1);cursor:pointer}
+        .home-clipboard-capsule .home-clipboard-clock{display:none}
+        .home-clipboard-capsule .home-clipboard-label{font-weight:600}
+        .home-clipboard-capsule.expanded{padding:16px 20px;border-radius:18px;min-width:360px;background:linear-gradient(180deg,#000,#0a0a0a);box-shadow:0 30px 80px rgba(2,6,23,0.6)}
+        .home-clipboard-panel{position:absolute;top:78px;left:50%;transform:translateX(-50%);min-width:380px;max-width:720px;background:rgba(0,0,0,0.92);color:#fff;border-radius:16px;padding:12px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 40px 100px rgba(2,6,23,0.6);opacity:0;pointer-events:none;transition:all 0.32s cubic-bezier(0.16,1,0.3,1)}
+        .home-clipboard-panel.open{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(6px)}
+        .home-clipboard-panel h3{margin:0;color:#fff}
+        .home-clipboard-list{list-style:none;padding:8px;display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto}
+        .skyline-file-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:rgba(255,255,255,0.03);cursor:pointer;border:1px solid rgba(255,255,255,0.04);color:#fff}
+        .home-clipboard-capsule.drag-over{transform:scale(1.02);box-shadow:0 40px 120px rgba(2,6,23,0.7)}
 
         main{display:flex;flex-direction:column;align-items:center;gap:40px;}
 
         .card-stage{display:flex;flex-direction:column;align-items:center;gap:24px;}
 
         .flashcard-frame{width:var(--card-size);height:calc(var(--card-size) * 0.62);perspective:1400px;position:relative;}
-        .flashcard-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform 460ms cubic-bezier(.22,.9,.32,1);}
-        .flashcard-inner.flipped{transform:rotateY(180deg);}
+        .flashcard-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);} 
+        .flashcard-inner.flipped{transform:rotateY(180deg);} 
+
+        /* Success glow on save */
+        .flashcard.saved { box-shadow: 0 24px 80px rgba(24,160,88,0.18) !important; border: 1px solid rgba(24,160,88,0.18) !important; transition: box-shadow 420ms ease, border-color 420ms ease; }
 
         .flashcard-face{
             position:absolute;
             inset:0;
-            border-radius:28px;
-            padding:32px clamp(26px,4vw,40px);
-            background:linear-gradient(160deg, rgba(255,255,255,0.82), rgba(215,230,255,0.48));
-            border:1px solid rgba(255,255,255,0.68);
-            box-shadow:0 38px 94px rgba(3,22,66,0.38);
+            border-radius:20px;
+            padding:28px clamp(20px,3.6vw,34px);
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(20px);
+            border:1px solid rgba(255,255,255,0.3);
+            box-shadow:0 24px 64px rgba(3,22,66,0.12);
             display:flex;
             flex-direction:column;
             justify-content:space-between;
@@ -123,14 +140,14 @@
         .editable:empty:before{content:attr(data-placeholder);color:rgba(12,30,58,0.35);}
 
         .card-toolbar{display:flex;gap:14px;justify-content:center;}
-        .card-toolbar button{border:none;border-radius:14px;padding:12px 24px;font-size:13px;font-weight:600;cursor:pointer;transition:transform 180ms ease, box-shadow 180ms ease;}
+        .card-toolbar button{border:none;border-radius:14px;padding:12px 24px;font-size:13px;font-weight:600;cursor:pointer;transition:transform 180ms ease, box-shadow 180ms ease;backdrop-filter: blur(10px);background:rgba(255,255,255,0.72);color:var(--text-primary)}
         .card-toolbar button.primary{background:linear-gradient(135deg,var(--accent),var(--accent-soft));color:#fff;box-shadow:0 22px 48px rgba(29,78,216,0.32);}
         .card-toolbar button.secondary{background:rgba(255,255,255,0.8);color:var(--text-primary);box-shadow:0 18px 42px rgba(3,22,66,0.22);}
         .card-toolbar button:hover{transform:translateY(-2px);}
 
         .card-status{min-height:18px;font-size:12px;color:var(--text-muted);text-align:center;}
 
-        .summary-section{width:min(100%,960px);background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.32);border-radius:28px;padding:28px clamp(22px,4vw,44px);backdrop-filter:blur(20px);box-shadow:0 44px 108px rgba(3,22,66,0.4);}
+        .summary-section{width:min(100%,960px);background:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.3);border-radius:18px;padding:28px clamp(22px,4vw,44px);backdrop-filter:blur(20px);box-shadow:0 28px 80px rgba(3,22,66,0.12);color:var(--text-primary)}
         .summary-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;}
         .summary-header h2{margin:0;font-size:20px;color:#f6fbff;letter-spacing:0.02em;}
         .summary-header span{font-size:13px;color:rgba(255,255,255,0.72);}
@@ -165,11 +182,39 @@
             .flashcard-frame{width:100%;}
             .card-toolbar{flex-direction:column;}
         }
+        /* AI button and loading/spinner styles */
+        .ai-btn{background: linear-gradient(135deg, #8b5cf6, #d946ef); color: #fff; border: none; font-weight: bold; box-shadow:0 20px 48px rgba(107,33,168,0.12);display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px}
+        .ai-btn:active{transform:scale(0.96)}
+        .ai-loading-pulse{animation: pulse 1.5s infinite; opacity:0.7}
+        .ai-btn.loading{opacity:0.9;pointer-events:none}
+        .ai-btn .ai-spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.28);border-top-color:#fff;animation:spin 900ms linear infinite;display:inline-block}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        /* Flashcard-level loading overlay */
+        .flashcard-loading-overlay{position:absolute;inset:0;border-radius:28px;background:linear-gradient(180deg,rgba(255,255,255,0.7),rgba(255,255,255,0.5));display:flex;align-items:center;justify-content:center;z-index:60}
+        .flashcard-loading-overlay .loader-inner{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text-primary);font-weight:700}
+        .flashcard-loading-overlay .loader-dots{display:inline-block}
+        .flashcard-loading-overlay .loader-dots span{display:inline-block;width:8px;height:8px;border-radius:8px;background:rgba(6,18,40,0.12);margin:0 3px;animation:loaderPulse 900ms infinite}
+        .flashcard-loading-overlay .loader-dots span:nth-child(2){animation-delay:120ms}
+        .flashcard-loading-overlay .loader-dots span:nth-child(3){animation-delay:240ms}
+        @keyframes loaderPulse{0%{transform:scale(0.85);opacity:0.6}50%{transform:scale(1.15);opacity:1}100%{transform:scale(0.85);opacity:0.6}}
+        /* Capsule & file list styles */
+        .home-clipboard-capsule.drag-over{outline:2px dashed rgba(255,255,255,0.38);transform:translateY(-4px)}
+        .home-clipboard-list{list-style:none;padding:12px;display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto}
+        .skyline-file-item{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;background:rgba(255,255,255,0.06);cursor:pointer;border:1px solid rgba(255,255,255,0.04)}
+        .skyline-file-item .file-icon{min-width:30px;text-align:center}
+        .flashcard-frame.drop-target{outline:3px dashed rgba(29,78,216,0.18)}
+        .flashcard.ripple::after{content:'';position:absolute;inset:0;border-radius:28px;background:radial-gradient(circle at center, rgba(139,92,246,0.12), transparent 40%);transform:scale(0);animation:rippleAnim 720ms ease-out;pointer-events:none}
+        @keyframes rippleAnim{0%{transform:scale(0);opacity:1}100%{transform:scale(1.2);opacity:0}}
     </style>
     <script src="assets/shared-clipboard.js" defer></script>
     <script src="assets/auth.js" defer></script>
 </head>
 <body>
+    <!-- Top-centered Skyline Island (Dynamic Island) -->
+    <div id="skyline-island" aria-hidden="false" style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:1300;">
+        <button id="skyline-island-btn" aria-label="Skyline" style="background:#000;color:#fff;border-radius:30px;padding:10px 20px;border:0;box-shadow:0 12px 36px rgba(0,0,0,0.6);backdrop-filter:blur(6px);">Skyline</button>
+    </div>
     <div class="frame">
         <div class="skyline-bar">
             <a href="homepage.html" class="nav-btn" title="Назад" aria-label="Назад">
@@ -218,6 +263,7 @@
                 <div class="card-toolbar">
                     <button type="button" class="primary" id="saveCard">Запази</button>
                     <button type="button" class="secondary" id="newCard">Нова карта</button>
+                    <button type="button" class="secondary ai-btn" id="aiGenerate">🪄 AI Генериране</button>
                     <button type="button" class="secondary" id="flipCard">Завърти</button>
                 </div>
                 <p class="card-status" id="cardStatus">Двукратно щракване обръща картата.</p>
@@ -357,26 +403,27 @@
                             createdAt: now,
                             updatedAt: now
                         };
-                        if(editingId){
-                            // update
-                            try{
-                                const r = await ssApi.updateFlashcard(editingId, cardObj);
-                                if(r && r.ok){ showStatus('Автозапазено (чернова)'); }
-                            }catch(e){ console.warn('autosave update failed', e); }
-                        } else {
-                            // create
-                            try{
-                                const r = await ssApi.createFlashcard(cardObj);
-                                if(r && r.ok && r.card){
-                                    // insert to local list and mark as editing
-                                    cards.unshift({ id: r.card.id || cardObj.id, front: cardObj.front, back: cardObj.back, tags: '', createdAt: Date.now(), updatedAt: Date.now() });
-                                    editingId = r.card.id || cardObj.id;
-                                    persistCards();
-                                    persistDraft();
-                                    showStatus('Автозапазено (новa карта)');
+                        // Use ssApi.saveFlashcard if available (upsert), otherwise fallback to create/update
+                        try {
+                            showStatus('Syncing...');
+                            let r = null;
+                            if (window.ssApi && typeof window.ssApi.saveFlashcard === 'function') {
+                                r = await window.ssApi.saveFlashcard(cardObj);
+                            } else if (editingId && window.ssApi && typeof window.ssApi.updateFlashcard === 'function') {
+                                r = await window.ssApi.updateFlashcard(editingId, cardObj);
+                            } else if (!editingId && window.ssApi && typeof window.ssApi.createFlashcard === 'function') {
+                                r = await window.ssApi.createFlashcard(cardObj);
+                            }
+                            if (r && r.ok) {
+                                // normalize return
+                                const newId = (r.card && r.card.id) || cardObj.id || (r.id || null);
+                                if (!editingId && newId) editingId = newId;
+                                if (!cards.find(c => c.id === editingId)) {
+                                    cards.unshift({ id: newId || cardObj.id, front: cardObj.front, back: cardObj.back, tags: '', createdAt: Date.now(), updatedAt: Date.now() });
                                 }
-                            }catch(e){ console.warn('autosave create failed', e); }
-                        }
+                                persistCards(); persistDraft(); showStatus('Автозапазено (чернова)');
+                            }
+                        } catch(e) { console.warn('autosave save failed', e); }
                     }
                 }catch(e){ console.warn('autosave draft error', e); }
 
@@ -499,53 +546,47 @@
                 const card = buildCardObject();
                 if(!card) return;
                 const token = localStorage.getItem('ss_token');
-                if(token && window.ssApi && typeof window.ssApi.createFlashcard === 'function'){
-                    (async () => {
-                        try{
-                            if(editingId){
-                                const r = await ssApi.updateFlashcard(editingId, card);
-                                if(r && r.ok && r.card){
-                                    const idx = cards.findIndex(c => c.id === editingId);
-                                    if(idx !== -1) cards[idx] = Object.assign(cards[idx], card);
-                                    showStatus('Картата е обновена.');
-                                }
-                            } else {
-                                const r = await ssApi.createFlashcard(card);
-                                if(r && r.ok && r.card){
-                                    cards.unshift({ id: r.card.id || card.id, front: card.front, back: card.back, tags: card.tags || '', createdAt: Date.now(), updatedAt: Date.now() });
-                                    showStatus('Картата е записана.');
-                                }
-                            }
-                            persistCards();
-                            renderSummary();
-                        }catch(e){
-                            console.warn('saveCard remote failed', e);
-                            // fallback to local
-                            if(editingId){
-                                const idx = cards.findIndex(c => c.id === editingId);
-                                if(idx !== -1){ cards[idx] = card; }
-                            } else { cards.unshift(card); }
+                return (async () => {
+                    // prefer single upsert API if available
+                    try{
+                        showStatus('Syncing...');
+                        let resp = null;
+                        if(window.ssApi && typeof window.ssApi.saveFlashcard === 'function'){
+                            resp = await window.ssApi.saveFlashcard(card);
+                        } else if(window.ssApi && editingId && typeof window.ssApi.updateFlashcard === 'function'){
+                            resp = await window.ssApi.updateFlashcard(editingId, card);
+                        } else if(window.ssApi && !editingId && typeof window.ssApi.createFlashcard === 'function'){
+                            resp = await window.ssApi.createFlashcard(card);
+                        }
+
+                        if(resp && resp.ok){
+                            // success path
+                            const newId = (resp.card && resp.card.id) || resp.id || card.id;
+                            if(!editingId) editingId = newId;
+                            const idx = cards.findIndex(c => c.id === editingId);
+                            if(idx !== -1){ cards[idx] = Object.assign(cards[idx], card); }
+                            else { cards.unshift({ id: newId, front: card.front, back: card.back, tags: card.tags || '', createdAt: card.createdAt || Date.now(), updatedAt: card.updatedAt || Date.now() }); }
+                            persistCards(); renderSummary(); showStatus('Картата е записана.');
+                            // show success glow briefly
+                            try{ const frame = document.getElementById('cardFrame'); if(frame){ frame.classList.add('saved'); setTimeout(()=>frame.classList.remove('saved'), 900); } } catch(e){}
+                        } else {
+                            // fallback to local save
+                            if(editingId){ const idx = cards.findIndex(c => c.id === editingId); if(idx !== -1){ cards[idx] = card; } }
+                            else { cards.unshift(card); }
                             persistCards(); renderSummary(); showStatus('Картата е записана (локално).');
+                            try{ const frame = document.getElementById('cardFrame'); if(frame){ frame.classList.add('saved'); setTimeout(()=>frame.classList.remove('saved'), 900); } } catch(e){}
                         }
-                    })();
-                } else {
-                    if(editingId){
-                        const idx = cards.findIndex(c => c.id === editingId);
-                        if(idx !== -1){
-                            cards[idx] = card;
-                            persistCards();
-                            renderSummary();
-                            showStatus('Картата е обновена.');
-                        }
-                    } else {
-                        cards.unshift(card);
-                        persistCards();
-                        renderSummary();
-                        showStatus('Картата е записана.');
+                    }catch(e){
+                        console.warn('saveCard remote failed', e);
+                        if(editingId){ const idx = cards.findIndex(c => c.id === editingId); if(idx !== -1){ cards[idx] = card; } }
+                        else { cards.unshift(card); }
+                        persistCards(); renderSummary(); showStatus('Картата е записана (локално).');
+                        try{ const frame = document.getElementById('cardFrame'); if(frame){ frame.classList.add('saved'); setTimeout(()=>frame.classList.remove('saved'), 900); } } catch(e){}
+                    } finally {
+                        editingId = editingId || card.id;
+                        persistDraft();
                     }
-                }
-                editingId = card.id;
-                persistDraft();
+                })();
             }
 
             function startEdit(id){
@@ -556,8 +597,10 @@
                 frontEditable.innerHTML = card.front;
                 backEditable.innerHTML = card.back;
                 persistDraft();
+                // smooth scroll to the card stage for context on small screens
+                try{ const stage = document.querySelector('.card-stage'); if(stage) stage.scrollIntoView({ behavior: 'smooth', block: 'start' }); }catch(e){}
                 showStatus('Редакция на избраната карта.');
-                frontEditable.focus({ preventScroll:true });
+                setTimeout(()=>{ try{ frontEditable.focus({ preventScroll:true }); }catch(e){} }, 320);
             }
 
             function deleteCard(id){
@@ -628,6 +671,209 @@
                     updateClipboardMeta();
                 }
             }
+
+            /* Skyline file storage helpers and drag/drop */
+            const SKYLINE_BUCKET = 'skyline_files';
+
+            async function uploadFilesToSkyline(files) {
+                const uploaded = [];
+                for (const f of files) {
+                    try {
+                        // prefer ssApi.uploadToBucket(bucket, file) if available
+                        if (window.ssApi && typeof window.ssApi.uploadToBucket === 'function') {
+                            const res = await window.ssApi.uploadToBucket(SKYLINE_BUCKET, f);
+                            if (res && res.ok && res.url) {
+                                uploaded.push({ name: f.name, url: res.url, mime: f.type, size: f.size, id: res.id || Date.now() });
+                                continue;
+                            }
+                        }
+                        // fallback: store a data URL locally (only for small images)
+                        if (f.type.startsWith('image/')) {
+                            const data = await new Promise((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.onload = () => resolve(reader.result);
+                                reader.onerror = reject;
+                                reader.readAsDataURL(f);
+                            });
+                            const localItem = { name: f.name, url: data, mime: f.type, size: f.size, id: 'local-' + Date.now() };
+                            const list = JSON.parse(localStorage.getItem('skyline_files') || '[]');
+                            list.unshift(localItem);
+                            localStorage.setItem('skyline_files', JSON.stringify(list));
+                            uploaded.push(localItem);
+                        }
+                    } catch (err) { console.warn('Upload failed', err); }
+                }
+                await refreshSkylineFiles();
+                return uploaded;
+            }
+
+            async function refreshSkylineFiles(){
+                const listEl = document.getElementById('homeClipboardList');
+                if (!listEl) return;
+                listEl.innerHTML = '';
+                let files = [];
+                try {
+                    if (window.ssApi && typeof window.ssApi.listFiles === 'function') {
+                        const r = await window.ssApi.listFiles(SKYLINE_BUCKET);
+                        if (r && r.ok && Array.isArray(r.files)) files = r.files;
+                    }
+                } catch(e) { console.warn('listFiles failed', e); }
+                if (!files.length) {
+                    try { files = JSON.parse(localStorage.getItem('skyline_files') || '[]'); } catch(e){ files = []; }
+                }
+                files.forEach(f => {
+                    const li = document.createElement('li');
+                    li.className = 'skyline-file-item';
+                    li.draggable = true;
+                    li.dataset.url = f.url;
+                    li.dataset.mime = f.mime || '';
+                    li.innerHTML = `<span class="file-icon">${fileIconForMime(f.mime || '')}</span><span class="file-name">${escapeHtml(f.name)}</span>`;
+                    li.addEventListener('dragstart', e => {
+                        try { e.dataTransfer.setData('text/uri-list', f.url); e.dataTransfer.setData('text/plain', f.url); } catch(err){}
+                    });
+                    li.addEventListener('click', () => {
+                        // open file in new tab when clicked
+                        try { window.open(f.url, '_blank'); } catch(e){}
+                    });
+                    listEl.appendChild(li);
+                });
+                const count = listEl.children.length || 0;
+                const countEl = document.getElementById('homeClipboardCount'); if (countEl) { countEl.textContent = String(count); if(count) countEl.parentElement?.classList?.add('has-items'); }
+            }
+
+            // Helper to obtain GROQ API key from env or ssApi
+            async function getGroqKey(){
+                if(window.GROQ_API_KEY) return window.GROQ_API_KEY;
+                if(window.ssApi && typeof window.ssApi.getSecret === 'function'){
+                    try{ const s = await window.ssApi.getSecret('GROQ_API_KEY'); if(s && (s.value || s.key)) return s.value || s.key; }catch(e){}
+                }
+                // fallback to localStorage if user stored it there
+                try{ const ls = localStorage.getItem('GROQ_API_KEY'); if(ls) return ls; }catch(e){}
+                return null;
+            }
+
+            function fileIconForMime(mime){
+                if (!mime) return '📄';
+                if (mime.startsWith('image/')) return '🖼️';
+                if (mime.startsWith('audio/')) return '🎵';
+                if (mime === 'application/pdf') return '📕';
+                return '📁';
+            }
+
+            function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+            // Capsule drag & drop handlers
+            const capsule = document.getElementById('homeClipboardCapsule');
+            const capsulePanel = document.getElementById('homeClipboardPanel');
+            if (capsule) {
+                const CLOSE_PANEL_DELAY = 280;
+                let closePanelTimer = null;
+                function openCapsulePanel(){
+                    capsule.classList.add('expanded');
+                    capsule.setAttribute('aria-expanded','true');
+                    if(capsulePanel){ capsulePanel.classList.add('open'); capsulePanel.setAttribute('aria-hidden','false'); }
+                    // refresh listing when opening
+                    refreshSkylineFiles().catch(()=>{});
+                }
+                function closeCapsulePanel(){
+                    capsule.classList.remove('expanded');
+                    capsule.setAttribute('aria-expanded','false');
+                    if(capsulePanel){ capsulePanel.classList.remove('open'); capsulePanel.setAttribute('aria-hidden','true'); }
+                }
+                capsule.addEventListener('click', () => {
+                    const expanded = capsule.classList.contains('expanded');
+                    if(!expanded) openCapsulePanel(); else closeCapsulePanel();
+                });
+                capsule.addEventListener('dragover', e => { e.preventDefault(); capsule.classList.add('drag-over'); openCapsulePanel(); });
+                capsule.addEventListener('dragleave', e => { capsule.classList.remove('drag-over'); if(closePanelTimer) clearTimeout(closePanelTimer); closePanelTimer = setTimeout(()=>{ capsule.classList.remove('drag-over'); closeCapsulePanel(); }, CLOSE_PANEL_DELAY); });
+                capsule.addEventListener('drop', async (e) => {
+                    e.preventDefault(); capsule.classList.remove('drag-over'); openCapsulePanel();
+                    const dt = e.dataTransfer;
+                    if (!dt) return;
+                    const files = Array.from(dt.files || []);
+                    if (files.length) {
+                        try{ await uploadFilesToSkyline(files); showStatus('Файловете са качени.'); }catch(e){ console.warn('upload failed', e); showStatus('Качването неуспешно'); }
+                    }
+                });
+                // close panel when clicking outside
+                document.addEventListener('click', (ev) => {
+                    try{
+                        if(!capsule.contains(ev.target) && !capsulePanel.contains(ev.target)) closeCapsulePanel();
+                    }catch(e){}
+                });
+            }
+
+            // Wire top skyline island button to open the capsule (if present)
+            try{
+                const skylineBtn = document.getElementById('skyline-island-btn');
+                if(skylineBtn){ skylineBtn.addEventListener('click', (e) => { e.preventDefault(); try{ capsule && capsule.click(); }catch(e){} }); }
+            }catch(e){}
+
+            // allow dropping files onto flashcard
+            const flashcardFrame = document.getElementById('cardFrame');
+            const flashcardEl = document.getElementById('flashcard');
+            function attachCardDropTarget(targetEl){
+                if(!targetEl) return;
+                targetEl.addEventListener('dragover', e => { e.preventDefault(); targetEl.classList.add('drop-target'); });
+                targetEl.addEventListener('dragleave', e => { targetEl.classList.remove('drop-target'); });
+                targetEl.addEventListener('drop', async (e) => {
+                    e.preventDefault(); targetEl.classList.remove('drop-target');
+                    const dt = e.dataTransfer;
+                    if (!dt) return;
+                    // check for URL from skyline list
+                    const url = dt.getData('text/uri-list') || dt.getData('text/plain');
+                    if (url) {
+                        await handleFileDropOnCard(url);
+                        return;
+                    }
+                    const files = Array.from(dt.files || []);
+                    if (files.length) {
+                        // upload first file and handle
+                        const uploaded = await uploadFilesToSkyline([files[0]]);
+                        if (uploaded && uploaded.length) await handleFileDropOnCard(uploaded[0].url);
+                    }
+                });
+            }
+            attachCardDropTarget(flashcardFrame);
+            attachCardDropTarget(flashcardEl);
+
+            async function handleFileDropOnCard(url){
+                if (!url) return;
+                // ripple animation
+                try { flashcard.classList.add('ripple'); setTimeout(()=>flashcard.classList.remove('ripple'), 800); } catch(e){}
+                // if it's an image, send to worker with vision model
+                const isImage = url.match(/\.(png|jpg|jpeg|gif|webp|bmp|svg)(\?.*)?$/i) || url.startsWith('data:image/');
+                if (isImage) {
+                    showStatus('AI vision обработва изображението...');
+                    try {
+                        const key = await getGroqKey();
+                        const headers = { 'Content-Type': 'application/json' };
+                        if(key) headers['Authorization'] = `Bearer ${key}`;
+                        const res = await fetch('https://curly-mountain-4c28.boy05geo.workers.dev', {
+                            method: 'POST', headers, body: JSON.stringify({ image_url: url, model: 'llama-3.2-11b-vision-preview' })
+                        });
+                        if (!res.ok) throw new Error('vision failed');
+                        const data = await res.json();
+                        const answer = data && (data.answer || data.text || data.result);
+                        if (answer) {
+                            backEditable.innerHTML = answer;
+                            persistDraft();
+                            await saveCard();
+                            flashcard.classList.add('flipped');
+                            showStatus('AI vision генерира отговор.');
+                        } else { showStatus('AI vision не върна резултат'); }
+                    } catch(err){ console.warn('vision error', err); showStatus('Грешка при връзката с AI'); }
+                } else {
+                    // non-image: just add link to back
+                    backEditable.innerHTML = `<a href="${url}" target="_blank">Отворете прикачения файл</a>`;
+                    persistDraft(); await saveCard(); showStatus('Файл добавен към картата.');
+                }
+                // auto-sync to blocks if available
+                try { if (typeof window.syncBlockToCloud === 'function') window.syncBlockToCloud(document.querySelector('.custom-block')); } catch(e){}
+            }
+
+            // initial refresh
+            setTimeout(() => refreshSkylineFiles(), 800);
 
             frontEditable.addEventListener('input', handleEditableInput);
             backEditable.addEventListener('input', handleEditableInput);
@@ -736,6 +982,77 @@
             newButton.addEventListener('click', resetCard);
             flipButton.addEventListener('click', () => flashcard.classList.toggle('flipped'));
 
+            // AI generation: hook up button and logic
+            const aiButton = document.getElementById('aiGenerate') || document.getElementById('aiGenerateBtn');
+            function _ensureFlashcardLoader() {
+                let overlay = document.querySelector('.flashcard-loading-overlay');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.className = 'flashcard-loading-overlay';
+                    overlay.innerHTML = `<div class="loader-inner"><div class="loader-dots"><span></span><span></span><span></span></div><div class="loader-text">Generating…</div></div>`;
+                    const frame = document.getElementById('cardFrame');
+                    if (frame) frame.appendChild(overlay);
+                }
+                return overlay;
+            }
+
+            function setFlashcardLoading(show) {
+                const overlay = _ensureFlashcardLoader();
+                overlay.style.display = show ? 'flex' : 'none';
+            }
+
+            /* subtle pulse while AI thinking */
+            .flashcard.ai-pulse{box-shadow:0 30px 100px rgba(139,92,246,0.06);animation:cardPulse 1400ms infinite}
+            @keyframes cardPulse{0%{transform:translateZ(0)}50%{transform:translateY(-2px)}100%{transform:translateZ(0)}}
+
+            async function handleAIGenerate() {
+                const frontText = (frontEditable && frontEditable.innerText || '').trim();
+                if (!frontText) { showStatus('Моля, напиши въпрос първо!'); return; }
+                const btn = document.getElementById('aiGenerate');
+
+                async function getGroqKey(){
+                    if(window.GROQ_API_KEY) return window.GROQ_API_KEY;
+                    if(window.ssApi && typeof window.ssApi.getSecret === 'function'){
+                        try{ const s = await window.ssApi.getSecret('GROQ_API_KEY'); if(s && (s.value || s.key)) return s.value || s.key; }catch(e){}
+                    }
+                    return null;
+                }
+
+                // Loading UI
+                try {
+                    if(btn){ btn.dataset.prev = btn.textContent; btn.classList.add('loading'); let sp = btn.querySelector('.ai-spinner'); if(!sp){ sp = document.createElement('span'); sp.className = 'ai-spinner'; btn.prepend(sp); } btn.disabled = true; }
+                    flashcard.classList.add('ai-pulse');
+                } catch(e){}
+
+                try {
+                    const key = await getGroqKey();
+                    const headers = { 'Content-Type': 'application/json' };
+                    if(key) headers['Authorization'] = `Bearer ${key}`;
+                    const resp = await fetch('https://curly-mountain-4c28.boy05geo.workers.dev', {
+                        method: 'POST', headers, body: JSON.stringify({ prompt: frontText })
+                    });
+                    if (!resp.ok) throw new Error('AI response not ok');
+                    const data = await resp.json();
+                    const answer = data && (data.answer || data.text || data.result);
+                    if (answer) {
+                        backEditable.innerHTML = answer;
+                        persistDraft();
+                        try { await saveCard(); } catch(e){}
+                        try { flashcard.classList.add('flipped'); } catch(e){}
+                        showStatus('AI генерира отговора успешно!');
+                    } else {
+                        showStatus('AI не върна отговор');
+                    }
+                } catch (err) {
+                    console.warn('AI worker error', err);
+                    showStatus('Грешка при връзката с AI');
+                } finally {
+                    try { if(btn){ btn.classList.remove('loading'); const sp = btn.querySelector('.ai-spinner'); if(sp) sp.remove(); btn.disabled = false; btn.textContent = btn.dataset.prev || '🪄 AI Генериране'; } }catch(e){}
+                    try { flashcard.classList.remove('ai-pulse'); } catch(e){}
+                }
+            }
+            if (aiButton) aiButton.addEventListener('click', handleAIGenerate);
+
             summaryList.addEventListener('click', (event) => {
                 const actionBtn = event.target.closest('button');
                 const item = event.target.closest('.summary-item');
@@ -755,6 +1072,20 @@
                 if(event.key === 'Escape'){
                     clipboardInstance?.close?.();
                 }
+                // Ctrl+Enter to save (or Cmd+Enter)
+                if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                    event.preventDefault();
+                    saveCard();
+                }
+                // Space to flip when not typing in an editable area
+                if (event.code === 'Space') {
+                    const active = document.activeElement;
+                    const isTyping = active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+                    if (!isTyping) {
+                        event.preventDefault();
+                        flashcard.classList.toggle('flipped');
+                    }
+                }
             });
 
             window.addEventListener('beforeunload', () => {
@@ -768,6 +1099,37 @@
             loadState();
             // If page opened with ?cardId=..., try to load that card from server and auto-select it
             (function(){
+                // Ensure a minimal ssApi exists so uploads/listing work in testing
+                if(!window.ssApi){
+                    window.ssApi = {};
+                }
+                if(!window.ssApi.uploadToBucket){
+                    window.ssApi.uploadToBucket = async function(bucket, file){
+                        // store small images in localStorage under skyline_files
+                        try{
+                            if(!file) return { ok:false };
+                            if(file.type && file.type.startsWith('image/')){
+                                const data = await new Promise((res, rej) => {
+                                    const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file);
+                                });
+                                const list = JSON.parse(localStorage.getItem('skyline_files') || '[]');
+                                const item = { id: 'local-' + Date.now(), name: file.name, url: data, mime: file.type, size: file.size };
+                                list.unshift(item);
+                                localStorage.setItem('skyline_files', JSON.stringify(list));
+                                return { ok:true, url: data, id: item.id };
+                            }
+                        }catch(e){ console.warn('ssApi.uploadToBucket fallback failed', e); }
+                        return { ok:false };
+                    };
+                }
+                if(!window.ssApi.listFiles){
+                    window.ssApi.listFiles = async function(bucket){
+                        try{ const list = JSON.parse(localStorage.getItem('skyline_files') || '[]'); return { ok:true, files: list }; }catch(e){ return { ok:false, files:[] }; }
+                    };
+                }
+                if(!window.ssApi.getSecret){
+                    window.ssApi.getSecret = async function(name){ return null; };
+                }
                 try{
                     const params = new URLSearchParams(location.search);
                     const cardId = params.get('cardId') || params.get('id');
