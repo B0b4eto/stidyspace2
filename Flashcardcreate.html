@@ -2,192 +2,175 @@
 <html lang="bg">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skyline Studio | Light Mode</title>
+    <title>Skyline Studio | Light Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;600;800&display=swap');
 
-        /* [1] СВЕТЪЛ ГРАДИЕНТ - Точно като на снимката */
+        /* [1] СВЕТЪЛ ГРАДИЕНТ - ТУК Е ФОНЪТ */
         body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: radial-gradient(at top left, #ffffff 0%, #eef2f7 100%);
             font-family: 'Plus Jakarta Sans', sans-serif;
             min-height: 100vh;
-            color: #1a1a1a;
-            padding-bottom: 100px;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #1a202c;
         }
 
-        /* [2] ОГРОМНАТА БЯЛА КАРТА */
+        /* [2] ОГРОМНАТА БЯЛА КАРТА (Figma Style) */
         .main-card {
-            background: white;
-            border-radius: 48px;
-            box-shadow: 0 40px 100px rgba(0,0,0,0.08);
-            width: 900px; /* Огромна */
+            background: #ffffff;
+            border-radius: 60px;
+            box-shadow: 0 40px 100px -20px rgba(0,0,0,0.06), 0 20px 40px -15px rgba(0,0,0,0.04);
+            width: 880px;
             height: 500px;
+            position: relative;
             transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             transform-style: preserve-3d;
         }
 
-        .card-inner.flipped { transform: rotateY(180deg); }
-        .face { backface-visibility: hidden; border-radius: 48px; }
-        .back { transform: rotateY(180deg); background: #fdfdfd; }
+        .flipped { transform: rotateY(180deg); }
+        .face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 60px; padding: 60px; display: flex; flex-direction: column; }
+        .back { transform: rotateY(180deg); background: #fafafa; border: 1px solid #f0f0f0; }
 
-        /* [3] SKYLINE HUB - По-чист дизайн */
+        /* [3] SKYLINE HUB (DYNAMIC ISLAND) - ПЛАВНО ОТВАРЯНЕ */
         #skyline-hub {
             background: white;
             border: 1px solid rgba(0,0,0,0.05);
-            transition: all 0.5s cubic-bezier(0.2, 1, 0.3, 1);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+            transition: all 0.6s cubic-bezier(0.2, 1, 0.3, 1);
         }
-        #skyline-hub.expanded { width: 500px !important; height: 180px !important; }
+        #skyline-hub.expanded { width: 480px !important; height: 180px !important; border-radius: 32px !important; }
 
-        /* [4] БИБЛИОТЕКА (DECK) */
-        .deck-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-            width: 1000px;
-            margin-top: 60px;
+        /* [4] БИБЛИОТЕКАТА С КАРТИ ОТДОЛУ */
+        .deck-container {
+            width: 900px;
+            margin-top: 80px;
+            padding-bottom: 100px;
         }
         .mini-card {
             background: white;
-            padding: 20px;
             border-radius: 24px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.03);
-            border: 1px solid rgba(0,0,0,0.02);
+            padding: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+            border: 1px solid #f0f0f0;
+            transition: transform 0.3s ease;
         }
     </style>
 </head>
-<body class="flex flex-col items-center">
+<body>
 
     <div id="skyline-hub" class="fixed top-8 w-44 h-12 rounded-full flex flex-col items-center justify-start overflow-hidden z-50 cursor-pointer">
         <div id="hub-header" class="flex items-center gap-2 h-12 px-6">
-            <i data-lucide="cloud-rain" class="w-4 h-4 text-blue-500"></i>
-            <span class="text-xs font-bold tracking-widest uppercase text-gray-400">Skyline Hub</span>
+            <i data-lucide="upload-cloud" class="w-4 h-4 text-blue-500"></i>
+            <span class="text-[10px] font-extrabold tracking-[0.2em] uppercase text-gray-400">Skyline Hub</span>
         </div>
         <div id="hub-content" class="hidden w-full p-5 flex flex-col items-center justify-center opacity-0 h-full">
-            <div id="drop-zone" class="w-full h-full border-2 border-dashed border-gray-100 rounded-[30px] flex flex-col items-center justify-center gap-2 transition-all">
-                <i data-lucide="plus-circle" class="w-6 h-6 text-gray-300"></i>
-                <span id="drop-text" class="text-[10px] font-bold text-gray-400">DROP FILES</span>
+            <div id="drop-zone" class="w-full h-full border-2 border-dashed border-gray-100 rounded-[30px] flex flex-col items-center justify-center gap-2">
+                <span id="drop-text" class="text-[10px] font-black text-gray-300 uppercase tracking-widest">Drop Files Here</span>
             </div>
         </div>
     </div>
 
-    <main class="mt-40 flex flex-col items-center">
-        <div class="card-stage">
-            <div id="card-inner" class="main-card relative card-inner">
-                
-                <div class="face front absolute inset-0 p-16 flex flex-col">
-                    <div class="flex justify-between items-center mb-12">
-                        <span class="text-xs font-black uppercase tracking-widest text-blue-600/30">Creator Node</span>
-                        <i data-lucide="maximize" class="w-5 h-5 text-gray-200"></i>
-                    </div>
-                    <textarea id="q-in" class="text-5xl font-extrabold text-center flex-1 bg-transparent border-none outline-none resize-none placeholder-gray-100" placeholder="Type topic..."></textarea>
-                    <button onclick="runAI()" id="run-btn" class="w-full py-6 bg-black text-white rounded-[32px] font-bold text-lg hover:scale-[1.02] transition-all flex items-center justify-center gap-3">
-                        Generate Answer
-                    </button>
+    <main class="mt-44 flex flex-col items-center">
+        <div class="main-card" id="cardElement">
+            <div class="face front">
+                <div class="flex justify-between items-center mb-10">
+                    <span class="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600/40">Knowledge Node</span>
                 </div>
-
-                <div class="face back absolute inset-0 p-16 flex flex-col border-8 border-gray-50">
-                    <div class="flex justify-between items-center mb-12">
-                        <span class="text-xs font-black uppercase tracking-widest text-green-500">Insights</span>
-                        <button onclick="flipBack()"><i data-lucide="x" class="w-6 h-6 text-gray-300"></i></button>
-                    </div>
-                    <textarea id="a-out" class="text-2xl font-medium text-center flex-1 text-gray-600 bg-transparent border-none outline-none resize-none" readonly></textarea>
-                    <button onclick="saveCard()" class="w-full py-6 bg-blue-600 text-white rounded-[32px] font-bold text-lg">Save to Deck</button>
+                <textarea id="q-in" class="text-5xl font-extrabold text-center flex-1 bg-transparent border-none outline-none resize-none placeholder-gray-100" placeholder="Type topic..."></textarea>
+                <button onclick="runAI()" id="run-btn" class="w-full py-6 bg-black text-white rounded-[30px] font-bold text-lg hover:bg-gray-800 transition-all">Generate Answer</button>
+            </div>
+            <div class="face back">
+                <div class="flex justify-between items-center mb-10">
+                    <span class="text-[10px] font-black uppercase tracking-[0.3em] text-green-500">AI Analysis</span>
+                    <button onclick="flipBack()"><i data-lucide="x" class="w-6 h-6 text-gray-300"></i></button>
                 </div>
-                
+                <textarea id="a-out" class="text-2xl font-semibold text-center flex-1 text-gray-600 bg-transparent border-none outline-none resize-none" readonly></textarea>
+                <button onclick="saveCard()" class="w-full py-6 bg-blue-600 text-white rounded-[30px] font-bold text-lg">Save to Deck</button>
             </div>
         </div>
 
-        <div class="mt-20 w-full flex flex-col items-center">
-            <h2 class="text-sm font-black uppercase tracking-widest text-gray-300 mb-8">Your Library</h2>
-            <div id="deck-grid" class="deck-grid">
+        <div class="deck-container">
+            <h2 class="text-[10px] font-black uppercase tracking-[0.4em] text-gray-300 mb-8 text-center">Your Library</h2>
+            <div id="deck-grid" class="grid grid-cols-3 gap-6">
                 </div>
         </div>
     </main>
 
     <script>
+        // [8] КОНФИГУРАЦИЯ - ПРОВЕРИ ДАЛИ КЛЮЧОВЕТЕ СА СЪЩИТЕ
         const S_URL = "https://zfqpfhtbpfdudbpqzbbg.supabase.co";
         const S_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE";
         const sb = window.supabase.createClient(S_URL, S_KEY);
         const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev";
 
         lucide.createIcons();
-        loadDeck(); // Зарежда библиотеката при старт
+        loadDeck();
 
-        // [8] HUB LOGIC (Auto-open)
+        // [9] ЛОГИКА ЗА АВТОМАТИЧНО ОТВАРЯНЕ ПРИ ВЛАЧЕНЕ
         window.addEventListener('dragenter', () => toggleHub(true));
         function toggleHub(open) {
-            const hub = document.getElementById('skyline-hub');
-            const content = document.getElementById('hub-content');
-            if(open) {
-                hub.classList.add('expanded');
-                content.classList.replace('hidden', 'flex');
-                setTimeout(() => content.style.opacity = "1", 100);
-            } else {
-                hub.classList.remove('expanded');
-                content.style.opacity = "0";
-                setTimeout(() => content.classList.replace('flex', 'hidden'), 300);
-            }
+            const h = document.getElementById('skyline-hub');
+            const c = document.getElementById('hub-content');
+            if(open) { h.classList.add('expanded'); c.classList.replace('hidden', 'flex'); setTimeout(() => c.style.opacity="1", 50); }
+            else { h.classList.remove('expanded'); c.style.opacity="0"; setTimeout(() => c.classList.replace('flex', 'hidden'), 300); }
         }
 
-        // [9] STORAGE UPLOAD (Фикс за зареждането)
-        const dropZone = document.getElementById('drop-zone');
-        dropZone.addEventListener('dragover', (e) => e.preventDefault());
-        dropZone.addEventListener('drop', async (e) => {
+        // [10] ЛОГИКА ЗА КАЧВАНЕ (STORAGE)
+        const dz = document.getElementById('drop-zone');
+        dz.addEventListener('dragover', (e) => e.preventDefault());
+        dz.addEventListener('drop', async (e) => {
             e.preventDefault();
             const file = e.dataTransfer.files[0];
             if(!file) return;
-
             document.getElementById('drop-text').innerText = "Uploading...";
-            const path = `${Date.now()}_${file.name}`;
-            const { error } = await sb.storage.from('skyline_files').upload(path, file);
             
-            if(error) {
-                alert("Upload failed: " + error.message);
+            // Качваме в bucket 'skyline_files'
+            const { error } = await sb.storage.from('skyline_files').upload(`${Date.now()}_${file.name}`, file);
+            
+            if(error) { 
+                alert("Upload failed: " + error.message); 
                 document.getElementById('drop-text').innerText = "Error";
-            } else {
-                document.getElementById('drop-text').innerText = "Success!";
-                setTimeout(() => toggleHub(false), 1000);
+            } else { 
+                document.getElementById('drop-text').innerText = "Success!"; 
+                setTimeout(() => toggleHub(false), 1000); 
             }
         });
 
-        // [10] AI & DECK LOGIC
+        // AI И ЗАПИС
         async function runAI() {
             const q = document.getElementById('q-in').value;
             if(!q) return;
-            document.getElementById('run-btn').innerText = "Consulting AI...";
-            const res = await fetch(WORKER, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ prompt: q })
-            });
+            document.getElementById('run-btn').innerText = "Analyzing...";
+            const res = await fetch(WORKER, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ prompt: q }) });
             const data = await res.json();
             document.getElementById('a-out').value = data.answer;
-            document.getElementById('card-inner').classList.add('flipped');
+            document.getElementById('cardElement').classList.add('flipped');
             document.getElementById('run-btn').innerText = "Generate Answer";
         }
 
-        function flipBack() { document.getElementById('card-inner').classList.remove('flipped'); }
+        function flipBack() { document.getElementById('cardElement').classList.remove('flipped'); }
 
         async function saveCard() {
             const f = document.getElementById('q-in').value;
             const b = document.getElementById('a-out').value;
             await sb.from('cards').insert([{ front: f, back: b }]);
-            loadDeck(); // Обновява библиотеката веднага
+            loadDeck();
             flipBack();
         }
 
         async function loadDeck() {
             const { data } = await sb.from('cards').select('*').order('created_at', { ascending: false });
             const grid = document.getElementById('deck-grid');
-            grid.innerHTML = data.map(card => `
+            grid.innerHTML = data.map(c => `
                 <div class="mini-card">
-                    <div class="text-[8px] font-black text-blue-500 uppercase mb-2">Saved Card</div>
-                    <div class="text-xs font-bold truncate">${card.front}</div>
+                    <div class="text-[8px] font-black text-blue-500 uppercase mb-3">Saved Node</div>
+                    <div class="text-sm font-bold text-gray-800">${c.front}</div>
                 </div>
             `).join('');
         }
