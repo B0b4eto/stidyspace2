@@ -22,16 +22,16 @@
             min-height: 100vh;
             color: #05294a;
             margin: 0;
-            transition: background 0.5s var(--ease);
+            overflow-x: hidden;
         }
 
-        /* [1] HEATMAP STYLES */
+        /* HEATMAP */
         .heatmap-grid { display: grid; grid-template-columns: repeat(14, 1fr); gap: 6px; width: fit-content; }
-        .heatmap-day { width: 14px; height: 14px; border-radius: 4px; background: rgba(11, 99, 199, 0.05); transition: all 0.3s; }
+        .heatmap-day { width: 14px; height: 14px; border-radius: 4px; background: rgba(11, 99, 199, 0.1); transition: all 0.3s; }
         .heatmap-active { background: #0b63c7; box-shadow: 0 0 10px rgba(11, 99, 199, 0.3); }
 
-        /* [2] CARD ANIMATIONS */
-        .card-container { perspective: 2000px; width: 850px; height: 500px; }
+        /* КАРТАТА */
+        .card-container { perspective: 2000px; width: min(850px, 90vw); height: 500px; }
         .card-inner {
             position: relative; width: 100%; height: 100%;
             transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -40,33 +40,30 @@
         .card-inner.flipped { transform: rotateY(180deg); }
         .face {
             position: absolute; inset: 0; backface-visibility: hidden;
-            border-radius: 50px; padding: 60px; display: flex; flex-direction: column;
+            border-radius: 50px; padding: clamp(20px, 5vw, 60px); display: flex; flex-direction: column;
             background: white; border: 1px solid rgba(255,255,255,0.8);
             box-shadow: 0 40px 100px -20px rgba(11, 99, 199, 0.08);
         }
         .back { transform: rotateY(180deg); background: #f8fbff; }
 
-        .hidden-view { display: none !important; }
-
         /* PROGRESS BAR */
         .progress-track { width: 300px; height: 6px; background: rgba(11, 99, 199, 0.1); border-radius: 10px; overflow: hidden; }
         .progress-fill { width: 0%; height: 100%; background: var(--accent); transition: width 0.4s var(--ease); }
 
-        .focus-overlay {
-            position: fixed; inset: 0; background: #e6f2ff; z-index: 1000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
+        .hidden-view { display: none !important; }
 
-        /* SMART COLOR CLASSES */
+        /* SMART COLORS */
         .theme-blue { --folder-bg: #eff6ff; --folder-text: #2563eb; }
         .theme-green { --folder-bg: #f0fdf4; --folder-text: #16a34a; }
         .theme-purple { --folder-bg: #faf5ff; --folder-text: #9333ea; }
         .theme-rose { --folder-bg: #fff1f2; --folder-text: #e11d48; }
         .theme-amber { --folder-bg: #fffbeb; --folder-text: #d97706; }
 
-        .deck-folder {
-            background: var(--folder-bg, #ffffff);
-            color: var(--folder-text, #05294a);
+        .deck-folder { background: var(--folder-bg, #ffffff); color: var(--folder-text, #05294a); }
+
+        .focus-overlay {
+            position: fixed; inset: 0; background: #e6f2ff; z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
     </style>
 </head>
@@ -74,14 +71,14 @@
 
     <nav class="max-w-7xl mx-auto px-10 py-8 flex justify-between items-center relative z-50">
         <div class="flex items-center gap-3 cursor-pointer" onclick="showView('create'); playSound('click')">
-            <div class="w-10 h-10 bg-[#0b63c7] rounded-2xl flex items-center justify-center shadow-lg">
+            <div class="w-10 h-10 bg-[#0b63c7] rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
                 <i data-lucide="layers" class="text-white w-5 h-5"></i>
             </div>
             <span class="font-black text-2xl tracking-tighter">Skyline</span>
         </div>
         <div class="flex items-center gap-10">
-            <button onclick="showView('library'); playSound('click')" class="text-sm font-bold text-[#0b63c7]/60 hover:text-[#0b63c7] transition" data-bg="Моите Библиотеки" data-en="My Library">Библиотеки</button>
-            <button onclick="toggleLang(); playSound('click')" id="langBtn" class="px-5 py-2 bg-white/50 backdrop-blur rounded-full text-[10px] font-black uppercase border border-white/50">BG</button>
+            <button onclick="showView('library'); playSound('click')" class="text-sm font-bold text-[#0b63c7]/60 hover:text-[#0b63c7] transition" data-bg="Библиотеки" data-en="Library">Библиотеки</button>
+            <button onclick="toggleLang(); playSound('click')" id="langBtn" class="px-5 py-2 bg-white/50 backdrop-blur rounded-full text-[10px] font-black uppercase tracking-widest">BG</button>
         </div>
     </nav>
 
@@ -90,14 +87,14 @@
             <div class="card-inner" id="mainCard">
                 <div class="face front">
                     <span class="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500 mb-10" data-bg="НОВА ФЛАШКАРТА" data-en="NEW FLASHCARD">НОВА ФЛАШКАРТА</span>
-                    <textarea id="q-in" class="text-5xl font-extrabold bg-transparent outline-none resize-none flex-1 placeholder-blue-100" placeholder="Type a concept..."></textarea>
-                    <button onclick="runAI()" id="genBtn" class="w-full py-6 bg-[#0b63c7] text-white rounded-[30px] font-bold text-xl hover:shadow-xl transition-all">Генерирай Анализ</button>
+                    <textarea id="q-in" class="text-5xl font-extrabold bg-transparent outline-none resize-none flex-1 placeholder-blue-100" placeholder="Напиши тема..."></textarea>
+                    <button onclick="runAI()" id="genBtn" class="w-full py-6 bg-[#0b63c7] text-white rounded-[30px] font-bold text-xl hover:shadow-xl transition-all">Генерирай</button>
                 </div>
                 <div class="face back">
-                    <span class="text-[10px] font-black uppercase tracking-[0.4em] text-green-500 mb-10">AI INSIGHT</span>
+                    <span class="text-[10px] font-black uppercase tracking-[0.4em] text-green-500 mb-10">AI АНАЛИЗ</span>
                     <textarea id="a-out" class="text-2xl font-semibold bg-transparent outline-none resize-none flex-1 text-slate-600"></textarea>
                     <div class="flex gap-4">
-                        <input id="deck-in" type="text" placeholder="Име на библиотека..." class="flex-1 px-8 py-5 bg-white border border-blue-50 rounded-3xl outline-none focus:border-blue-400">
+                        <input id="deck-in" type="text" placeholder="Име на папка..." class="flex-1 px-8 py-5 bg-white border border-blue-50 rounded-3xl outline-none focus:border-blue-400">
                         <button onclick="saveCard()" class="px-12 py-5 bg-black text-white rounded-3xl font-bold">Запази</button>
                     </div>
                 </div>
@@ -111,16 +108,16 @@
                 <h2 class="text-5xl font-black tracking-tighter text-[#05294a]" data-bg="Твоите Библиотеки" data-en="Your Collections">Твоите Библиотеки</h2>
                 <div class="mt-6 flex items-center gap-4">
                     <div id="heatmap" class="heatmap-grid"></div>
-                    <span class="text-[9px] font-black uppercase tracking-widest text-blue-300" data-bg="АКТИВНОСТ ПОСЛЕДНИ 28 ДНИ" data-en="LAST 28 DAYS ACTIVITY">АКТИВНОСТ ПОСЛЕДНИ 28 ДНИ</span>
+                    <span class="text-[9px] font-black uppercase tracking-widest text-blue-300">ACTIVITY HEATMAP</span>
                 </div>
             </div>
         </div>
-        <div id="deck-grid" class="grid grid-cols-3 gap-8"></div>
+        <div id="deck-grid" class="grid grid-cols-1 md:grid-cols-3 gap-8"></div>
     </section>
 
     <section id="view-detail" class="hidden-view max-w-6xl mx-auto px-10 pt-10">
         <div class="flex justify-between items-center mb-12">
-            <button onclick="showView('library'); playSound('click')" class="p-4 bg-white/50 rounded-full border border-white"><i data-lucide="arrow-left"></i></button>
+            <button onclick="showView('library'); playSound('click')" class="p-4 bg-white/50 rounded-full border border-white hover:bg-white transition"><i data-lucide="arrow-left"></i></button>
             <h2 id="deck-title" class="text-3xl font-black tracking-tighter"></h2>
             <button onclick="startFocus(); playSound('click')" class="px-8 py-4 bg-black text-white rounded-full text-[10px] font-black uppercase tracking-widest">Focus Mode</button>
         </div>
@@ -132,7 +129,7 @@
             <span id="focus-counter" class="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">1 of 10</span>
             <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
         </div>
-        <button onclick="showView('detail'); playSound('click')" class="fixed top-10 left-10 p-5 bg-white/50 rounded-full"><i data-lucide="x"></i></button>
+        <button onclick="showView('detail'); playSound('click')" class="fixed top-10 left-10 p-5 bg-white/50 rounded-full border border-white"><i data-lucide="x"></i></button>
         <div class="card-container !h-[550px]" onclick="document.getElementById('focusCardInner').classList.toggle('flipped'); playSound('flip')">
             <div class="card-inner" id="focusCardInner">
                 <div class="face front flex items-center justify-center text-center"><p id="focus-q" class="text-5xl font-extrabold px-10"></p></div>
@@ -140,8 +137,8 @@
             </div>
         </div>
         <div class="fixed bottom-12 flex gap-10">
-            <button onclick="changeFocusCard(-1); playSound('click')" class="p-8 bg-white/50 rounded-full hover:bg-white transition"><i data-lucide="chevron-left"></i></button>
-            <button onclick="changeFocusCard(1); playSound('click')" class="p-8 bg-white/50 rounded-full hover:bg-white transition"><i data-lucide="chevron-right"></i></button>
+            <button onclick="changeFocusCard(-1); playSound('click')" class="p-8 bg-white/50 rounded-full hover:bg-white transition border border-white"><i data-lucide="chevron-left"></i></button>
+            <button onclick="changeFocusCard(1); playSound('click')" class="p-8 bg-white/50 rounded-full hover:bg-white transition border border-white"><i data-lucide="chevron-right"></i></button>
         </div>
     </div>
 
@@ -151,37 +148,30 @@
         const sb = window.supabase.createClient(S_URL, S_KEY);
         const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev";
 
-        let currentLang = 'BG';
         let currentCards = [];
         let currentIdx = 0;
+        let activeDeckId = null;
 
-        // [3] AUDIO ENGINE
+        // [AUDIO]
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playSound(type) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
-
-            if(type === 'click') {
-                osc.type = 'sine'; osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-            } else if(type === 'flip') {
-                osc.type = 'triangle'; osc.frequency.setValueAtTime(200, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.2);
-                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                if(type === 'click') { 
+                    osc.frequency.setValueAtTime(400, audioCtx.currentTime); 
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1); 
+                } else if(type === 'flip') { 
+                    osc.frequency.setValueAtTime(200, audioCtx.currentTime); 
+                    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.2); 
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                }
                 osc.start(); osc.stop(audioCtx.currentTime + 0.2);
-            } else if(type === 'success') {
-                osc.frequency.setValueAtTime(500, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime + 0.3);
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
-            }
+            } catch(e) {}
         }
 
-        // [4] SMART COLOR LOGIC
+        // [THEMING]
         function getThemeClass(name) {
             const themes = ['theme-blue', 'theme-green', 'theme-purple', 'theme-rose', 'theme-amber'];
             let hash = 0;
@@ -189,6 +179,7 @@
             return themes[Math.abs(hash) % themes.length];
         }
 
+        // [VIEWS]
         function showView(view) {
             document.querySelectorAll('section, .focus-overlay').forEach(v => v.classList.add('hidden-view'));
             document.getElementById(`view-${view}`).classList.remove('hidden-view');
@@ -196,17 +187,19 @@
         }
 
         function toggleLang() {
-            currentLang = currentLang === 'BG' ? 'EN' : 'BG';
-            document.getElementById('langBtn').innerText = currentLang;
+            const btn = document.getElementById('langBtn');
+            const isBG = btn.innerText === 'BG';
+            btn.innerText = isBG ? 'EN' : 'BG';
             document.querySelectorAll('[data-bg]').forEach(el => {
-                el.innerText = currentLang === 'BG' ? el.getAttribute('data-bg') : el.getAttribute('data-en');
+                el.innerText = isBG ? el.getAttribute('data-en') : el.getAttribute('data-bg');
             });
         }
 
+        // [LOGIC]
         async function runAI() {
             const q = document.getElementById('q-in').value;
             if(!q) return;
-            document.getElementById('genBtn').innerText = "...";
+            document.getElementById('genBtn').innerText = "Thinking...";
             const res = await fetch(WORKER, { method: 'POST', body: JSON.stringify({ prompt: q }) });
             const data = await res.json();
             document.getElementById('a-out').value = data.answer;
@@ -220,33 +213,26 @@
             const b = document.getElementById('a-out').value;
             let dName = document.getElementById('deck-in').value.trim() || "General";
 
+            // 1. Взимаме или създаваме папка
             let { data: deck } = await sb.from('decks').select('id').eq('name', dName).maybeSingle();
             if(!deck) {
                 const { data: nD } = await sb.from('decks').insert({ name: dName }).select().single();
                 deck = nD;
             }
 
-            await sb.from('flashcards').insert({ front: f, back: b, deck_id: deck.id });
-            playSound('success');
-            alert("Запазено!");
-            location.reload();
-        }
+            // 2. Записваме картата с deck_id
+            const { error } = await sb.from('flashcards').insert({ 
+                front: f, 
+                back: b, 
+                deck_id: deck.id 
+            });
 
-        // [5] RENDER HEATMAP
-        async function renderHeatmap() {
-            const { data } = await sb.from('flashcards').select('created_at');
-            const container = document.getElementById('heatmap');
-            container.innerHTML = '';
-            
-            const dates = data.map(c => new Date(c.created_at).toDateString());
-            const today = new Date();
-
-            for(let i = 27; i >= 0; i--) {
-                const d = new Date(); d.setDate(today.getDate() - i);
-                const isActive = dates.includes(d.toDateString());
-                const dayEl = document.createElement('div');
-                dayEl.className = `heatmap-day ${isActive ? 'heatmap-active' : ''}`;
-                container.appendChild(dayEl);
+            if(!error) {
+                playSound('click');
+                alert("Запазено успешно!");
+                location.reload();
+            } else {
+                console.error(error);
             }
         }
 
@@ -254,7 +240,7 @@
             const { data } = await sb.from('decks').select('*');
             const grid = document.getElementById('deck-grid');
             grid.innerHTML = data.map(d => `
-                <div onclick="openDeck(${d.id}, '${d.name}'); playSound('click')" class="deck-folder p-10 rounded-[45px] border border-blue-50 cursor-pointer hover:-translate-y-2 transition-all shadow-sm ${getThemeClass(d.name)}">
+                <div onclick="openDeck(${d.id}, '${d.name.replace(/'/g, "\\'")}')" class="deck-folder p-10 rounded-[45px] border border-blue-50 cursor-pointer hover:-translate-y-2 transition-all shadow-sm ${getThemeClass(d.name)}">
                     <div class="w-14 h-14 bg-white/50 rounded-2xl flex items-center justify-center mb-8"><i data-lucide="folder" class="w-6 h-6"></i></div>
                     <h3 class="text-2xl font-black tracking-tight">${d.name}</h3>
                 </div>
@@ -263,18 +249,23 @@
         }
 
         async function openDeck(id, name) {
+            activeDeckId = id;
             document.getElementById('deck-title').innerText = name;
             showView('detail');
             const { data } = await sb.from('flashcards').select('*').eq('deck_id', id);
-            currentCards = data;
+            currentCards = data || [];
             renderCards();
         }
 
         function renderCards() {
             const list = document.getElementById('cards-list');
+            if(currentCards.length === 0) {
+                list.innerHTML = `<div class="py-20 text-center text-blue-300 font-bold">Тази папка е празна.</div>`;
+                return;
+            }
             list.innerHTML = currentCards.map(c => `
                 <div class="bg-white/60 backdrop-blur-md p-6 rounded-[30px] border border-white flex justify-between items-center group mb-4">
-                    <p class="font-bold text-lg">${c.front}</p>
+                    <p class="font-bold text-lg text-[#05294a]">${c.front}</p>
                     <button onclick="deleteCard(${c.id})" class="opacity-0 group-hover:opacity-100 p-3 text-red-500 hover:bg-red-50 rounded-full transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                 </div>
             `).join('');
@@ -300,9 +291,11 @@
             document.getElementById('focus-q').innerText = card.front;
             document.getElementById('focus-a').innerText = card.back;
             document.getElementById('focusCardInner').classList.remove('flipped');
-            const percent = ((currentIdx + 1) / currentCards.length) * 100;
-            document.getElementById('focus-counter').innerText = `${currentIdx + 1} of ${currentCards.length}`;
-            document.getElementById('progress-fill').style.width = `${percent}%`;
+            
+            const total = currentCards.length;
+            const current = currentIdx + 1;
+            document.getElementById('focus-counter').innerText = `${current} of ${total}`;
+            document.getElementById('progress-fill').style.width = `${(current/total)*100}%`;
         }
 
         function changeFocusCard(dir) {
@@ -310,7 +303,20 @@
             updateFocusCard();
         }
 
-        lucide.createIcons();
+        async function renderHeatmap() {
+            const { data } = await sb.from('flashcards').select('created_at');
+            const container = document.getElementById('heatmap');
+            if(!container) return;
+            container.innerHTML = '';
+            const dates = data ? data.map(c => new Date(c.created_at).toDateString()) : [];
+            for(let i = 27; i >= 0; i--) {
+                const d = new Date(); d.setDate(new Date().getDate() - i);
+                const isActive = dates.includes(d.toDateString());
+                container.innerHTML += `<div class="heatmap-day ${isActive ? 'heatmap-active' : ''}"></div>`;
+            }
+        }
+
+        window.onload = () => { lucide.createIcons(); renderHeatmap(); };
     </script>
 </body>
 </html>
