@@ -3,39 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skyline Studio | Batch Mode</title>
+    <title>Skyline Studio | Final Fix</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
-
-        :root {
-            --bg: #e6f2ff;
-            --accent: #0b63c7;
-            --ease: cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
+        :root { --accent: #0b63c7; --ease: cubic-bezier(0.4, 0, 0.2, 1); }
         body {
             background: radial-gradient(at top left, #ffffff 0%, #e6f2ff 40%, #cce4ff 100%);
             font-family: 'Plus Jakarta Sans', sans-serif;
-            min-height: 100vh;
-            color: #05294a;
-            margin: 0;
-            overflow-x: hidden;
+            min-height: 100vh; color: #05294a; margin: 0;
         }
-
-        /* HEATMAP */
-        .heatmap-grid { display: grid; grid-template-columns: repeat(14, 1fr); gap: 6px; width: fit-content; }
-        .heatmap-day { width: 14px; height: 14px; border-radius: 4px; background: rgba(11, 99, 199, 0.1); }
-        .heatmap-active { background: #0b63c7; box-shadow: 0 0 10px rgba(11, 99, 199, 0.3); }
-
-        /* КАРТИТЕ */
         .card-container { perspective: 2000px; width: min(800px, 90vw); height: 400px; }
         .card-inner {
             position: relative; width: 100%; height: 100%;
-            transition: transform 0.8s var(--ease);
-            transform-style: preserve-3d; cursor: pointer;
+            transition: transform 0.8s var(--ease); transform-style: preserve-3d; cursor: pointer;
         }
         .card-inner.flipped { transform: rotateY(180deg); }
         .face {
@@ -45,102 +28,96 @@
             box-shadow: 0 30px 60px -12px rgba(11, 99, 199, 0.08);
         }
         .back { transform: rotateY(180deg); background: #f8fbff; }
-
-        /* CAROUSEL */
         .carousel-track {
-            display: flex; gap: 20px; overflow-x: auto; padding: 20px;
+            display: flex; gap: 15px; overflow-x: auto; padding: 20px;
             scroll-behavior: smooth; scrollbar-width: none;
         }
-        .carousel-track::-webkit-scrollbar { display: none; }
         .mini-card {
-            min-width: 200px; height: 120px; background: white; border-radius: 20px;
-            padding: 15px; border: 1px solid white; box-shadow: 0 10px 20px rgba(0,0,0,0.03);
-            flex-shrink: 0; position: relative; transition: 0.3s;
+            min-width: 180px; height: 100px; background: white; border-radius: 20px;
+            padding: 12px; border: 1px solid #eef2f8; flex-shrink: 0; position: relative;
         }
-        .mini-card:hover { transform: translateY(-5px); border-color: var(--accent); }
-
+        .heatmap-day { width: 14px; height: 14px; border-radius: 4px; background: rgba(11, 99, 199, 0.1); }
+        .heatmap-active { background: var(--accent); box-shadow: 0 0 8px rgba(11, 99, 199, 0.4); }
         .hidden-view { display: none !important; }
-
-        /* SMART COLORS FOR DECKS */
-        .theme-blue { --f-bg: #eff6ff; --f-txt: #2563eb; }
-        .theme-green { --f-bg: #f0fdf4; --f-txt: #16a34a; }
-        .theme-purple { --f-bg: #faf5ff; --f-txt: #9333ea; }
-        .theme-rose { --f-bg: #fff1f2; --f-txt: #e11d48; }
-        .deck-folder { background: var(--f-bg, #ffffff); color: var(--f-txt, #05294a); }
+        .theme-blue { --fb: #eff6ff; --ft: #2563eb; }
+        .theme-purple { --fb: #faf5ff; --ft: #9333ea; }
+        .theme-green { --fb: #f0fdf4; --ft: #16a34a; }
+        .deck-folder { background: var(--fb, #fff); color: var(--ft, #05294a); transition: 0.3s; }
     </style>
 </head>
 <body>
 
-    <nav class="max-w-7xl mx-auto px-10 py-8 flex justify-between items-center relative z-50">
+    <nav class="max-w-7xl mx-auto px-8 py-6 flex justify-between items-center">
         <div class="flex items-center gap-3 cursor-pointer" onclick="showView('create')">
-            <div class="w-10 h-10 bg-[#0b63c7] rounded-2xl flex items-center justify-center shadow-lg"><i data-lucide="layers" class="text-white w-5 h-5"></i></div>
+            <div class="w-10 h-10 bg-[#0b63c7] rounded-xl flex items-center justify-center shadow-lg"><i data-lucide="layers" class="text-white w-5 h-5"></i></div>
             <span class="font-black text-2xl tracking-tighter">Skyline</span>
         </div>
-        <div class="flex items-center gap-8">
-            <button onclick="showView('library')" class="text-sm font-bold text-[#0b63c7]/60 hover:text-[#0b63c7]">Библиотеки</button>
-            <button onclick="toggleLang()" id="langBtn" class="px-5 py-2 bg-white/50 backdrop-blur rounded-full text-[10px] font-black">BG</button>
+        <div class="flex gap-6">
+            <button onclick="showView('library')" class="text-sm font-bold opacity-60 hover:opacity-100">Библиотеки</button>
+            <button onclick="window.location.href='homepage.html'" class="text-sm font-bold opacity-60 hover:opacity-100">Начало</button>
         </div>
     </nav>
 
     <section id="view-create" class="flex flex-col items-center pt-5">
-        <div class="card-container mb-10">
+        <div class="card-container mb-8">
             <div class="card-inner" id="mainCard" onclick="this.classList.toggle('flipped')">
                 <div class="face front">
-                    <span class="text-[10px] font-black text-blue-500 mb-5 tracking-widest">ГЕНЕРАТОР</span>
-                    <textarea id="q-in" class="text-3xl font-extrabold bg-transparent outline-none resize-none flex-1" placeholder="Напиши тема тук..." onclick="event.stopPropagation()"></textarea>
-                    <button onclick="runAI(event)" id="genBtn" class="w-full py-5 bg-[#0b63c7] text-white rounded-[25px] font-bold text-lg">Генерирай Анализ</button>
+                    <span class="text-[10px] font-black text-blue-500 mb-4 tracking-widest uppercase">Генерирай нова карта</span>
+                    <textarea id="q-in" class="text-3xl font-extrabold bg-transparent outline-none resize-none flex-1" placeholder="Въведи концепция..." onclick="event.stopPropagation()"></textarea>
+                    <button onclick="runAI(event)" id="genBtn" class="w-full py-4 bg-[#0b63c7] text-white rounded-2xl font-bold">AI Анализ</button>
                 </div>
                 <div class="face back">
-                    <span class="text-[10px] font-black text-green-500 mb-5 tracking-widest">РЕЗУЛТАТ</span>
-                    <textarea id="a-out" class="text-xl font-medium bg-transparent outline-none resize-none flex-1 text-slate-600" onclick="event.stopPropagation()"></textarea>
-                    <button onclick="addToQueue(event)" class="w-full py-5 bg-black text-white rounded-[25px] font-bold">Добави в списъка</button>
+                    <span class="text-[10px] font-black text-green-500 mb-4 tracking-widest uppercase">AI Обяснение</span>
+                    <textarea id="a-out" class="text-lg font-medium bg-transparent outline-none resize-none flex-1 text-slate-600" onclick="event.stopPropagation()"></textarea>
+                    <button onclick="addToQueue(event)" class="w-full py-4 bg-black text-white rounded-2xl font-bold">Добави в списъка</button>
                 </div>
             </div>
         </div>
 
-        <div class="w-full max-w-5xl">
-            <div class="flex justify-between items-center px-10 mb-4">
-                <h4 class="font-black text-xs uppercase tracking-widest text-slate-400">Списък за запазване (<span id="queue-count">0</span>)</h4>
-                <div class="flex gap-4">
-                    <input id="deck-in" type="text" placeholder="Име на библиотека..." class="px-5 py-2 rounded-full border border-blue-100 outline-none focus:border-blue-400 text-sm">
-                    <button onclick="saveAllCards()" id="saveAllBtn" class="px-6 py-2 bg-blue-600 text-white rounded-full text-xs font-black uppercase hidden">Запази всичко</button>
+        <div class="w-full max-w-5xl px-10">
+            <div class="flex justify-between items-center mb-4">
+                <h4 class="font-black text-[10px] uppercase tracking-widest text-slate-400">Списък за запис (<span id="q-count">0</span>)</h4>
+                <div class="flex gap-3">
+                    <input id="deck-in" type="text" placeholder="Име на папка..." class="px-4 py-2 rounded-xl border border-blue-100 outline-none text-sm">
+                    <button onclick="saveAll()" id="saveBtn" class="px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase hidden">Запази всичко</button>
                 </div>
             </div>
-            <div id="carousel" class="carousel-track">
-                </div>
+            <div id="carousel" class="carousel-track"></div>
         </div>
     </section>
 
     <section id="view-library" class="hidden-view max-w-6xl mx-auto px-10 pt-10">
-        <h2 class="text-5xl font-black mb-10 tracking-tighter">Твоите Библиотеки</h2>
-        <div id="heatmap" class="heatmap-grid mb-10"></div>
-        <div id="deck-grid" class="grid grid-cols-1 md:grid-cols-3 gap-8"></div>
+        <div class="flex justify-between items-center mb-10">
+            <h2 class="text-4xl font-black tracking-tighter">Моите Библиотеки</h2>
+            <div id="heatmap" class="flex gap-1"></div>
+        </div>
+        <div id="deck-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
     </section>
 
     <section id="view-detail" class="hidden-view max-w-6xl mx-auto px-10 pt-10">
         <div class="flex justify-between items-center mb-10">
-            <button onclick="showView('library')" class="p-4 bg-white rounded-full shadow-sm"><i data-lucide="arrow-left"></i></button>
-            <h2 id="deck-title" class="text-3xl font-black"></h2>
-            <button onclick="startFocus()" class="px-8 py-4 bg-black text-white rounded-full text-xs font-black uppercase">Focus Mode</button>
+            <button onclick="showView('library')" class="p-3 bg-white rounded-full shadow-sm"><i data-lucide="arrow-left"></i></button>
+            <h2 id="deck-title" class="text-2xl font-black"></h2>
+            <button onclick="startFocus()" class="px-6 py-3 bg-black text-white rounded-full text-xs font-bold uppercase">Учи сега</button>
         </div>
         <div id="cards-list" class="flex flex-col gap-3"></div>
     </section>
 
-    <div id="view-focus" class="focus-overlay hidden-view">
-        <div class="fixed top-10 flex flex-col items-center gap-3">
-            <span id="focus-counter" class="text-[10px] font-black uppercase text-blue-400">1 of 10</span>
-            <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+    <div id="view-focus" class="focus-overlay hidden-view fixed inset-0 bg-[#e6f2ff] z-[100] flex flex-col items-center justify-center">
+        <div class="mb-8 flex flex-col items-center gap-2">
+            <span id="f-counter" class="text-[10px] font-black text-blue-500">1 / 10</span>
+            <div class="w-64 h-1.5 bg-blue-100 rounded-full overflow-hidden"><div id="f-progress" class="h-full bg-blue-600 transition-all duration-300"></div></div>
         </div>
-        <button onclick="showView('detail')" class="fixed top-10 left-10 p-5 bg-white/50 rounded-full"><i data-lucide="x"></i></button>
-        <div class="card-container !h-[500px]" id="focusCard" onclick="this.querySelector('.card-inner').classList.toggle('flipped')">
+        <div class="card-container" onclick="this.querySelector('.card-inner').classList.toggle('flipped')">
             <div class="card-inner">
-                <div class="face front flex items-center justify-center text-center"><p id="focus-q" class="text-4xl font-extrabold px-10"></p></div>
-                <div class="face back flex items-center justify-center text-center"><p id="focus-a" class="text-2xl font-medium text-slate-500 px-10"></p></div>
+                <div class="face front flex items-center justify-center text-center p-10"><p id="f-q" class="text-3xl font-bold"></p></div>
+                <div class="face back flex items-center justify-center text-center p-10"><p id="f-a" class="text-xl text-slate-600"></p></div>
             </div>
         </div>
-        <div class="fixed bottom-12 flex gap-10">
-            <button onclick="changeFocusCard(-1)" class="p-8 bg-white/50 rounded-full hover:bg-white"><i data-lucide="chevron-left"></i></button>
-            <button onclick="changeFocusCard(1)" class="p-8 bg-white/50 rounded-full hover:bg-white"><i data-lucide="chevron-right"></i></button>
+        <div class="mt-10 flex gap-5">
+            <button onclick="changeCard(-1)" class="p-5 bg-white rounded-full shadow-xl"><i data-lucide="chevron-left"></i></button>
+            <button onclick="showView('detail')" class="p-5 bg-white rounded-full shadow-xl text-red-500"><i data-lucide="x"></i></button>
+            <button onclick="changeCard(1)" class="p-5 bg-white rounded-full shadow-xl"><i data-lucide="chevron-right"></i></button>
         </div>
     </div>
 
@@ -150,26 +127,29 @@
         const sb = window.supabase.createClient(S_URL, S_KEY);
         const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev";
 
-        let cardQueue = [];
-        let currentCards = [];
-        let currentIdx = 0;
+        let queue = [];
+        let currentDeckCards = [];
+        let fIdx = 0;
 
-        function showView(view) {
-            document.querySelectorAll('section, .focus-overlay').forEach(v => v.classList.add('hidden-view'));
-            document.getElementById(`view-${view}`).classList.remove('hidden-view');
-            if(view === 'library') loadDecks();
+        function showView(v) {
+            document.querySelectorAll('section, .focus-overlay').forEach(s => s.classList.add('hidden-view'));
+            document.getElementById('view-' + v).classList.remove('hidden-view');
+            if(v === 'library') loadDecks();
         }
 
         async function runAI(e) {
             e.stopPropagation();
             const q = document.getElementById('q-in').value;
             if(!q) return;
-            document.getElementById('genBtn').innerText = "...";
-            const res = await fetch(WORKER, { method: 'POST', body: JSON.stringify({ prompt: q }) });
-            const data = await res.json();
-            document.getElementById('a-out').value = data.answer;
-            document.getElementById('mainCard').classList.add('flipped');
-            document.getElementById('genBtn').innerText = "Генерирай Анализ";
+            const btn = document.getElementById('genBtn');
+            btn.innerText = "Генериране...";
+            try {
+                const res = await fetch(WORKER, { method: 'POST', body: JSON.stringify({ prompt: q }) });
+                const data = await res.json();
+                document.getElementById('a-out').value = data.answer;
+                document.getElementById('mainCard').classList.add('flipped');
+            } catch (err) { alert("AI грешка. Провери конзолата."); }
+            btn.innerText = "AI Анализ";
         }
 
         function addToQueue(e) {
@@ -177,66 +157,64 @@
             const f = document.getElementById('q-in').value;
             const b = document.getElementById('a-out').value;
             if(!f || !b) return;
-            
-            cardQueue.push({ front: f, back: b });
-            updateCarousel();
-            
-            // Reset main card
+            queue.push({ front: f, back: b });
+            updateQueueUI();
+            document.getElementById('mainCard').classList.remove('flipped');
             document.getElementById('q-in').value = '';
             document.getElementById('a-out').value = '';
-            document.getElementById('mainCard').classList.remove('flipped');
         }
 
-        function updateCarousel() {
+        function updateQueueUI() {
             const track = document.getElementById('carousel');
-            const count = document.getElementById('queue-count');
-            const btn = document.getElementById('saveAllBtn');
-            
-            count.innerText = cardQueue.length;
-            btn.classList.toggle('hidden', cardQueue.length === 0);
-            
-            track.innerHTML = cardQueue.map((c, i) => `
-                <div class="mini-card">
-                    <button onclick="cardQueue.splice(${i},1); updateCarousel()" class="absolute top-2 right-2 text-red-400 hover:text-red-600"><i data-lucide="x-circle" class="w-4 h-4"></i></button>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Карта ${i+1}</p>
-                    <p class="text-xs font-extrabold line-clamp-2">${c.front}</p>
+            document.getElementById('q-count').innerText = queue.length;
+            document.getElementById('saveBtn').classList.toggle('hidden', queue.length === 0);
+            track.innerHTML = queue.map((c, i) => `
+                <div class="mini-card group">
+                    <button onclick="queue.splice(${i},1); updateQueueUI()" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg opacity-0 group-hover:opacity-100 transition"><i data-lucide="x" class="w-3 h-3"></i></button>
+                    <p class="text-[9px] font-black text-blue-400 mb-1">КАРТА ${i+1}</p>
+                    <p class="text-[11px] font-bold line-clamp-3">${c.front}</p>
                 </div>
             `).join('');
             lucide.createIcons();
         }
 
-        async function saveAllCards() {
-            let dName = document.getElementById('deck-in').value.trim() || "General";
-            
-            // 1. Get or Create Deck
-            let { data: deck, error: dErr } = await sb.from('decks').select('id').eq('name', dName).maybeSingle();
+        async function saveAll() {
+            const dName = document.getElementById('deck-in').value.trim() || "Общи";
+            const btn = document.getElementById('saveBtn');
+            btn.innerText = "Запис...";
+
+            // 1. Вземи или създай папка
+            let { data: deck } = await sb.from('decks').select('id').eq('name', dName).maybeSingle();
             if(!deck) {
-                const { data: nD } = await sb.from('decks').insert({ name: dName }).select().single();
+                const { data: nD, error: dErr } = await sb.from('decks').insert({ name: dName }).select().single();
+                if(dErr) { console.error(dErr); return; }
                 deck = nD;
             }
 
-            // 2. Insert Batch
-            const cardsToSave = cardQueue.map(c => ({ front: c.front, back: c.back, deck_id: deck.id }));
-            const { error: cErr } = await sb.from('flashcards').insert(cardsToSave);
+            // 2. Масов запис на карти
+            const toInsert = queue.map(c => ({ front: c.front, back: c.back, deck_id: deck.id }));
+            const { error: cErr } = await sb.from('flashcards').insert(toInsert);
 
             if(!cErr) {
-                alert(`Успешно записахте ${cardQueue.length} карти!`);
-                cardQueue = [];
-                updateCarousel();
+                alert(`Успешно записани ${queue.length} карти в "${dName}"!`);
+                queue = [];
+                updateQueueUI();
                 showView('library');
             } else {
-                console.error(cErr);
-                alert("Грешка при записването.");
+                console.error("Грешка при запис:", cErr);
+                alert("Грешка при запис. Провери конзолата (F12).");
             }
+            btn.innerText = "Запази всичко";
         }
 
         async function loadDecks() {
-            const { data } = await sb.from('decks').select('*');
+            const { data, error } = await sb.from('decks').select('*');
+            if(error) return;
             const grid = document.getElementById('deck-grid');
             grid.innerHTML = data.map(d => `
-                <div onclick="openDeck(${d.id}, '${d.name}')" class="deck-folder p-10 rounded-[40px] border border-blue-50 cursor-pointer shadow-sm ${getThemeClass(d.name)}">
-                    <div class="w-12 h-12 bg-white/50 rounded-2xl flex items-center justify-center mb-6"><i data-lucide="folder" class="w-5 h-5"></i></div>
-                    <h3 class="text-2xl font-black">${d.name}</h3>
+                <div onclick="openDeck(${d.id}, '${d.name}')" class="deck-folder p-8 rounded-[35px] border border-white cursor-pointer hover:scale-105 shadow-sm ${getTheme(d.name)}">
+                    <div class="w-10 h-10 bg-white/50 rounded-xl flex items-center justify-center mb-5"><i data-lucide="folder"></i></div>
+                    <h3 class="font-black text-xl">${d.name}</h3>
                 </div>
             `).join('');
             lucide.createIcons();
@@ -246,67 +224,72 @@
         async function openDeck(id, name) {
             document.getElementById('deck-title').innerText = name;
             showView('detail');
-            // ВАЖНО: Тук гарантираме, че търсим по правилното ID
             const { data, error } = await sb.from('flashcards').select('*').eq('deck_id', id);
-            currentCards = data || [];
+            currentDeckCards = data || [];
             renderCards();
         }
 
         function renderCards() {
             const list = document.getElementById('cards-list');
-            if(currentCards.length === 0) {
-                list.innerHTML = `<div class="p-10 text-center text-blue-300 font-bold">Тази библиотека е празна.</div>`;
+            if(currentDeckCards.length === 0) {
+                list.innerHTML = `<p class="text-center py-10 opacity-40">Няма карти в тази папка.</p>`;
                 return;
             }
-            list.innerHTML = currentCards.map(c => `
-                <div class="bg-white/60 p-5 rounded-[25px] flex justify-between items-center group">
-                    <p class="font-bold text-slate-700">${c.front}</p>
-                    <button onclick="deleteCard(${c.id})" class="p-2 text-red-400 opacity-0 group-hover:opacity-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            list.innerHTML = currentDeckCards.map(c => `
+                <div class="bg-white/80 p-5 rounded-2xl flex justify-between items-center group">
+                    <span class="font-bold">${c.front}</span>
+                    <button onclick="deleteCard(${c.id})" class="text-red-400 opacity-0 group-hover:opacity-100 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                 </div>
             `).join('');
             lucide.createIcons();
         }
 
+        async function deleteCard(id) {
+            if(!confirm("Изтриване?")) return;
+            await sb.from('flashcards').delete().eq('id', id);
+            currentDeckCards = currentDeckCards.filter(c => c.id !== id);
+            renderCards();
+        }
+
         function startFocus() {
-            if(currentCards.length === 0) return;
-            currentIdx = 0;
+            if(currentDeckCards.length === 0) return;
+            fIdx = 0;
             showView('focus');
-            updateFocusCard();
+            updateFocus();
         }
 
-        function updateFocusCard() {
-            const card = currentCards[currentIdx];
-            document.getElementById('focus-q').innerText = card.front;
-            document.getElementById('focus-a').innerText = card.back;
-            document.getElementById('focusCard').querySelector('.card-inner').classList.remove('flipped');
-            const perc = ((currentIdx + 1) / currentCards.length) * 100;
-            document.getElementById('focus-counter').innerText = `${currentIdx + 1} of ${currentCards.length}`;
-            document.getElementById('progress-fill').style.width = perc + '%';
+        function updateFocus() {
+            const c = currentDeckCards[fIdx];
+            document.getElementById('f-q').innerText = c.front;
+            document.getElementById('f-a').innerText = c.back;
+            document.getElementById('f-counter').innerText = `${fIdx + 1} / ${currentDeckCards.length}`;
+            document.getElementById('f-progress').style.width = ((fIdx + 1) / currentDeckCards.length * 100) + '%';
+            document.querySelector('#view-focus .card-inner').classList.remove('flipped');
         }
 
-        function changeFocusCard(dir) {
-            currentIdx = (currentIdx + dir + currentCards.length) % currentCards.length;
-            updateFocusCard();
+        function changeCard(d) {
+            fIdx = (fIdx + d + currentDeckCards.length) % currentDeckCards.length;
+            updateFocus();
         }
 
-        function getThemeClass(name) {
-            const themes = ['theme-blue', 'theme-green', 'theme-purple', 'theme-rose'];
-            return themes[name.length % themes.length];
+        function getTheme(n) {
+            const t = ['theme-blue', 'theme-purple', 'theme-green'];
+            return t[n.length % t.length];
         }
 
         async function renderHeatmap() {
             const { data } = await sb.from('flashcards').select('created_at');
-            const container = document.getElementById('heatmap');
-            container.innerHTML = '';
-            const dates = data ? data.map(c => new Date(c.created_at).toDateString()) : [];
-            for(let i = 27; i >= 0; i--) {
-                const d = new Date(); d.setDate(new Date().getDate() - i);
-                const isActive = dates.includes(d.toDateString());
-                container.innerHTML += `<div class="heatmap-day ${isActive ? 'heatmap-active' : ''}"></div>`;
+            const h = document.getElementById('heatmap');
+            h.innerHTML = '';
+            const dates = data ? data.map(d => new Date(d.created_at).toDateString()) : [];
+            for(let i = 13; i >= 0; i--) {
+                const d = new Date(); d.setDate(d.getDate() - i);
+                const active = dates.includes(d.toDateString());
+                h.innerHTML += `<div class="heatmap-day ${active ? 'heatmap-active' : ''}"></div>`;
             }
         }
 
-        lucide.createIcons();
+        window.onload = () => lucide.createIcons();
     </script>
 </body>
 </html>
