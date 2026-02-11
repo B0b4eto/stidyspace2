@@ -2,154 +2,207 @@
 <html lang="bg">
 <head>
     <meta charset="UTF-8">
-    <title>Skyline Flashcards Studio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skyline Studio | Intelligent Interface</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;400;600&display=swap');
+
+        /* [1] ГЛОБАЛНИ ЦВЕТОВЕ И ФОН */
+        :root {
+            --accent: #A855F7;
+            --bg: #030303;
+        }
+
         body {
-            background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
+            background-color: var(--bg);
+            background-image: radial-gradient(circle at 50% -20%, #1e1035 0%, transparent 50%);
             color: white;
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
         }
 
-        /* Glassmorphism ефект от Figma */
-        .glass {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-
-        .card-stage {
-            perspective: 1500px;
-            width: 480px;
-            height: 300px;
-        }
-
-        .card-inner {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-            transform-style: preserve-3d;
-        }
-
-        .card-inner.flipped {
-            transform: rotateY(180deg);
-        }
-
-        .face {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            backface-visibility: hidden;
-            border-radius: 32px;
-            padding: 40px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .back {
-            transform: rotateY(180deg);
-            background: rgba(10, 10, 10, 0.9);
+        /* [2] SKYLINE HUB (DYNAMIC ISLAND) СТИЛОВЕ */
+        #skyline-hub {
+            transition: all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: #000;
             border: 1px solid rgba(168, 85, 247, 0.3);
+            z-index: 100;
         }
 
-        .ai-glow {
-            box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
-            animation: pulse 2s infinite;
+        #skyline-hub.expanded {
+            width: 380px !important;
+            height: 200px !important;
+            border-radius: 28px !important;
+            border-color: rgba(168, 85, 247, 0.6);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9), 0 0 30px rgba(168, 85, 247, 0.15);
         }
 
-        @keyframes pulse {
-            0% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.2); }
-            50% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.5); }
-            100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.2); }
+        /* [3] СТЪКЛЕНИ ЕФЕКТИ (GLASSMORPHISM) */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        textarea {
-            background: transparent;
-            border: none;
-            outline: none;
-            resize: none;
-            width: 100%;
-            text-align: center;
+        /* [4] 3D АНИМАЦИЯ НА КАРТАТА */
+        .card-stage { perspective: 2000px; }
+        .card-inner {
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.1);
         }
+        .card-inner.flipped { transform: rotateY(180deg); }
+        .face { backface-visibility: hidden; position: absolute; inset: 0; border-radius: 40px; }
+        .back { transform: rotateY(180deg); }
+
+        .drop-active { background: rgba(168, 85, 247, 0.08) !important; border-color: var(--accent) !important; }
     </style>
 </head>
 <body>
 
-    <div class="fixed top-8 px-6 py-2 glass rounded-full flex items-center gap-3 text-sm font-medium tracking-wide border-white/5">
-        <div class="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
-        Skyline Hub
-    </div>
+    <div id="skyline-hub" class="fixed top-8 w-40 h-10 rounded-full flex flex-col items-center justify-start overflow-hidden cursor-pointer shadow-2xl">
+        <div id="hub-header" class="flex items-center gap-3 h-10 px-5 transition-opacity duration-300">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-400"></i>
+            <span class="text-[10px] font-semibold tracking-[0.2em] uppercase text-gray-400">Skyline Hub</span>
+        </div>
 
-    <div class="card-stage">
-        <div class="card-inner" id="cardElement">
-            <div class="face front glass">
-                <div class="text-[10px] uppercase tracking-[0.3em] text-purple-400 font-bold">Concept</div>
-                <textarea id="question" class="text-2xl font-light h-32 flex items-center" placeholder="Напиши тема..."></textarea>
-                <button onclick="askAI(event)" id="aiBtn" class="w-full py-4 rounded-2xl bg-white text-black font-bold text-sm hover:bg-gray-200 transition-all transform active:scale-95">
-                    Generate Answer
-                </button>
+        <div id="hub-content" class="hidden w-full p-5 flex-col h-full opacity-0 transition-opacity duration-300">
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Assets</span>
+                <i data-lucide="info" class="w-3 h-3 text-gray-600"></i>
             </div>
-
-            <div class="face back">
-                <div class="text-[10px] uppercase tracking-[0.3em] text-green-400 font-bold">AI Insight</div>
-                <textarea id="answer" class="text-lg text-gray-200 h-32 font-medium" readonly></textarea>
-                <div class="flex gap-2">
-                    <button onclick="flipBack()" class="flex-1 py-3 rounded-xl border border-white/10 text-xs font-bold hover:bg-white/5 transition-all">Flip</button>
-                    <button onclick="saveCard(event)" class="flex-1 py-3 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-500 transition-all">Save to Deck</button>
-                </div>
+            <div id="drop-zone" class="flex-1 border border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all">
+                <i data-lucide="upload-cloud" class="w-5 h-5 text-purple-400/50"></i>
+                <span id="drop-text" class="text-[10px] text-gray-400">Пусни файл тук</span>
             </div>
         </div>
     </div>
 
-    <script>
-        // Инициализация
-        const sb = window.supabase.createClient("https://zfqpfhtbpfdudbpqzbbg.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE");
-        
-        async function askAI(e) {
-            const btn = document.getElementById('aiBtn');
-            const prompt = document.getElementById('question').value;
-            if(!prompt) return;
-
-            btn.innerText = "Consulting AI...";
-            btn.classList.add('ai-glow');
-
-            try {
-                const response = await fetch("https://curly-mountain-4c28.boy05geo.workers.dev", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: prompt })
-                });
-                const data = await response.json();
+    <main class="flex-1 flex flex-col items-center justify-center w-full">
+        <div class="card-stage w-[540px] h-[340px]">
+            <div id="card" class="card-inner w-full h-full relative">
                 
-                document.getElementById('answer').value = data.answer;
-                document.getElementById('cardElement').classList.add('flipped');
-            } catch (err) {
-                alert("Error connecting to AI.");
-            } finally {
-                btn.innerText = "Generate Answer";
-                btn.classList.remove('ai-glow');
+                <div class="face front glass-panel p-10 flex flex-col">
+                    <div class="flex items-center gap-2 mb-8">
+                        <div class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></div>
+                        <span class="text-[9px] font-bold tracking-[0.3em] text-purple-400 uppercase">Input Node</span>
+                    </div>
+                    <textarea id="q-in" class="text-3xl font-light text-center flex-1 bg-transparent border-none outline-none resize-none" placeholder="Какво искаш да научиш?"></textarea>
+                    <button onclick="runAI()" id="run-btn" class="w-full py-5 bg-white text-black rounded-2xl font-bold text-sm hover:bg-purple-400 transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <i data-lucide="zap" class="w-4 h-4 fill-current"></i> Analyze with Skyline
+                    </button>
+                </div>
+
+                <div class="face back glass-panel p-10 flex flex-col bg-black/80">
+                    <div class="flex justify-between items-center mb-8">
+                        <span class="text-[9px] font-bold tracking-[0.3em] text-green-400 uppercase">AI Synthesis</span>
+                        <button onclick="flipBack()"><i data-lucide="rotate-ccw" class="w-4 h-4 text-gray-500 hover:text-white"></i></button>
+                    </div>
+                    <textarea id="a-out" class="text-lg font-light text-center flex-1 text-gray-300 bg-transparent border-none outline-none resize-none" readonly></textarea>
+                    <button onclick="saveToSupabase()" class="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-bold tracking-widest uppercase hover:bg-white/10 transition-all">
+                        Secure to Vault
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // [7] SUPABASE И WORKER КОНФИГУРАЦИЯ
+        const S_URL = "https://zfqpfhtbpfdudbpqzbbg.supabase.co";
+        const S_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE";
+        const sb = window.supabase.createClient(S_URL, S_KEY);
+        const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev";
+
+        lucide.createIcons();
+
+        // [8] ЛОГИКА ЗА SKYLINE HUB (АВТОМАТИЧНО ОТВАРЯНЕ)
+        const hub = document.getElementById('skyline-hub');
+        const content = document.getElementById('hub-content');
+        const header = document.getElementById('hub-header');
+
+        function setHubState(expanded) {
+            if (expanded) {
+                hub.classList.add('expanded');
+                content.classList.replace('hidden', 'flex');
+                setTimeout(() => content.style.opacity = "1", 50);
+                header.style.opacity = "0";
+            } else {
+                hub.classList.remove('expanded');
+                content.style.opacity = "0";
+                setTimeout(() => {
+                    content.classList.replace('flex', 'hidden');
+                    header.style.opacity = "1";
+                }, 300);
             }
         }
 
-        function flipBack() {
-            document.getElementById('cardElement').classList.remove('flipped');
+        window.addEventListener('dragenter', () => setHubState(true));
+        hub.addEventListener('click', () => setHubState(!hub.classList.contains('expanded')));
+
+        // [9] ЛОГИКА ЗА КАЧВАНЕ НА ФАЙЛОВЕ
+        const dropZone = document.getElementById('drop-zone');
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drop-active'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drop-active'));
+        dropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drop-active');
+            const file = e.dataTransfer.files[0];
+            if (!file) return;
+
+            document.getElementById('drop-text').innerText = "Uploading...";
+            const fileName = `${Date.now()}_${file.name}`;
+            const { data, error } = await sb.storage.from('skyline_files').upload(fileName, file);
+
+            if (!error) {
+                document.getElementById('drop-text').innerText = "File Secured!";
+                setTimeout(() => setHubState(false), 1500);
+            }
+        });
+
+        // [10] AI ЛОГИКА (АНАЛИЗ И ОБРЪЩАНЕ)
+        async function runAI() {
+            const prompt = document.getElementById('q-in').value;
+            const btn = document.getElementById('run-btn');
+            if(!prompt) return;
+
+            btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Processing...`;
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(WORKER, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ prompt: prompt })
+                });
+                const data = await res.json();
+                document.getElementById('a-out').value = data.answer;
+                document.getElementById('card').classList.add('flipped');
+            } catch (err) {
+                alert("AI Error.");
+            } finally {
+                btn.innerHTML = `<i data-lucide="zap" class="w-4 h-4 fill-current"></i> Analyze with Skyline`;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
         }
 
-        async function saveCard(e) {
-            const q = document.getElementById('question').value;
-            const a = document.getElementById('answer').value;
+        function flipBack() { document.getElementById('card').classList.remove('flipped'); }
+
+        async function saveToSupabase() {
+            const q = document.getElementById('q-in').value;
+            const a = document.getElementById('a-out').value;
             const { error } = await sb.from('cards').insert([{ front: q, back: a }]);
-            if(!error) alert("Saved to your collection!");
+            if(!error) alert("Saved to collection!");
         }
     </script>
 </body>
