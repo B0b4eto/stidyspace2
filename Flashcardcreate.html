@@ -2,159 +2,160 @@
 <html lang="bg">
 <head>
     <meta charset="UTF-8">
-    <title>Skyline Studio | Official Aesthetic</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skyline Studio | Zen</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;400;600;800&display=swap');
 
-        /* [1] HOMEPAGE VIBE - СВЕТЪЛ И ЧИСТ ФОН */
+        :root {
+            --apple-ease: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         body {
-            background: radial-gradient(at top left, #ffffff 0%, #f0f4f8 50%, #e2e8f0 100%);
+            background: radial-gradient(at top left, #ffffff 0%, #f4f7fb 100%);
             font-family: 'Plus Jakarta Sans', sans-serif;
-            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+            transition: background 0.5s var(--apple-ease);
+        }
+
+        /* [1] АНИМАЦИИ В СТИЛ APPLE */
+        .page-transition {
+            animation: slideIn 0.6s var(--apple-ease);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .main-card {
+            background: #ffffff;
+            border-radius: 40px;
+            box-shadow: 0 40px 100px -20px rgba(0,0,0,0.05);
+            width: 850px;
+            height: 480px;
+            perspective: 2000px;
+            transition: all 0.6s var(--apple-ease);
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        .card-inner.flipped { transform: rotateY(180deg); }
+        .face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 40px; display: flex; flex-direction: column; padding: 60px; }
+        .back { transform: rotateY(180deg); background: #fafafa; border: 1px solid #eee; }
+
+        /* [2] FOCUS MODE */
+        .focus-mode {
+            position: fixed;
+            inset: 0;
+            background: white;
+            z-index: 100;
             display: flex;
             flex-direction: column;
             align-items: center;
-            color: #0f172a;
-            margin: 0;
-            overflow-x: hidden;
+            justify-content: center;
         }
 
-        /* [2] ОГРОМНАТА БЯЛА КАРТА (THE CANVAS) */
-        .main-card {
-            background: #ffffff;
-            border-radius: 50px;
-            box-shadow: 0 50px 100px -20px rgba(0,0,0,0.04), 0 30px 60px -15px rgba(0,0,0,0.02);
-            width: 880px;
-            height: 520px;
-            position: relative;
-            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            transform-style: preserve-3d;
-            border: 1px solid rgba(255,255,255,0.8);
-        }
-
-        .flipped { transform: rotateY(180deg); }
-        .face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 50px; padding: 70px; display: flex; flex-direction: column; }
-        .back { transform: rotateY(180deg); background: #fafafa; border: 1px solid #f0f0f0; }
-
-        /* [3] СЛАЙДЪР С КАРТИ (GLASS STYLE) */
-        .slider-wrapper {
-            width: 100%;
-            max-width: 1200px;
-            margin-top: 60px;
-            padding: 0 40px 100px 40px;
-        }
-
-        .slider-container {
-            display: flex;
-            gap: 20px;
-            overflow-x: auto;
-            padding: 20px 0;
-            scroll-behavior: smooth;
-            scrollbar-width: none; /* Firefox */
-            scroll-snap-type: x mandatory;
-        }
-
-        .slider-container::-webkit-scrollbar { display: none; } /* Chrome/Safari */
-
-        .mini-card {
-            flex: 0 0 300px;
-            height: 180px;
-            background: rgba(255, 255, 255, 0.6);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(0,0,0,0.03);
+        /* [3] ГРАДИЕНТНИ БИБЛИОТЕКИ */
+        .deck-folder {
+            background: white;
             border-radius: 32px;
-            padding: 30px;
-            scroll-snap-align: start;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+            padding: 24px;
+            border: 1px solid rgba(0,0,0,0.03);
+            transition: all 0.4s var(--apple-ease);
+            cursor: pointer;
         }
 
-        .mini-card:hover {
-            background: #ffffff;
-            transform: translateY(-8px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.03);
+        .deck-folder:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+            background: #fdfdfd;
         }
 
-        /* СТИЛОВЕ ЗА ТЕКСТА */
-        textarea {
-            font-weight: 800;
-            color: #0f172a;
-            letter-spacing: -2px;
-            line-height: 1.1;
-        }
-
-        .btn-primary {
-            background: #000000;
-            color: white;
-            border-radius: 24px;
-            font-weight: 700;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary:hover {
-            transform: scale(1.02);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        }
+        /* Скриване на секции */
+        .hidden-section { display: none; }
     </style>
 </head>
-<body>
+<body class="text-slate-900">
 
-    <nav class="w-full max-w-7xl px-12 py-10 flex justify-between items-center">
-        <div class="flex items-center gap-2">
-            <div class="w-3 h-3 bg-black rounded-full"></div>
-            <span class="text-xl font-extrabold tracking-tighter">Skyline Studio</span>
+    <nav class="max-w-7xl mx-auto px-10 py-8 flex justify-between items-center relative z-50">
+        <div class="flex items-center gap-3 cursor-pointer" onclick="showSection('create')">
+            <div class="w-8 h-8 bg-blue-600 rounded-xl"></div>
+            <span class="font-black text-xl tracking-tighter">Skyline</span>
         </div>
-        <div class="flex gap-10 text-xs font-bold uppercase tracking-widest text-gray-400">
-            <a href="#" class="text-black">Create</a>
-            <a href="#" class="hover:text-black transition">Collection</a>
-            <a href="#" class="hover:text-black transition">Settings</a>
+        <div class="flex items-center gap-8">
+            <button onclick="showSection('library')" class="text-sm font-bold text-slate-400 hover:text-black transition" data-i18n="nav-lib">Библиотеки</button>
+            <button onclick="toggleLang()" id="langBtn" class="px-4 py-2 bg-slate-100 rounded-full text-[10px] font-black uppercase">BG</button>
         </div>
     </nav>
 
-    <main class="mt-10 flex flex-col items-center">
+    <section id="view-create" class="page-transition flex flex-col items-center pt-10">
         <div class="main-card" id="cardElement">
-            <div class="face front">
-                <div class="flex justify-between items-center mb-12">
-                    <span class="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">New Insight</span>
-                    <i data-lucide="sparkles" class="w-5 h-5 text-gray-200"></i>
+            <div class="card-inner" id="cardInner">
+                <div class="face front">
+                    <span class="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500 mb-10" data-i18n="new-card">Нова Флашкарта</span>
+                    <textarea id="q-in" class="text-5xl font-extrabold bg-transparent border-none outline-none resize-none flex-1 placeholder-slate-100" placeholder="Type here..."></textarea>
+                    <button onclick="runAI()" id="runBtn" class="w-full py-6 bg-black text-white rounded-[24px] font-bold text-lg hover:scale-[1.02] transition" data-i18n="btn-gen">Генерирай отговор</button>
                 </div>
-                <textarea id="q-in" class="text-6xl bg-transparent border-none outline-none resize-none flex-1 placeholder-gray-100" placeholder="Type a concept..."></textarea>
-                <button onclick="runAI()" id="run-btn" class="btn-primary w-full py-6 text-xl">
-                    Analyze Node
-                </button>
-            </div>
-
-            <div class="face back">
-                <div class="flex justify-between items-center mb-12">
-                    <span class="text-[10px] font-black uppercase tracking-[0.4em] text-green-500">Synthesized Data</span>
-                    <button onclick="flipBack()" class="p-2 hover:bg-gray-100 rounded-full transition"><i data-lucide="x" class="w-5 h-5 text-gray-300"></i></button>
+                <div class="face back">
+                    <span class="text-[10px] font-black uppercase tracking-[0.4em] text-green-500 mb-10" data-i18n="ai-ans">AI Анализ</span>
+                    <textarea id="a-out" class="text-2xl font-semibold bg-transparent border-none outline-none resize-none flex-1 text-slate-600"></textarea>
+                    <div class="flex gap-4">
+                        <input id="deck-name-in" type="text" placeholder="Име на библиотека (опционално)" class="flex-1 px-6 py-4 bg-white border border-slate-100 rounded-2xl text-sm outline-none focus:border-blue-400">
+                        <button onclick="saveFlashcard()" class="px-10 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-200" data-i18n="btn-save">Запази</button>
+                    </div>
                 </div>
-                <textarea id="a-out" class="text-2xl font-semibold bg-transparent border-none outline-none resize-none flex-1 text-gray-600" readonly></textarea>
-                <button onclick="saveCard()" class="w-full py-6 bg-blue-600 text-white rounded-[24px] font-bold text-lg">Save to Library</button>
             </div>
         </div>
+    </section>
 
-        <div class="slider-wrapper">
-            <div class="flex justify-between items-end mb-8 px-2">
-                <div>
-                    <h2 class="text-3xl font-extrabold tracking-tighter">Library</h2>
-                    <p class="text-gray-400 text-sm">Your recent knowledge nodes</p>
+    <section id="view-library" class="hidden-section page-transition max-w-6xl mx-auto px-10 pt-10">
+        <h2 class="text-5xl font-black tracking-tighter mb-12" data-i18n="lib-title">Твоите Библиотеки</h2>
+        <div id="decks-grid" class="grid grid-cols-3 gap-8">
+            </div>
+    </section>
+
+    <section id="view-deck-detail" class="hidden-section page-transition max-w-6xl mx-auto px-10 pt-10">
+        <div class="flex justify-between items-center mb-12">
+            <button onclick="showSection('library')" class="p-3 bg-white rounded-full border border-slate-100"><i data-lucide="arrow-left"></i></button>
+            <h2 id="current-deck-title" class="text-3xl font-black tracking-tighter">Библиотека</h2>
+            <button onclick="enterFocusMode()" class="px-6 py-3 bg-black text-white rounded-full text-xs font-bold" data-i18n="btn-focus">FOCUS MODE</button>
+        </div>
+        <div id="cards-grid" class="grid grid-cols-2 gap-6 pb-20">
+            </div>
+    </section>
+
+    <div id="focus-overlay" class="focus-mode hidden-section page-transition">
+        <button onclick="exitFocusMode()" class="fixed top-10 left-10 p-4 bg-slate-50 rounded-full"><i data-lucide="x"></i></button>
+        <h2 id="focus-deck-name" class="fixed top-12 font-black text-sm uppercase tracking-[0.5em] text-slate-300">Название</h2>
+        
+        <div class="main-card !w-[900px] !h-[550px]" onclick="flipFocusCard()">
+            <div class="card-inner" id="focusCardInner">
+                <div class="face front flex items-center justify-center text-center">
+                    <p id="focus-q" class="text-5xl font-extrabold"></p>
                 </div>
-                <div class="flex gap-3">
-                    <button onclick="moveSlider(-320)" class="p-4 rounded-full bg-white border border-gray-100 hover:bg-gray-50 transition shadow-sm"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
-                    <button onclick="moveSlider(320)" class="p-4 rounded-full bg-white border border-gray-100 hover:bg-gray-50 transition shadow-sm"><i data-lucide="arrow-right" class="w-5 h-5"></i></button>
+                <div class="face back flex items-center justify-center text-center">
+                    <p id="focus-a" class="text-3xl font-medium text-slate-600"></p>
                 </div>
             </div>
-            
-            <div class="slider-container" id="deck-grid">
-                </div>
         </div>
-    </main>
+        
+        <div class="fixed bottom-12 flex gap-10">
+             <button onclick="prevFocusCard()" class="p-6 bg-slate-50 rounded-full hover:bg-slate-100 transition"><i data-lucide="chevron-left"></i></button>
+             <button onclick="nextFocusCard()" class="p-6 bg-slate-50 rounded-full hover:bg-slate-100 transition"><i data-lucide="chevron-right"></i></button>
+        </div>
+    </div>
 
     <script>
         const S_URL = "https://zfqpfhtbpfdudbpqzbbg.supabase.co";
@@ -162,49 +163,149 @@
         const sb = window.supabase.createClient(S_URL, S_KEY);
         const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev";
 
-        lucide.createIcons();
-        loadDeck();
+        let currentLang = 'BG';
+        let currentDeckId = null;
+        let deckCards = [];
+        let focusIndex = 0;
 
-        function moveSlider(distance) {
-            document.getElementById('deck-grid').scrollBy({ left: distance, behavior: 'smooth' });
+        const i18n = {
+            BG: {
+                "nav-lib": "Библиотеки", "new-card": "Нова Флашкарта", "btn-gen": "Генерирай отговор",
+                "ai-ans": "AI Анализ", "btn-save": "Запази", "lib-title": "Твоите Библиотеки",
+                "btn-focus": "ФОКУС РЕЖИМ", "empty-deck": "Празно"
+            },
+            EN: {
+                "nav-lib": "Library", "new-card": "New Flashcard", "btn-gen": "Generate Answer",
+                "ai-ans": "AI Insights", "btn-save": "Save Card", "lib-title": "Your Collections",
+                "btn-focus": "FOCUS MODE", "empty-deck": "Empty"
+            }
+        };
+
+        lucide.createIcons();
+
+        // [LOGIC: NAVIGATION]
+        function showSection(id) {
+            ['view-create', 'view-library', 'view-deck-detail', 'focus-overlay'].forEach(s => document.getElementById(s).classList.add('hidden-section'));
+            document.getElementById(`view-${id}`).classList.remove('hidden-section');
+            if(id === 'library') loadDecks();
         }
 
+        function toggleLang() {
+            currentLang = currentLang === 'BG' ? 'EN' : 'BG';
+            document.getElementById('langBtn').innerText = currentLang;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                el.innerText = i18n[currentLang][el.getAttribute('data-i18n')];
+            });
+        }
+
+        // [LOGIC: AI & SAVE]
         async function runAI() {
             const q = document.getElementById('q-in').value;
             if(!q) return;
-            const btn = document.getElementById('run-btn');
-            btn.innerText = "Processing...";
+            document.getElementById('runBtn').innerText = "...";
             const res = await fetch(WORKER, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ prompt: q }) });
             const data = await res.json();
             document.getElementById('a-out').value = data.answer;
-            document.getElementById('cardElement').classList.add('flipped');
-            btn.innerText = "Analyze Node";
+            document.getElementById('cardInner').classList.add('flipped');
+            document.getElementById('runBtn').innerText = "Готово";
         }
 
-        function flipBack() { document.getElementById('cardElement').classList.remove('flipped'); }
+        async function saveFlashcard() {
+            const q = document.getElementById('q-in').value;
+            const a = document.getElementById('a-out').value;
+            let deckName = document.getElementById('deck-name-in').value.trim();
 
-        async function saveCard() {
-            const f = document.getElementById('q-in').value;
-            const b = document.getElementById('a-out').value;
-            await sb.from('cards').insert([{ front: f, back: b }]);
-            loadDeck();
-            flipBack();
+            if(!deckName) {
+                // AI Generate Deck Name based on content
+                const res = await fetch(WORKER, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ prompt: `Дай кратко заглавие от 1-2 думи за тази тема: ${q}` }) });
+                const data = await res.json();
+                deckName = data.answer.replace(/[".]/g, '');
+            }
+
+            // 1. Find or create deck
+            let { data: deck } = await sb.from('decks').select('id').eq('name', deckName).single();
+            if(!deck) {
+                const { data: newDeck } = await sb.from('decks').insert({ name: deckName }).select().single();
+                deck = newDeck;
+            }
+
+            // 2. Insert card
+            await sb.from('flashcards').insert({ front: q, back: a, deck_id: deck.id });
+            
+            alert(`Запазено в "${deckName}"`);
+            document.getElementById('cardInner').classList.remove('flipped');
+            document.getElementById('q-in').value = "";
+            showSection('library');
         }
 
-        async function loadDeck() {
-            const { data } = await sb.from('cards').select('*').order('created_at', { ascending: false });
-            const grid = document.getElementById('deck-grid');
-            grid.innerHTML = data.map(c => `
-                <div class="mini-card">
-                    <div class="w-10 h-10 bg-black/5 rounded-2xl flex items-center justify-center">
-                        <i data-lucide="book-open" class="w-5 h-5 text-black"></i>
+        // [LOGIC: LIBRARY]
+        async function loadDecks() {
+            const { data: decks } = await sb.from('decks').select('*');
+            const grid = document.getElementById('decks-grid');
+            grid.innerHTML = decks.map(d => `
+                <div class="deck-folder" onclick="openDeck(${d.id}, '${d.name}')">
+                    <div class="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
+                        <i data-lucide="folder" class="text-blue-500"></i>
                     </div>
-                    <div class="text-sm font-bold text-gray-800 line-clamp-3">${c.front}</div>
-                    <div class="text-[9px] font-black uppercase tracking-widest text-gray-300">Vaulted</div>
+                    <h3 class="text-xl font-bold">${d.name}</h3>
                 </div>
             `).join('');
             lucide.createIcons();
         }
+
+        async function openDeck(id, name) {
+            currentDeckId = id;
+            document.getElementById('current-deck-title').innerText = name;
+            showSection('deck-detail');
+            const { data: cards } = await sb.from('flashcards').select('*').eq('deck_id', id);
+            deckCards = cards;
+            renderDeckCards();
+        }
+
+        function renderDeckCards() {
+            const grid = document.getElementById('cards-grid');
+            grid.innerHTML = deckCards.map((c, i) => `
+                <div class="bg-white p-8 rounded-[32px] border border-slate-50 flex justify-between items-center group">
+                    <div class="flex-1">
+                        <p class="font-bold text-lg">${c.front}</p>
+                    </div>
+                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                        <button onclick="deleteCard(${c.id})" class="p-3 text-red-400 hover:bg-red-50 rounded-full"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function deleteCard(id) {
+            if(!confirm("Изтриване?")) return;
+            await sb.from('flashcards').delete().eq('id', id);
+            deckCards = deckCards.filter(c => c.id !== id);
+            renderDeckCards();
+        }
+
+        // [LOGIC: FOCUS MODE]
+        function enterFocusMode() {
+            if(deckCards.length === 0) return;
+            focusIndex = 0;
+            document.getElementById('focus-overlay').classList.remove('hidden-section');
+            document.getElementById('focus-deck-name').innerText = document.getElementById('current-deck-title').innerText;
+            updateFocusCard();
+        }
+
+        function exitFocusMode() { document.getElementById('focus-overlay').classList.add('hidden-section'); }
+
+        function updateFocusCard() {
+            const card = deckCards[focusIndex];
+            document.getElementById('focus-q').innerText = card.front;
+            document.getElementById('focus-a').innerText = card.back;
+            document.getElementById('focusCardInner').classList.remove('flipped');
+        }
+
+        function flipFocusCard() { document.getElementById('focusCardInner').classList.toggle('flipped'); }
+        function nextFocusCard() { focusIndex = (focusIndex + 1) % deckCards.length; updateFocusCard(); }
+        function prevFocusCard() { focusIndex = (focusIndex - 1 + deckCards.length) % deckCards.length; updateFocusCard(); }
+
     </script>
 </body>
 </html>
