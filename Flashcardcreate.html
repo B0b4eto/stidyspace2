@@ -59,7 +59,8 @@
         .theme-rose { --folder-bg: #fff1f2; --folder-text: #e11d48; }
         .theme-amber { --folder-bg: #fffbeb; --folder-text: #d97706; }
 
-        .deck-folder { background: var(--folder-bg, #ffffff); color: var(--folder-text, #05294a); }
+        .deck-folder { background: var(--folder-bg, #ffffff); color: var(--folder-text, #05294a); transition: transform 0.3s; }
+        .deck-folder:hover { transform: translateY(-8px); }
 
         .focus-overlay {
             position: fixed; inset: 0; background: #e6f2ff; z-index: 1000;
@@ -112,13 +113,13 @@
                 </div>
             </div>
         </div>
-        <div id="deck-grid" class="grid grid-cols-1 md:grid-cols-3 gap-8"></div>
+        <div id="deck-grid" class="grid grid-cols-1 md:grid-cols-3 gap-8 pb-20"></div>
     </section>
 
     <section id="view-detail" class="hidden-view max-w-6xl mx-auto px-10 pt-10">
         <div class="flex justify-between items-center mb-12">
             <button onclick="showView('library'); playSound('click')" class="p-4 bg-white/50 rounded-full border border-white hover:bg-white transition"><i data-lucide="arrow-left"></i></button>
-            <h2 id="deck-title" class="text-3xl font-black tracking-tighter"></h2>
+            <h2 id="deck-title" class="text-3xl font-black tracking-tighter text-[#05294a]"></h2>
             <button onclick="startFocus(); playSound('click')" class="px-8 py-4 bg-black text-white rounded-full text-[10px] font-black uppercase tracking-widest">Focus Mode</button>
         </div>
         <div id="cards-list" class="grid grid-cols-1 gap-4 pb-20"></div>
@@ -137,8 +138,8 @@
             </div>
         </div>
         <div class="fixed bottom-12 flex gap-10">
-            <button onclick="changeFocusCard(-1); playSound('click')" class="p-8 bg-white/50 rounded-full hover:bg-white transition border border-white"><i data-lucide="chevron-left"></i></button>
-            <button onclick="changeFocusCard(1); playSound('click')" class="p-8 bg-white/50 rounded-full hover:bg-white transition border border-white"><i data-lucide="chevron-right"></i></button>
+            <button onclick="changeFocusCard(-1); playSound('click')" class="p-8 bg-white/50 rounded-full hover:bg-white transition border border-white shadow-sm"><i data-lucide="chevron-left"></i></button>
+            <button onclick="changeFocusCard(1); playSound('click')" class="p-8 bg-white/50 rounded-full hover:bg-white transition border border-white shadow-sm"><i data-lucide="chevron-right"></i></button>
         </div>
     </div>
 
@@ -150,7 +151,6 @@
 
         let currentCards = [];
         let currentIdx = 0;
-        let activeDeckId = null;
 
         // [AUDIO]
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -160,14 +160,14 @@
                 const gain = audioCtx.createGain();
                 osc.connect(gain); gain.connect(audioCtx.destination);
                 if(type === 'click') { 
-                    osc.frequency.setValueAtTime(400, audioCtx.currentTime); 
+                    osc.frequency.setValueAtTime(440, audioCtx.currentTime); 
                     gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1); 
                 } else if(type === 'flip') { 
-                    osc.frequency.setValueAtTime(200, audioCtx.currentTime); 
-                    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.2); 
-                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                    osc.frequency.setValueAtTime(220, audioCtx.currentTime); 
+                    osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); 
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
                 }
-                osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
             } catch(e) {}
         }
 
@@ -182,7 +182,8 @@
         // [VIEWS]
         function showView(view) {
             document.querySelectorAll('section, .focus-overlay').forEach(v => v.classList.add('hidden-view'));
-            document.getElementById(`view-${view}`).classList.remove('hidden-view');
+            const target = document.getElementById(`view-${view}`);
+            if(target) target.classList.remove('hidden-view');
             if(view === 'library') { loadDecks(); renderHeatmap(); }
         }
 
@@ -195,11 +196,11 @@
             });
         }
 
-        // [LOGIC]
+        // [DATA LOGIC]
         async function runAI() {
             const q = document.getElementById('q-in').value;
             if(!q) return;
-            document.getElementById('genBtn').innerText = "Thinking...";
+            document.getElementById('genBtn').innerText = "...";
             const res = await fetch(WORKER, { method: 'POST', body: JSON.stringify({ prompt: q }) });
             const data = await res.json();
             document.getElementById('a-out').value = data.answer;
@@ -211,36 +212,26 @@
         async function saveCard() {
             const f = document.getElementById('q-in').value;
             const b = document.getElementById('a-out').value;
-            let dName = document.getElementById('deck-in').value.trim() || "General";
+            let dName = document.getElementById('deck-in').value.trim() || "Общи";
 
-            // 1. Взимаме или създаваме папка
             let { data: deck } = await sb.from('decks').select('id').eq('name', dName).maybeSingle();
             if(!deck) {
                 const { data: nD } = await sb.from('decks').insert({ name: dName }).select().single();
                 deck = nD;
             }
 
-            // 2. Записваме картата с deck_id
-            const { error } = await sb.from('flashcards').insert({ 
-                front: f, 
-                back: b, 
-                deck_id: deck.id 
-            });
-
-            if(!error) {
-                playSound('click');
-                alert("Запазено успешно!");
-                location.reload();
-            } else {
-                console.error(error);
-            }
+            await sb.from('flashcards').insert({ front: f, back: b, deck_id: deck.id });
+            playSound('click');
+            alert("Запазено!");
+            location.reload();
         }
 
         async function loadDecks() {
             const { data } = await sb.from('decks').select('*');
             const grid = document.getElementById('deck-grid');
+            if(!data) return;
             grid.innerHTML = data.map(d => `
-                <div onclick="openDeck(${d.id}, '${d.name.replace(/'/g, "\\'")}')" class="deck-folder p-10 rounded-[45px] border border-blue-50 cursor-pointer hover:-translate-y-2 transition-all shadow-sm ${getThemeClass(d.name)}">
+                <div onclick="openDeck(${d.id}, '${d.name.replace(/'/g, "\\'")}')" class="deck-folder p-10 rounded-[45px] border border-blue-50 cursor-pointer shadow-sm ${getThemeClass(d.name)}">
                     <div class="w-14 h-14 bg-white/50 rounded-2xl flex items-center justify-center mb-8"><i data-lucide="folder" class="w-6 h-6"></i></div>
                     <h3 class="text-2xl font-black tracking-tight">${d.name}</h3>
                 </div>
@@ -249,7 +240,6 @@
         }
 
         async function openDeck(id, name) {
-            activeDeckId = id;
             document.getElementById('deck-title').innerText = name;
             showView('detail');
             const { data } = await sb.from('flashcards').select('*').eq('deck_id', id);
@@ -264,9 +254,9 @@
                 return;
             }
             list.innerHTML = currentCards.map(c => `
-                <div class="bg-white/60 backdrop-blur-md p-6 rounded-[30px] border border-white flex justify-between items-center group mb-4">
+                <div class="bg-white/60 backdrop-blur-md p-6 rounded-[30px] border border-white flex justify-between items-center group mb-2">
                     <p class="font-bold text-lg text-[#05294a]">${c.front}</p>
-                    <button onclick="deleteCard(${c.id})" class="opacity-0 group-hover:opacity-100 p-3 text-red-500 hover:bg-red-50 rounded-full transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    <button onclick="deleteCard(${c.id})" class="opacity-0 group-hover:opacity-100 p-3 text-red-400 hover:text-red-600 transition"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                 </div>
             `).join('');
             lucide.createIcons();
@@ -279,6 +269,7 @@
             renderCards();
         }
 
+        // [FOCUS MODE]
         function startFocus() {
             if(currentCards.length === 0) return;
             currentIdx = 0;
@@ -288,6 +279,7 @@
 
         function updateFocusCard() {
             const card = currentCards[currentIdx];
+            if(!card) return;
             document.getElementById('focus-q').innerText = card.front;
             document.getElementById('focus-a').innerText = card.back;
             document.getElementById('focusCardInner').classList.remove('flipped');
