@@ -2,102 +2,70 @@
 <html lang="bg">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skyline Flashcard Studio</title>
+    <title>Skyline Studio</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background: radial-gradient(circle at 50% 10%, #1a1a1a 0%, #000000 100%); height: 100vh; overflow: hidden; color: white; display: flex; flex-direction: column; align-items: center; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        #skyline-island { transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; }
-        #skyline-island.expanded { width: 380px !important; height: 260px !important; border-radius: 28px !important; background: rgba(15, 15, 15, 0.95); }
-        .stage { perspective: 1200px; }
-        .flashcard { transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; }
-        .flashcard.flipped { transform: rotateY(180deg); }
-        .face { backface-visibility: hidden; position: absolute; inset: 0; border-radius: 24px; padding: 2rem; }
-        .back { transform: rotateY(180deg); }
+        body { background: #000; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; }
+        .card { width: 400px; height: 250px; position: relative; cursor: pointer; transition: transform 0.6s; transform-style: preserve-3d; }
+        .card.flipped { transform: rotateY(180deg); }
+        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; padding: 20px; border: 1px solid #333; background: #111; display: flex; flex-direction: column; }
+        .back { transform: rotateY(180deg); background: #050505; border-color: #a855f7; }
     </style>
 </head>
 <body>
 
-    <div id="skyline-island" class="fixed top-6 h-[40px] w-[140px] bg-black rounded-full flex items-center justify-center cursor-pointer border border-white/5">
-        <div class="island-closed flex items-center gap-2 text-xs font-medium text-gray-300">
-            <i data-lucide="cloud" class="w-4 h-4 text-purple-400"></i> Skyline Hub
+    <div class="card" id="fcard" onclick="this.classList.toggle('flipped')">
+        <div class="face front">
+            <span class="text-[10px] text-purple-500 font-bold mb-2">ВЪПРОС</span>
+            <textarea id="q" class="bg-transparent border-none text-xl outline-none flex-1 resize-none" placeholder="Напиши нещо..." onclick="event.stopPropagation()"></textarea>
+            <button onclick="askAI(event)" id="aiBtn" class="bg-white/10 hover:bg-white/20 p-2 rounded-lg text-sm font-bold transition-all">✨ Генерирай отговор</button>
         </div>
-        <div class="island-expanded hidden w-full h-full p-5 opacity-0 flex flex-col">
-            <div class="text-sm font-bold border-b border-white/10 pb-2 mb-2">Library</div>
-            <div id="file-list" class="flex-1 overflow-y-auto text-xs text-gray-400">Drop files here...</div>
-        </div>
-    </div>
-
-    <div class="stage flex-1 flex items-center justify-center w-full">
-        <div id="card" class="flashcard w-[500px] h-[320px] relative">
-            <div class="face front glass flex flex-col justify-between">
-                <div class="text-[10px] font-bold text-purple-400 uppercase tracking-widest">Front</div>
-                <textarea id="front-in" class="bg-transparent border-none outline-none text-2xl text-center flex-1 mt-4" placeholder="Type something..."></textarea>
-                <button id="ai-gen" class="w-full py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all font-bold">Generate with AI</button>
-            </div>
-            <div class="face back glass flex flex-col justify-between bg-black/80">
-                <div class="text-[10px] font-bold text-green-400 uppercase tracking-widest">Answer</div>
-                <textarea id="back-out" class="bg-transparent border-none outline-none text-lg text-center flex-1 mt-4"></textarea>
-                <button onclick="saveToSupabase()" class="w-full py-2 bg-green-500/20 rounded-lg text-xs font-bold uppercase">Save Card</button>
-            </div>
+        <div class="face back">
+            <span class="text-[10px] text-green-500 font-bold mb-2">ОТГОВОР</span>
+            <textarea id="a" class="bg-transparent border-none text-lg outline-none flex-1 resize-none" onclick="event.stopPropagation()"></textarea>
+            <button onclick="save(event)" class="bg-purple-600 p-2 rounded-lg text-sm font-bold">💾 Запази в Supabase</button>
         </div>
     </div>
 
     <script>
-        // Коректна инициализация БЕЗ конфликти
-        const S_URL = "https://zfqpfhtbpfdudbpqzbbg.supabase.co";
-        const S_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE";
-        const supabaseClient = window.supabase.createClient(S_URL, S_KEY); // Променено име
+        // Използваме 'sbClient', за да няма конфликт с името на библиотеката
+        const sbClient = window.supabase.createClient("https://zfqpfhtbpfdudbpqzbbg.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE");
 
-        const WORKER_URL = "https://curly-mountain-4c28.boy05geo.workers.dev"; //
-
-        lucide.createIcons();
-
-        // Анимация на картата
-        const cardEl = document.getElementById('card');
-        cardEl.addEventListener('dblclick', () => cardEl.classList.toggle('flipped'));
-
-        // AI Генериране
-        document.getElementById('ai-gen').addEventListener('click', async (e) => {
+        async function askAI(e) {
             e.stopPropagation();
-            const prompt = document.getElementById('front-in').value;
-            if(!prompt) return alert("Write something!");
+            const btn = document.getElementById('aiBtn');
+            const prompt = document.getElementById('q').value;
+            if(!prompt) return alert("Първо напиши въпрос!");
+
+            btn.innerText = "Мисли...";
+            btn.disabled = true;
 
             try {
-                const res = await fetch(WORKER_URL, {
+                const res = await fetch("https://curly-mountain-4c28.boy05geo.workers.dev", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: prompt, model: "llama-3.2-11b-vision-preview" }) //
+                    body: JSON.stringify({ prompt: prompt })
                 });
                 const data = await res.json();
-                document.getElementById('back-out').value = data.answer || data.result || data.text; // Поддръжка на различни формати
-                cardEl.classList.add('flipped');
+                document.getElementById('a').value = data.answer; //
+                document.getElementById('fcard').classList.add('flipped');
             } catch (err) {
-                alert("AI Error: Check CORS in Worker!");
+                alert("Грешка при връзката с AI. Провери кода на Worker-а!");
+            } finally {
+                btn.innerText = "✨ Генерирай отговор";
+                btn.disabled = false;
             }
-        });
-
-        // Запис в Supabase
-        async function saveToSupabase() {
-            const front = document.getElementById('front-in').value;
-            const back = document.getElementById('back-out').value;
-            const { error } = await supabaseClient.from('cards').insert([{ front, back }]); //
-            if(!error) alert("Saved to Supabase!");
-            else alert("Error: Have you created the 'cards' table?");
         }
 
-        // Капсула анимация
-        const island = document.getElementById('skyline-island');
-        island.addEventListener('click', () => {
-            island.classList.toggle('expanded');
-            const exp = island.querySelector('.island-expanded');
-            exp.classList.toggle('hidden');
-            exp.style.opacity = island.classList.contains('expanded') ? '1' : '0';
-        });
+        async function save(e) {
+            e.stopPropagation();
+            const q = document.getElementById('q').value;
+            const a = document.getElementById('a').value;
+            const { error } = await sbClient.from('cards').insert([{ front: q, back: a }]);
+            if(!error) alert("Успешно запазено!");
+            else alert("Грешка: Провери дали имаш таблица 'cards' в Supabase!");
+        }
     </script>
 </body>
 </html>
