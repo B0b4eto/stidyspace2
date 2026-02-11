@@ -2,69 +2,154 @@
 <html lang="bg">
 <head>
     <meta charset="UTF-8">
-    <title>Skyline Studio</title>
+    <title>Skyline Flashcards Studio</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { background: #000; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; }
-        .card { width: 400px; height: 250px; position: relative; cursor: pointer; transition: transform 0.6s; transform-style: preserve-3d; }
-        .card.flipped { transform: rotateY(180deg); }
-        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; padding: 20px; border: 1px solid #333; background: #111; display: flex; flex-direction: column; }
-        .back { transform: rotateY(180deg); background: #050505; border-color: #a855f7; }
+        body {
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        /* Glassmorphism ефект от Figma */
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .card-stage {
+            perspective: 1500px;
+            width: 480px;
+            height: 300px;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-style: preserve-3d;
+        }
+
+        .card-inner.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 32px;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .back {
+            transform: rotateY(180deg);
+            background: rgba(10, 10, 10, 0.9);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+
+        .ai-glow {
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.2); }
+            50% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.5); }
+            100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.2); }
+        }
+
+        textarea {
+            background: transparent;
+            border: none;
+            outline: none;
+            resize: none;
+            width: 100%;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
 
-    <div class="card" id="fcard" onclick="this.classList.toggle('flipped')">
-        <div class="face front">
-            <span class="text-[10px] text-purple-500 font-bold mb-2">ВЪПРОС</span>
-            <textarea id="q" class="bg-transparent border-none text-xl outline-none flex-1 resize-none" placeholder="Напиши нещо..." onclick="event.stopPropagation()"></textarea>
-            <button onclick="askAI(event)" id="aiBtn" class="bg-white/10 hover:bg-white/20 p-2 rounded-lg text-sm font-bold transition-all">✨ Генерирай отговор</button>
-        </div>
-        <div class="face back">
-            <span class="text-[10px] text-green-500 font-bold mb-2">ОТГОВОР</span>
-            <textarea id="a" class="bg-transparent border-none text-lg outline-none flex-1 resize-none" onclick="event.stopPropagation()"></textarea>
-            <button onclick="save(event)" class="bg-purple-600 p-2 rounded-lg text-sm font-bold">💾 Запази в Supabase</button>
+    <div class="fixed top-8 px-6 py-2 glass rounded-full flex items-center gap-3 text-sm font-medium tracking-wide border-white/5">
+        <div class="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+        Skyline Hub
+    </div>
+
+    <div class="card-stage">
+        <div class="card-inner" id="cardElement">
+            <div class="face front glass">
+                <div class="text-[10px] uppercase tracking-[0.3em] text-purple-400 font-bold">Concept</div>
+                <textarea id="question" class="text-2xl font-light h-32 flex items-center" placeholder="Напиши тема..."></textarea>
+                <button onclick="askAI(event)" id="aiBtn" class="w-full py-4 rounded-2xl bg-white text-black font-bold text-sm hover:bg-gray-200 transition-all transform active:scale-95">
+                    Generate Answer
+                </button>
+            </div>
+
+            <div class="face back">
+                <div class="text-[10px] uppercase tracking-[0.3em] text-green-400 font-bold">AI Insight</div>
+                <textarea id="answer" class="text-lg text-gray-200 h-32 font-medium" readonly></textarea>
+                <div class="flex gap-2">
+                    <button onclick="flipBack()" class="flex-1 py-3 rounded-xl border border-white/10 text-xs font-bold hover:bg-white/5 transition-all">Flip</button>
+                    <button onclick="saveCard(event)" class="flex-1 py-3 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-500 transition-all">Save to Deck</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // Използваме 'sbClient', за да няма конфликт с името на библиотеката
-        const sbClient = window.supabase.createClient("https://zfqpfhtbpfdudbpqzbbg.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE");
-
+        // Инициализация
+        const sb = window.supabase.createClient("https://zfqpfhtbpfdudbpqzbbg.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE");
+        
         async function askAI(e) {
-            e.stopPropagation();
             const btn = document.getElementById('aiBtn');
-            const prompt = document.getElementById('q').value;
-            if(!prompt) return alert("Първо напиши въпрос!");
+            const prompt = document.getElementById('question').value;
+            if(!prompt) return;
 
-            btn.innerText = "Мисли...";
-            btn.disabled = true;
+            btn.innerText = "Consulting AI...";
+            btn.classList.add('ai-glow');
 
             try {
-                const res = await fetch("https://curly-mountain-4c28.boy05geo.workers.dev", {
+                const response = await fetch("https://curly-mountain-4c28.boy05geo.workers.dev", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ prompt: prompt })
                 });
-                const data = await res.json();
-                document.getElementById('a').value = data.answer; //
-                document.getElementById('fcard').classList.add('flipped');
+                const data = await response.json();
+                
+                document.getElementById('answer').value = data.answer;
+                document.getElementById('cardElement').classList.add('flipped');
             } catch (err) {
-                alert("Грешка при връзката с AI. Провери кода на Worker-а!");
+                alert("Error connecting to AI.");
             } finally {
-                btn.innerText = "✨ Генерирай отговор";
-                btn.disabled = false;
+                btn.innerText = "Generate Answer";
+                btn.classList.remove('ai-glow');
             }
         }
 
-        async function save(e) {
-            e.stopPropagation();
-            const q = document.getElementById('q').value;
-            const a = document.getElementById('a').value;
-            const { error } = await sbClient.from('cards').insert([{ front: q, back: a }]);
-            if(!error) alert("Успешно запазено!");
-            else alert("Грешка: Провери дали имаш таблица 'cards' в Supabase!");
+        function flipBack() {
+            document.getElementById('cardElement').classList.remove('flipped');
+        }
+
+        async function saveCard(e) {
+            const q = document.getElementById('question').value;
+            const a = document.getElementById('answer').value;
+            const { error } = await sb.from('cards').insert([{ front: q, back: a }]);
+            if(!error) alert("Saved to your collection!");
         }
     </script>
 </body>
