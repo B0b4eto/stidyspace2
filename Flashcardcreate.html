@@ -3,120 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skyline Studio | Zen</title>
+    <title>Skyline Studio | Sensory Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
 
-        :root { --ease: cubic-bezier(0.4, 0, 0.2, 1); }
-        body {
-            background: radial-gradient(at top left, #ffffff 0%, #f5f8ff 100%);
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            color: #1e293b;
-            overflow-x: hidden;
+        :root {
+            --bg: #e6f2ff;
+            --accent: #0b63c7;
+            --ease: cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Анимации */
-        .fade-in { animation: fadeIn 0.5s var(--ease) forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        body {
+            background: radial-gradient(at top left, #ffffff 0%, #e6f2ff 40%, #cce4ff 100%);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            color: #05294a;
+            margin: 0;
+            transition: background 0.5s var(--ease);
+        }
 
-        /* Картата */
+        /* [1] HEATMAP STYLES */
+        .heatmap-grid { display: grid; grid-template-columns: repeat(14, 1fr); gap: 6px; width: fit-content; }
+        .heatmap-day { width: 14px; height: 14px; border-radius: 4px; background: rgba(11, 99, 199, 0.05); transition: all 0.3s; }
+        .heatmap-active { background: #0b63c7; box-shadow: 0 0 10px rgba(11, 99, 199, 0.3); }
+
+        /* [2] CARD ANIMATIONS */
         .card-container { perspective: 2000px; width: 850px; height: 500px; }
         .card-inner {
             position: relative; width: 100%; height: 100%;
-            transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             transform-style: preserve-3d; cursor: pointer;
         }
         .card-inner.flipped { transform: rotateY(180deg); }
         .face {
             position: absolute; inset: 0; backface-visibility: hidden;
-            border-radius: 48px; padding: 60px; display: flex; flex-direction: column;
-            background: white; border: 1px solid rgba(0,0,0,0.03);
-            box-shadow: 0 40px 80px -20px rgba(0,0,0,0.05);
+            border-radius: 50px; padding: 60px; display: flex; flex-direction: column;
+            background: white; border: 1px solid rgba(255,255,255,0.8);
+            box-shadow: 0 40px 100px -20px rgba(11, 99, 199, 0.08);
         }
-        .back { transform: rotateY(180deg); background: #fcfdfe; }
-
-        /* Focus Mode */
-        .focus-overlay {
-            position: fixed; inset: 0; background: white; z-index: 100;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-        
-        .glass-btn {
-            background: rgba(255,255,255,0.8); backdrop-filter: blur(10px);
-            border: 1px solid rgba(0,0,0,0.05); transition: all 0.3s var(--ease);
-        }
-        .glass-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        .back { transform: rotateY(180deg); background: #f8fbff; }
 
         .hidden-view { display: none !important; }
+
+        /* PROGRESS BAR */
+        .progress-track { width: 300px; height: 6px; background: rgba(11, 99, 199, 0.1); border-radius: 10px; overflow: hidden; }
+        .progress-fill { width: 0%; height: 100%; background: var(--accent); transition: width 0.4s var(--ease); }
+
+        .focus-overlay {
+            position: fixed; inset: 0; background: #e6f2ff; z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        /* SMART COLOR CLASSES */
+        .theme-blue { --folder-bg: #eff6ff; --folder-text: #2563eb; }
+        .theme-green { --folder-bg: #f0fdf4; --folder-text: #16a34a; }
+        .theme-purple { --folder-bg: #faf5ff; --folder-text: #9333ea; }
+        .theme-rose { --folder-bg: #fff1f2; --folder-text: #e11d48; }
+        .theme-amber { --folder-bg: #fffbeb; --folder-text: #d97706; }
+
+        .deck-folder {
+            background: var(--folder-bg, #ffffff);
+            color: var(--folder-text, #05294a);
+        }
     </style>
 </head>
 <body>
 
     <nav class="max-w-7xl mx-auto px-10 py-8 flex justify-between items-center relative z-50">
-        <div class="flex items-center gap-3 cursor-pointer" onclick="showView('create')">
-            <div class="w-8 h-8 bg-blue-600 rounded-xl"></div>
-            <span class="font-black text-xl tracking-tighter">Skyline</span>
+        <div class="flex items-center gap-3 cursor-pointer" onclick="showView('create'); playSound('click')">
+            <div class="w-10 h-10 bg-[#0b63c7] rounded-2xl flex items-center justify-center shadow-lg">
+                <i data-lucide="layers" class="text-white w-5 h-5"></i>
+            </div>
+            <span class="font-black text-2xl tracking-tighter">Skyline</span>
         </div>
-        <div class="flex items-center gap-6">
-            <button onclick="showView('library')" class="text-sm font-bold text-slate-400 hover:text-black transition" data-bg="Библиотеки" data-en="Library">Библиотеки</button>
-            <button onclick="toggleLang()" class="w-10 h-10 glass-btn rounded-full text-[10px] font-black" id="langBtn">BG</button>
+        <div class="flex items-center gap-10">
+            <button onclick="showView('library'); playSound('click')" class="text-sm font-bold text-[#0b63c7]/60 hover:text-[#0b63c7] transition" data-bg="Моите Библиотеки" data-en="My Library">Библиотеки</button>
+            <button onclick="toggleLang(); playSound('click')" id="langBtn" class="px-5 py-2 bg-white/50 backdrop-blur rounded-full text-[10px] font-black uppercase border border-white/50">BG</button>
         </div>
     </nav>
 
-    <section id="view-create" class="fade-in flex flex-col items-center pt-10">
+    <section id="view-create" class="flex flex-col items-center pt-10">
         <div class="card-container">
             <div class="card-inner" id="mainCard">
                 <div class="face front">
                     <span class="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500 mb-10" data-bg="НОВА ФЛАШКАРТА" data-en="NEW FLASHCARD">НОВА ФЛАШКАРТА</span>
-                    <textarea id="q-in" class="text-5xl font-extrabold bg-transparent outline-none resize-none flex-1 placeholder-slate-200" placeholder="Type topic..."></textarea>
-                    <button onclick="generateAI()" id="genBtn" class="w-full py-6 bg-black text-white rounded-3xl font-bold text-lg hover:scale-[1.01] transition active:scale-95">Генерирай</button>
+                    <textarea id="q-in" class="text-5xl font-extrabold bg-transparent outline-none resize-none flex-1 placeholder-blue-100" placeholder="Type a concept..."></textarea>
+                    <button onclick="runAI()" id="genBtn" class="w-full py-6 bg-[#0b63c7] text-white rounded-[30px] font-bold text-xl hover:shadow-xl transition-all">Генерирай Анализ</button>
                 </div>
                 <div class="face back">
-                    <span class="text-[10px] font-black uppercase tracking-[0.4em] text-green-500 mb-10">AI ANALYSIS</span>
+                    <span class="text-[10px] font-black uppercase tracking-[0.4em] text-green-500 mb-10">AI INSIGHT</span>
                     <textarea id="a-out" class="text-2xl font-semibold bg-transparent outline-none resize-none flex-1 text-slate-600"></textarea>
                     <div class="flex gap-4">
-                        <input id="deck-in" type="text" placeholder="Библиотека (или остави празно)" class="flex-1 px-6 py-4 bg-white border border-slate-100 rounded-2xl outline-none focus:border-blue-400 transition">
-                        <button onclick="saveCard()" class="px-10 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-100">Запази</button>
+                        <input id="deck-in" type="text" placeholder="Име на библиотека..." class="flex-1 px-8 py-5 bg-white border border-blue-50 rounded-3xl outline-none focus:border-blue-400">
+                        <button onclick="saveCard()" class="px-12 py-5 bg-black text-white rounded-3xl font-bold">Запази</button>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <section id="view-library" class="hidden-view fade-in max-w-6xl mx-auto px-10 pt-10">
-        <h2 class="text-5xl font-black tracking-tighter mb-12" data-bg="Твоите Библиотеки" data-en="Your Libraries">Твоите Библиотеки</h2>
-        <div id="deck-list" class="grid grid-cols-3 gap-8"></div>
-    </section>
-
-    <section id="view-detail" class="hidden-view fade-in max-w-6xl mx-auto px-10 pt-10">
-        <div class="flex justify-between items-center mb-12">
-            <button onclick="showView('library')" class="p-4 glass-btn rounded-full"><i data-lucide="arrow-left"></i></button>
-            <h2 id="detail-title" class="text-3xl font-black tracking-tighter"></h2>
-            <button onclick="startFocus()" class="px-8 py-4 bg-black text-white rounded-full text-xs font-black tracking-widest uppercase">Focus Mode</button>
-        </div>
-        <div id="card-list" class="grid grid-cols-1 gap-4"></div>
-    </section>
-
-    <div id="view-focus" class="focus-overlay hidden-view">
-        <button onclick="showView('detail')" class="fixed top-10 left-10 p-4 glass-btn rounded-full"><i data-lucide="x"></i></button>
-        <h2 id="focus-title" class="fixed top-12 font-black text-sm uppercase tracking-[0.5em] text-slate-300">TITLE</h2>
-        
-        <div class="card-container !h-[550px]" onclick="document.getElementById('focusCard').classList.toggle('flipped')">
-            <div class="card-inner" id="focusCard">
-                <div class="face front flex items-center justify-center text-center">
-                    <p id="focus-q" class="text-5xl font-extrabold"></p>
-                </div>
-                <div class="face back flex items-center justify-center text-center">
-                    <p id="focus-a" class="text-3xl font-medium text-slate-500"></p>
+    <section id="view-library" class="hidden-view max-w-6xl mx-auto px-10 pt-10">
+        <div class="flex justify-between items-end mb-12">
+            <div>
+                <h2 class="text-5xl font-black tracking-tighter text-[#05294a]" data-bg="Твоите Библиотеки" data-en="Your Collections">Твоите Библиотеки</h2>
+                <div class="mt-6 flex items-center gap-4">
+                    <div id="heatmap" class="heatmap-grid"></div>
+                    <span class="text-[9px] font-black uppercase tracking-widest text-blue-300" data-bg="АКТИВНОСТ ПОСЛЕДНИ 28 ДНИ" data-en="LAST 28 DAYS ACTIVITY">АКТИВНОСТ ПОСЛЕДНИ 28 ДНИ</span>
                 </div>
             </div>
         </div>
+        <div id="deck-grid" class="grid grid-cols-3 gap-8"></div>
+    </section>
+
+    <section id="view-detail" class="hidden-view max-w-6xl mx-auto px-10 pt-10">
+        <div class="flex justify-between items-center mb-12">
+            <button onclick="showView('library'); playSound('click')" class="p-4 bg-white/50 rounded-full border border-white"><i data-lucide="arrow-left"></i></button>
+            <h2 id="deck-title" class="text-3xl font-black tracking-tighter"></h2>
+            <button onclick="startFocus(); playSound('click')" class="px-8 py-4 bg-black text-white rounded-full text-[10px] font-black uppercase tracking-widest">Focus Mode</button>
+        </div>
+        <div id="cards-list" class="grid grid-cols-1 gap-4 pb-20"></div>
+    </section>
+
+    <div id="view-focus" class="focus-overlay hidden-view">
+        <div class="fixed top-10 flex flex-col items-center gap-3">
+            <span id="focus-counter" class="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">1 of 10</span>
+            <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+        </div>
+        <button onclick="showView('detail'); playSound('click')" class="fixed top-10 left-10 p-5 bg-white/50 rounded-full"><i data-lucide="x"></i></button>
+        <div class="card-container !h-[550px]" onclick="document.getElementById('focusCardInner').classList.toggle('flipped'); playSound('flip')">
+            <div class="card-inner" id="focusCardInner">
+                <div class="face front flex items-center justify-center text-center"><p id="focus-q" class="text-5xl font-extrabold px-10"></p></div>
+                <div class="face back flex items-center justify-center text-center"><p id="focus-a" class="text-3xl font-medium text-slate-500 px-10"></p></div>
+            </div>
+        </div>
         <div class="fixed bottom-12 flex gap-10">
-            <button onclick="prevCard()" class="p-6 glass-btn rounded-full"><i data-lucide="chevron-left"></i></button>
-            <button onclick="nextCard()" class="p-6 glass-btn rounded-full"><i data-lucide="chevron-right"></i></button>
+            <button onclick="changeFocusCard(-1); playSound('click')" class="p-8 bg-white/50 rounded-full hover:bg-white transition"><i data-lucide="chevron-left"></i></button>
+            <button onclick="changeFocusCard(1); playSound('click')" class="p-8 bg-white/50 rounded-full hover:bg-white transition"><i data-lucide="chevron-right"></i></button>
         </div>
     </div>
 
@@ -126,28 +151,59 @@
         const sb = window.supabase.createClient(S_URL, S_KEY);
         const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev";
 
-        let currentDeck = null;
-        let cards = [];
-        let index = 0;
-        let lang = 'BG';
+        let currentLang = 'BG';
+        let currentCards = [];
+        let currentIdx = 0;
 
-        lucide.createIcons();
+        // [3] AUDIO ENGINE
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+
+            if(type === 'click') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            } else if(type === 'flip') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+            } else if(type === 'success') {
+                osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            }
+        }
+
+        // [4] SMART COLOR LOGIC
+        function getThemeClass(name) {
+            const themes = ['theme-blue', 'theme-green', 'theme-purple', 'theme-rose', 'theme-amber'];
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            return themes[Math.abs(hash) % themes.length];
+        }
 
         function showView(view) {
-            document.querySelectorAll('section, .focus-overlay').forEach(el => el.classList.add('hidden-view'));
+            document.querySelectorAll('section, .focus-overlay').forEach(v => v.classList.add('hidden-view'));
             document.getElementById(`view-${view}`).classList.remove('hidden-view');
-            if(view === 'library') loadDecks();
+            if(view === 'library') { loadDecks(); renderHeatmap(); }
         }
 
         function toggleLang() {
-            lang = lang === 'BG' ? 'EN' : 'BG';
-            document.getElementById('langBtn').innerText = lang;
+            currentLang = currentLang === 'BG' ? 'EN' : 'BG';
+            document.getElementById('langBtn').innerText = currentLang;
             document.querySelectorAll('[data-bg]').forEach(el => {
-                el.innerText = lang === 'BG' ? el.getAttribute('data-bg') : el.getAttribute('data-en');
+                el.innerText = currentLang === 'BG' ? el.getAttribute('data-bg') : el.getAttribute('data-en');
             });
         }
 
-        async function generateAI() {
+        async function runAI() {
             const q = document.getElementById('q-in').value;
             if(!q) return;
             document.getElementById('genBtn').innerText = "...";
@@ -155,19 +211,14 @@
             const data = await res.json();
             document.getElementById('a-out').value = data.answer;
             document.getElementById('mainCard').classList.add('flipped');
+            playSound('flip');
             document.getElementById('genBtn').innerText = "Готово";
         }
 
         async function saveCard() {
-            const q = document.getElementById('q-in').value;
-            const a = document.getElementById('a-out').value;
-            let dName = document.getElementById('deck-in').value.trim();
-
-            if(!dName) {
-                const res = await fetch(WORKER, { method: 'POST', body: JSON.stringify({ prompt: `Дай 1 дума заглавие за: ${q}` }) });
-                const data = await res.json();
-                dName = data.answer.replace(/[".]/g, '');
-            }
+            const f = document.getElementById('q-in').value;
+            const b = document.getElementById('a-out').value;
+            let dName = document.getElementById('deck-in').value.trim() || "General";
 
             let { data: deck } = await sb.from('decks').select('id').eq('name', dName).maybeSingle();
             if(!deck) {
@@ -175,38 +226,56 @@
                 deck = nD;
             }
 
-            await sb.from('flashcards').insert({ front: q, back: a, deck_id: deck.id });
+            await sb.from('flashcards').insert({ front: f, back: b, deck_id: deck.id });
+            playSound('success');
             alert("Запазено!");
             location.reload();
         }
 
+        // [5] RENDER HEATMAP
+        async function renderHeatmap() {
+            const { data } = await sb.from('flashcards').select('created_at');
+            const container = document.getElementById('heatmap');
+            container.innerHTML = '';
+            
+            const dates = data.map(c => new Date(c.created_at).toDateString());
+            const today = new Date();
+
+            for(let i = 27; i >= 0; i--) {
+                const d = new Date(); d.setDate(today.getDate() - i);
+                const isActive = dates.includes(d.toDateString());
+                const dayEl = document.createElement('div');
+                dayEl.className = `heatmap-day ${isActive ? 'heatmap-active' : ''}`;
+                container.appendChild(dayEl);
+            }
+        }
+
         async function loadDecks() {
             const { data } = await sb.from('decks').select('*');
-            const list = document.getElementById('deck-list');
-            list.innerHTML = data.map(d => `
-                <div onclick="openDeck(${d.id}, '${d.name}')" class="bg-white p-8 rounded-[40px] border border-slate-50 cursor-pointer hover:translate-y-[-5px] transition shadow-sm">
-                    <div class="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mb-6"><i data-lucide="folder" class="text-blue-500"></i></div>
-                    <h3 class="text-xl font-extrabold">${d.name}</h3>
+            const grid = document.getElementById('deck-grid');
+            grid.innerHTML = data.map(d => `
+                <div onclick="openDeck(${d.id}, '${d.name}'); playSound('click')" class="deck-folder p-10 rounded-[45px] border border-blue-50 cursor-pointer hover:-translate-y-2 transition-all shadow-sm ${getThemeClass(d.name)}">
+                    <div class="w-14 h-14 bg-white/50 rounded-2xl flex items-center justify-center mb-8"><i data-lucide="folder" class="w-6 h-6"></i></div>
+                    <h3 class="text-2xl font-black tracking-tight">${d.name}</h3>
                 </div>
             `).join('');
             lucide.createIcons();
         }
 
         async function openDeck(id, name) {
-            currentDeck = id;
-            document.getElementById('detail-title').innerText = name;
+            document.getElementById('deck-title').innerText = name;
             showView('detail');
             const { data } = await sb.from('flashcards').select('*').eq('deck_id', id);
-            cards = data;
+            currentCards = data;
             renderCards();
         }
 
         function renderCards() {
-            const list = document.getElementById('card-list');
-            list.innerHTML = cards.map(c => `
-                <div class="bg-white p-6 rounded-3xl flex justify-between items-center group">
-                    <p class="font-bold">${c.front}</p>
-                    <button onclick="deleteCard(${c.id})" class="opacity-0 group-hover:opacity-100 p-3 text-red-400 hover:bg-red-50 rounded-full transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            const list = document.getElementById('cards-list');
+            list.innerHTML = currentCards.map(c => `
+                <div class="bg-white/60 backdrop-blur-md p-6 rounded-[30px] border border-white flex justify-between items-center group mb-4">
+                    <p class="font-bold text-lg">${c.front}</p>
+                    <button onclick="deleteCard(${c.id})" class="opacity-0 group-hover:opacity-100 p-3 text-red-500 hover:bg-red-50 rounded-full transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                 </div>
             `).join('');
             lucide.createIcons();
@@ -215,26 +284,33 @@
         async function deleteCard(id) {
             if(!confirm("Изтриване?")) return;
             await sb.from('flashcards').delete().eq('id', id);
-            cards = cards.filter(c => c.id !== id);
+            currentCards = currentCards.filter(c => c.id !== id);
             renderCards();
         }
 
         function startFocus() {
-            if(!cards.length) return;
-            index = 0;
+            if(currentCards.length === 0) return;
+            currentIdx = 0;
             showView('focus');
-            document.getElementById('focus-title').innerText = document.getElementById('detail-title').innerText;
-            updateFocus();
+            updateFocusCard();
         }
 
-        function updateFocus() {
-            document.getElementById('focus-q').innerText = cards[index].front;
-            document.getElementById('focus-a').innerText = cards[index].back;
-            document.getElementById('focusCard').classList.remove('flipped');
+        function updateFocusCard() {
+            const card = currentCards[currentIdx];
+            document.getElementById('focus-q').innerText = card.front;
+            document.getElementById('focus-a').innerText = card.back;
+            document.getElementById('focusCardInner').classList.remove('flipped');
+            const percent = ((currentIdx + 1) / currentCards.length) * 100;
+            document.getElementById('focus-counter').innerText = `${currentIdx + 1} of ${currentCards.length}`;
+            document.getElementById('progress-fill').style.width = `${percent}%`;
         }
 
-        function nextCard() { index = (index + 1) % cards.length; updateFocus(); }
-        function prevCard() { index = (index - 1 + cards.length) % cards.length; updateFocus(); }
+        function changeFocusCard(dir) {
+            currentIdx = (currentIdx + dir + currentCards.length) % currentCards.length;
+            updateFocusCard();
+        }
+
+        lucide.createIcons();
     </script>
 </body>
 </html>
