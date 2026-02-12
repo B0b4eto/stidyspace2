@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skyline Studio | Mastermind</title>
+    <title>Skyline Studio | Ultimate AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -45,29 +45,31 @@
         .mode-switch {
             position: relative; background: #e0eaff; border-radius: 99px; padding: 5px; display: flex; cursor: pointer;
         }
-        .mode-switch input { display: none; }
         .slider {
             position: absolute; top: 5px; left: 5px; width: calc(50% - 5px); height: calc(100% - 10px);
             background: white; border-radius: 99px; transition: 0.4s var(--ease);
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
-        input:checked + .slider { left: 50%; }
 
         .hidden-view { display: none !important; opacity: 0; }
         .view-anim { animation: fadeIn 0.5s forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* AI GRADING STYLES */
-        .grade-perfect { border-color: var(--success); box-shadow: 0 0 30px rgba(16, 185, 129, 0.2); }
-        .grade-bad { border-color: var(--error); box-shadow: 0 0 30px rgba(239, 68, 68, 0.2); }
-        
-        /* SUMMARY GRID */
+        /* SUMMARY & LOADING */
         .summary-card {
             background: white; border-radius: 16px; padding: 15px; margin-bottom: 10px;
             border-left: 5px solid #ccc; transition: 0.3s;
         }
         .res-correct { border-left-color: var(--success); }
         .res-wrong { border-left-color: var(--error); }
+
+        /* LOAD SPINNER */
+        .loader {
+            width: 60px; height: 60px; border: 5px solid #FFF; border-bottom-color: transparent;
+            border-radius: 50%; display: inline-block; box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -147,7 +149,7 @@
                 </div>
                 <label class="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" id="shuffle-toggle" class="sr-only peer">
-                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-purple-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                 </label>
             </div>
 
@@ -155,6 +157,12 @@
             <button onclick="showView('library')" class="mt-4 text-xs font-bold text-slate-400 hover:text-slate-600">Отказ</button>
         </div>
     </section>
+
+    <div id="view-calculating" class="hidden-view fixed inset-0 bg-[#05294a]/95 z-[150] flex flex-col items-center justify-center text-white backdrop-blur-xl">
+        <span class="loader mb-8"></span>
+        <h2 class="text-3xl font-black mb-2 tracking-tighter">AI Анализира</h2>
+        <p class="text-blue-200 text-sm font-mono animate-pulse">Оценяване на отговорите...</p>
+    </div>
 
     <div id="view-focus" class="hidden-view fixed inset-0 bg-[#e6f2ff] z-[100] flex flex-col items-center justify-center">
         <div class="absolute top-8 w-full max-w-2xl px-6 flex items-center gap-4">
@@ -170,34 +178,27 @@
                 <div class="face front flex flex-col items-center justify-center text-center p-10">
                     <span class="text-[10px] uppercase font-black tracking-[0.3em] text-slate-300 mb-6">ВЪПРОС</span>
                     <p id="focus-q" class="text-3xl font-extrabold text-[#05294a] leading-tight"></p>
-                    
                     <div id="ai-input-area" class="w-full mt-8 hidden">
                         <textarea id="user-answer" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition" rows="3" placeholder="Напиши своя отговор тук..."></textarea>
                         <button onclick="submitAIAnswer()" class="w-full mt-3 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition">Провери ме</button>
                     </div>
                 </div>
-
                 <div class="face back flex flex-col items-center justify-center text-center p-10 relative overflow-hidden">
                     <div id="std-back-content">
                         <span class="text-[10px] uppercase font-black tracking-[0.3em] text-green-300 mb-6">ОТГОВОР</span>
                         <p id="focus-a" class="text-2xl font-medium text-slate-600 leading-snug"></p>
                     </div>
-
                     <div id="ai-result-content" class="hidden w-full h-full flex flex-col items-center justify-center">
-                        <div id="ai-score-badge" class="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-black mb-4 bg-slate-100 border-4 border-slate-200">
-                            0%
-                        </div>
-                        <p id="ai-feedback" class="text-sm text-slate-500 mb-4 line-clamp-3">Анализиране...</p>
-                        <div class="flex gap-2 w-full">
-                            <button onclick="nextCard()" class="flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold">Напред</button>
-                        </div>
+                        <div id="ai-score-badge" class="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-black mb-4 bg-slate-100 border-4 border-slate-200">0%</div>
+                        <p id="ai-feedback" class="text-sm text-slate-500 mb-4 line-clamp-3">...</p>
+                        <button onclick="nextCard()" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold">Напред</button>
                     </div>
                 </div>
             </div>
         </div>
 
         <div id="std-controls" class="mt-10 flex gap-6">
-            <button onclick="flipCard()" class="px-8 py-4 bg-white rounded-full font-bold shadow-lg shadow-blue-100 text-[#05294a] hover:scale-105 transition">Покажи отговора</button>
+            <button onclick="flipCard()" class="px-8 py-4 bg-white rounded-full font-bold shadow-lg shadow-blue-100 text-[#05294a] hover:scale-105 transition">Виж отговор</button>
             <button onclick="nextCard()" class="p-4 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-300 hover:scale-110 transition"><i data-lucide="arrow-right"></i></button>
         </div>
     </div>
@@ -206,16 +207,12 @@
         <div class="bg-white w-full max-w-2xl h-[90vh] rounded-[40px] shadow-2xl flex flex-col overflow-hidden relative">
             <div class="p-8 text-center bg-[#05294a] text-white">
                 <h2 class="text-4xl font-black mb-1" id="sum-title">Браво!</h2>
-                <p class="text-blue-200 text-sm">Сесията приключи</p>
-                
-                <div id="sum-score-container" class="mt-6 hidden">
-                    <div class="w-24 h-24 rounded-full border-8 border-white/20 mx-auto flex items-center justify-center text-3xl font-black" id="final-score">85%</div>
+                <p class="text-blue-200 text-sm" id="sum-subtitle">Сесията приключи</p>
+                <div id="sum-score-container" class="mt-6 hidden scale-0 transition-transform duration-500">
+                    <div class="w-24 h-24 rounded-full border-8 border-white/20 mx-auto flex items-center justify-center text-3xl font-black" id="final-score">0%</div>
                 </div>
             </div>
-
-            <div class="flex-1 overflow-y-auto p-8 bg-slate-50" id="summary-list">
-                </div>
-
+            <div class="flex-1 overflow-y-auto p-8 bg-slate-50" id="summary-list"></div>
             <div class="p-6 bg-white border-t border-slate-100 flex gap-4">
                 <button onclick="showView('library')" class="flex-1 py-4 text-slate-500 font-bold hover:bg-slate-50 rounded-2xl">Към библиотеката</button>
                 <button onclick="restartSession()" class="flex-1 py-4 bg-[#0b63c7] text-white font-bold rounded-2xl shadow-lg shadow-blue-200">Учи отново</button>
@@ -232,16 +229,20 @@
     </div>
 
     <script>
-        // --- КОНФИГУРАЦИЯ ---
         const S_URL = "https://zfqpfhtbpfdudbpqzbbg.supabase.co";
         const S_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE";
         const sb = window.supabase.createClient(S_URL, S_KEY);
-        const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev"; // Твоят Worker
-        
-        // --- SOUND ENGINE ---
+        const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev"; 
+
+        // --- SOUND ENGINE (FIXED) ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playSound(type) {
+        
+        function ensureAudio() {
             if(audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSound(type) {
+            ensureAudio();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
@@ -252,9 +253,9 @@
             } else if(type === 'flip') {
                 osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(100, now + 0.2); gain.gain.linearRampToValueAtTime(0.01, now + 0.2); osc.stop(now + 0.2);
             } else if(type === 'success') {
-                osc.type = 'sine'; osc.frequency.setValueAtTime(500, now); osc.frequency.setValueAtTime(1000, now + 0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4); osc.stop(now + 0.4);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(440, now); osc.frequency.linearRampToValueAtTime(880, now + 0.1); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5); osc.stop(now + 0.5);
             } else if(type === 'error') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(100, now + 0.3); gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3); osc.stop(now + 0.3);
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(100, now + 0.3); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3); osc.stop(now + 0.3);
             }
             osc.start(now);
         }
@@ -263,10 +264,9 @@
         let queue = [];
         let sessionCards = [];
         let currentIdx = 0;
-        let sessionMode = 'standard'; // 'standard' or 'ai'
-        let sessionResults = []; // Stores answers/scores
+        let sessionMode = 'standard';
+        let sessionResults = [];
 
-        // --- CORE VIEWS ---
         function showView(id) {
             document.querySelectorAll('section, .hidden-view').forEach(el => {
                 if(!el.id.includes('view-' + id)) el.classList.add('hidden-view');
@@ -276,7 +276,7 @@
             if(id === 'library') loadDecks();
         }
 
-        // --- 1. CREATE LOGIC ---
+        // --- CREATE & LIBRARY (Standard) ---
         async function runAI(e) {
             e.stopPropagation();
             const q = document.getElementById('q-in').value;
@@ -294,11 +294,9 @@
 
         function addToQueue(e) {
             e.stopPropagation();
-            const f = document.getElementById('q-in').value;
-            const b = document.getElementById('a-out').value;
+            const f = document.getElementById('q-in').value; const b = document.getElementById('a-out').value;
             if(!f || !b) return;
-            queue.push({front:f, back:b});
-            renderQueue();
+            queue.push({front:f, back:b}); renderQueue();
             document.getElementById('createCard').classList.remove('flipped');
             document.getElementById('q-in').value=''; document.getElementById('a-out').value='';
             playSound('click');
@@ -313,110 +311,71 @@
                     <button onclick="queue.splice(${i},1); renderQueue()" class="absolute top-1 right-1 text-red-400 opacity-0 group-hover:opacity-100"><i data-lucide="x-circle" class="w-4 h-4"></i></button>
                     <p class="text-[10px] font-bold text-blue-400">#${i+1}</p>
                     <p class="text-xs font-bold line-clamp-3">${x.front}</p>
-                </div>
-            `).join('');
+                </div>`).join('');
             lucide.createIcons();
         }
 
         async function saveAll() {
             const dName = document.getElementById('deck-in').value.trim() || "Общи";
             let { data: deck } = await sb.from('decks').select('id').eq('name', dName).maybeSingle();
-            if(!deck) {
-                const { data: newD } = await sb.from('decks').insert({name: dName}).select().single();
-                deck = newD;
-            }
+            if(!deck) { const { data: nD } = await sb.from('decks').insert({name: dName}).select().single(); deck = nD; }
             await sb.from('flashcards').insert(queue.map(x => ({front:x.front, back:x.back, deck_id:deck.id})));
             queue = []; renderQueue(); showView('library');
             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
         }
 
-        // --- 2. LIBRARY LOGIC ---
         async function loadDecks() {
             const { data } = await sb.from('decks').select('*');
             document.getElementById('deck-grid').innerHTML = data.map(d => `
                 <div onclick="openDeckSetup(${d.id}, '${d.name}')" class="bg-white p-8 rounded-[32px] border border-blue-50 hover:shadow-xl hover:translate-y-[-5px] transition cursor-pointer group">
                     <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition"><i data-lucide="folder-open"></i></div>
                     <h3 class="text-xl font-black text-[#05294a]">${d.name}</h3>
-                    <p class="text-slate-400 text-sm mt-2">Кликни за преглед</p>
-                </div>
-            `).join('');
+                </div>`).join('');
             lucide.createIcons();
         }
 
         let selectedDeckId = null;
-        async function openDeckSetup(id, name) {
-            selectedDeckId = id;
-            document.getElementById('session-title').innerText = name;
+        function openDeckSetup(id, name) {
+            selectedDeckId = id; document.getElementById('session-title').innerText = name;
             showView('pre-session');
         }
 
-        // --- 3. SESSION SETUP ---
+        // --- SESSION LOGIC ---
         function setMode(m) {
-            sessionMode = m;
+            sessionMode = m; playSound('click');
             const slider = document.getElementById('mode-slider');
-            const bStd = document.getElementById('btn-std');
-            const bAi = document.getElementById('btn-ai');
-            
-            if(m === 'standard') {
-                slider.style.left = '5px';
-                bStd.classList.replace('text-slate-400', 'text-blue-600');
-                bAi.classList.replace('text-blue-600', 'text-slate-400');
-            } else {
-                slider.style.left = '50%';
-                bStd.classList.replace('text-blue-600', 'text-slate-400');
-                bAi.classList.replace('text-slate-400', 'text-blue-600');
-            }
-            playSound('click');
+            if(m === 'standard') { slider.style.left = '5px'; document.getElementById('btn-std').classList.replace('text-slate-400', 'text-blue-600'); document.getElementById('btn-ai').classList.replace('text-blue-600', 'text-slate-400'); }
+            else { slider.style.left = '50%'; document.getElementById('btn-std').classList.replace('text-blue-600', 'text-slate-400'); document.getElementById('btn-ai').classList.replace('text-slate-400', 'text-blue-600'); }
         }
 
         async function launchSession() {
+            ensureAudio(); // Activate Audio Context
             const { data } = await sb.from('flashcards').select('*').eq('deck_id', selectedDeckId);
             if(!data || data.length === 0) { alert("Папката е празна!"); return; }
             
-            // 1. Shuffle Logic
             sessionCards = [...data];
-            if(document.getElementById('shuffle-toggle').checked) {
-                sessionCards.sort(() => Math.random() - 0.5);
-            }
-
-            // 2. Init Session
+            if(document.getElementById('shuffle-toggle').checked) sessionCards.sort(() => Math.random() - 0.5);
+            
             currentIdx = 0;
             sessionResults = [];
             
-            // 3. UI Setup based on Mode
-            const stdControls = document.getElementById('std-controls');
-            const aiInput = document.getElementById('ai-input-area');
-            const stdBack = document.getElementById('std-back-content');
-            const aiBack = document.getElementById('ai-result-content');
-
-            if(sessionMode === 'ai') {
-                stdControls.classList.add('hidden');
-                aiInput.classList.remove('hidden');
-                stdBack.classList.add('hidden');
-                aiBack.classList.remove('hidden');
-            } else {
-                stdControls.classList.remove('hidden');
-                aiInput.classList.add('hidden');
-                stdBack.classList.remove('hidden');
-                aiBack.classList.add('hidden');
-            }
+            // UI Toggle
+            document.getElementById('std-controls').classList.toggle('hidden', sessionMode === 'ai');
+            document.getElementById('ai-input-area').classList.toggle('hidden', sessionMode !== 'ai');
+            document.getElementById('std-back-content').classList.toggle('hidden', sessionMode === 'ai');
+            document.getElementById('ai-result-content').classList.toggle('hidden', sessionMode !== 'ai');
 
             showView('focus');
             renderSessionCard();
         }
 
-        // --- 4. SESSION RUNTIME ---
         function renderSessionCard() {
             const card = sessionCards[currentIdx];
             document.getElementById('focus-q').innerText = card.front;
             document.getElementById('focus-a').innerText = card.back;
             document.getElementById('user-answer').value = '';
+            document.getElementById('sessionCard').classList.remove('flipped');
             
-            // Reset UI
-            const inner = document.getElementById('sessionCard');
-            inner.classList.remove('flipped');
-            
-            // Progress
             const pct = ((currentIdx) / sessionCards.length) * 100;
             document.getElementById('progress-bar').style.width = pct + '%';
             document.getElementById('card-counter').innerText = `${currentIdx + 1}/${sessionCards.length}`;
@@ -435,47 +394,29 @@
             const btn = document.querySelector('#ai-input-area button');
             btn.innerText = "Оценяване...";
             
-            // Call AI Worker for grading
-            // SIMULATED LOGIC FOR DEMO (Replace with actual prompt to your worker)
-            // We ask the worker: Compare A to B and give JSON.
-            const prompt = `Act as a teacher. Correct Answer: "${card.back}". Student Answer: "${uAns}". Rate 0-100 based on meaning. Return ONLY valid JSON: {"score": number, "feedback": "short explanation"}`;
+            const prompt = `Act as a teacher. Correct: "${card.back}". Student: "${uAns}". Rate 0-100 on meaning match. Return JSON: {"score": number, "feedback": "bg text"}`;
             
             try {
-                const res = await fetch(WORKER, { method: 'POST', body: JSON.stringify({ prompt: prompt }) });
+                const res = await fetch(WORKER, { method: 'POST', body: JSON.stringify({ prompt }) });
                 const aiData = await res.json();
                 
-                // Parse the response (assuming worker returns JSON string inside 'answer' or directly)
-                // Note: Your worker might return plain text, so we might need regex if it's not pure JSON.
-                // For safety, let's try to parse, if fails, use simple keyword match.
                 let result = { score: 0, feedback: aiData.answer };
-                try {
-                    const jsonMatch = aiData.answer.match(/\{[\s\S]*\}/);
-                    if(jsonMatch) result = JSON.parse(jsonMatch[0]);
-                } catch(e) {}
+                try { const m = aiData.answer.match(/\{[\s\S]*\}/); if(m) result = JSON.parse(m[0]); } catch(e){}
 
-                // Show Result
-                const badge = document.getElementById('ai-score-badge');
-                badge.innerText = result.score + '%';
-                badge.className = `w-20 h-20 rounded-full flex items-center justify-center text-2xl font-black mb-4 border-4 transition-all ${result.score > 60 ? 'bg-green-50 border-green-500 text-green-600' : 'bg-red-50 border-red-500 text-red-600'}`;
-                
-                document.getElementById('ai-feedback').innerText = result.feedback || aiData.answer;
-                
-                // Store result
                 sessionResults.push({
-                    card: card,
-                    userAns: uAns,
-                    score: result.score,
-                    feedback: result.feedback || aiData.answer,
-                    correct: result.score > 60
+                    card: card, userAns: uAns, score: result.score, feedback: result.feedback, correct: result.score > 60
                 });
 
+                document.getElementById('ai-score-badge').innerText = result.score + '%';
+                document.getElementById('ai-score-badge').className = `w-20 h-20 rounded-full flex items-center justify-center text-2xl font-black mb-4 border-4 ${result.score > 60 ? 'bg-green-50 border-green-500 text-green-600' : 'bg-red-50 border-red-500 text-red-600'}`;
+                document.getElementById('ai-feedback').innerText = result.feedback;
+                
                 if(result.score > 60) playSound('success'); else playSound('error');
 
             } catch(err) {
                 console.error(err);
-                sessionResults.push({ card, userAns: uAns, score: 0, feedback: "Error connecting to AI", correct: false });
+                sessionResults.push({ card, userAns: uAns, score: 0, feedback: "Error", correct: false });
             }
-
             btn.innerText = "Провери ме";
             flipCard();
         }
@@ -489,31 +430,44 @@
             }
         }
 
-        function endSessionEarly() {
-            if(confirm("Прекъсване на сесията?")) showView('library');
+        function finishSession() {
+            if(sessionMode === 'ai') {
+                showView('calculating');
+                // Fake delay for dramatic effect
+                setTimeout(() => {
+                    renderSummary();
+                }, 3000);
+            } else {
+                renderSummary();
+            }
         }
 
-        // --- 5. SESSION SUMMARY ---
-        function finishSession() {
+        function renderSummary() {
             showView('summary');
             const list = document.getElementById('summary-list');
-            const scoreContainer = document.getElementById('sum-score-container');
-            const finalScoreEl = document.getElementById('final-score');
+            const scContainer = document.getElementById('sum-score-container');
+            const scoreEl = document.getElementById('final-score');
             
-            confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
             playSound('success');
+            confetti({ particleCount: 200, spread: 120, origin: { y: 0.6 } });
 
             if(sessionMode === 'standard') {
-                scoreContainer.classList.add('hidden');
-                list.innerHTML = `<div class="text-center text-slate-400 py-10">Прехвърли ${sessionCards.length} карти. <br>Искаш ли да се тестваш с AI режим?</div>`;
+                document.getElementById('sum-title').innerText = "Преговорът приключи!";
+                document.getElementById('sum-subtitle').innerText = `Прегледахте ${sessionCards.length} карти.`;
+                scContainer.classList.add('hidden');
+                list.innerHTML = `<div class="text-center py-10 opacity-50">Опитайте AI режим за детайлна статистика.</div>`;
             } else {
-                // Calculate Average
-                const totalScore = sessionResults.reduce((acc, curr) => acc + curr.score, 0);
-                const avg = Math.round(totalScore / sessionCards.length);
+                // AI REPORT
+                const avg = Math.round(sessionResults.reduce((a,b) => a + b.score, 0) / sessionResults.length) || 0;
                 
-                scoreContainer.classList.remove('hidden');
-                finalScoreEl.innerText = avg + '%';
-                finalScoreEl.className = `w-24 h-24 rounded-full border-8 mx-auto flex items-center justify-center text-3xl font-black ${avg >= 60 ? 'border-green-400 text-green-600' : 'border-red-400 text-red-600'}`;
+                document.getElementById('sum-title').innerText = avg >= 80 ? "Отлична работа!" : "Добра тренировка";
+                document.getElementById('sum-subtitle').innerText = "Ето твоят AI анализ";
+                
+                scContainer.classList.remove('hidden');
+                setTimeout(() => scContainer.classList.remove('scale-0'), 100);
+                
+                scoreEl.innerText = avg + '%';
+                scoreEl.className = `w-24 h-24 rounded-full border-8 mx-auto flex items-center justify-center text-3xl font-black ${avg >= 60 ? 'border-green-400 text-green-600' : 'border-red-400 text-red-600'}`;
 
                 list.innerHTML = sessionResults.map((r, i) => `
                     <div class="summary-card ${r.correct ? 'res-correct' : 'res-wrong'}">
@@ -523,7 +477,7 @@
                         </div>
                         <p class="font-bold text-[#05294a] mb-1">${r.card.front}</p>
                         <p class="text-sm text-slate-500 mb-2">Твоят отговор: "${r.userAns}"</p>
-                        ${!r.correct ? `<button onclick="openTutor('${r.feedback.replace(/'/g, "\\'")}')" class="text-xs bg-purple-100 text-purple-600 px-3 py-1 rounded-full font-bold flex items-center gap-1"><i data-lucide="sparkles" class="w-3 h-3"></i> AI Обяснение</button>` : ''}
+                        ${!r.correct ? `<button onclick="openTutor('${r.feedback.replace(/'/g, "\\'")}')" class="text-xs bg-purple-100 text-purple-600 px-3 py-1 rounded-full font-bold flex items-center gap-1 hover:bg-purple-200 transition"><i data-lucide="sparkles" class="w-3 h-3"></i> AI Обяснение</button>` : ''}
                     </div>
                 `).join('');
                 lucide.createIcons();
@@ -531,21 +485,16 @@
         }
 
         function openTutor(text) {
-            const overlay = document.getElementById('ai-tutor-overlay');
-            const content = document.getElementById('tutor-content');
-            content.innerText = text;
-            overlay.classList.remove('hidden');
-            overlay.classList.add('flex');
+            document.getElementById('tutor-content').innerText = text;
+            const ov = document.getElementById('ai-tutor-overlay');
+            ov.classList.remove('hidden'); ov.classList.add('flex');
         }
-
         function closeTutor() {
-            document.getElementById('ai-tutor-overlay').classList.add('hidden');
-            document.getElementById('ai-tutor-overlay').classList.remove('flex');
+            const ov = document.getElementById('ai-tutor-overlay');
+            ov.classList.add('hidden'); ov.classList.remove('flex');
         }
-
-        function restartSession() {
-            launchSession();
-        }
+        function restartSession() { launchSession(); }
+        function endSessionEarly() { if(confirm("Прекъсване?")) showView('library'); }
 
         window.onload = () => { lucide.createIcons(); loadDecks(); };
     </script>
