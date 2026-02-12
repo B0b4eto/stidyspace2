@@ -32,7 +32,53 @@
             cursor: pointer;
         }
 
-        /* UI COMPONENTS */
+        /* 3D CAPSULE ELEMENT */
+        .capsule-container {
+            width: 140px;
+            height: 260px;
+            background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+            border-radius: 9999px;
+            border: 1px solid rgba(255,255,255,0.6);
+            box-shadow: 
+                20px 20px 60px #bebebe, 
+                -20px -20px 60px #ffffff,
+                inset 0 0 20px rgba(0, 122, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .capsule-container:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 
+                25px 25px 70px #bebebe, 
+                -25px -25px 70px #ffffff,
+                inset 0 0 30px rgba(0, 122, 255, 0.2);
+        }
+
+        .capsule-container:active {
+            transform: scale(0.95);
+        }
+
+        .capsule-content {
+            text-align: center;
+            color: #007AFF;
+            pointer-events: none; /* Кликовете минават към капсулата */
+        }
+
+        .capsule-shine {
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 50%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.8), rgba(255,255,255,0));
+            border-radius: 9999px 9999px 0 0;
+            pointer-events: none;
+        }
+
+        /* UI & CARDS */
         .ios-card {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(20px);
@@ -44,27 +90,11 @@
         .ios-btn { transition: all 0.2s var(--ease-apple); }
         .ios-btn:active { transform: scale(0.96); opacity: 0.8; }
 
-        /* CAPSULE SPECIFIC */
-        .drop-zone {
-            border: 2px dashed #d1d5db;
-            transition: all 0.3s ease;
-            background: #F9FAFB;
-        }
-        .drop-zone.dragover {
-            border-color: #007AFF;
-            background: #EFF6FF;
-            transform: scale(1.02);
-        }
-        .photo-grid img {
-            width: 100%;
-            border-radius: 12px;
-            transition: transform 0.3s;
-            cursor: pointer;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        .photo-grid img:hover { transform: scale(1.03); }
+        .hidden-view { display: none !important; }
+        .fade-in { animation: fadeIn 0.4s var(--ease-apple) forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
 
-        /* 3D FLIP & ANIMATIONS */
+        /* 3D FLIP */
         .card-container { perspective: 2000px; width: min(700px, 90vw); height: 420px; position: relative; }
         .card-inner {
             position: relative; width: 100%; height: 100%;
@@ -78,11 +108,7 @@
             box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1);
         }
         .back { transform: rotateY(180deg); background: #FAFAFA; }
-
-        .hidden-view { display: none !important; }
-        .fade-in { animation: fadeIn 0.4s var(--ease-apple) forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
-
+        
         .apple-loader {
             width: 60px; height: 60px; background: var(--ios-blue);
             border-radius: 50%;
@@ -129,26 +155,25 @@
         <div id="deck-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
     </section>
 
-    <section id="view-capsule" class="hidden-view max-w-5xl mx-auto px-6 py-10 fade-in">
-        <div class="text-center mb-8">
+    <section id="view-capsule" class="hidden-view max-w-5xl mx-auto px-6 py-10 fade-in flex flex-col items-center">
+        <div class="text-center mb-10">
             <h1 class="text-4xl font-black text-[#1D1D1F] mb-2 tracking-tight">Капсула на времето</h1>
-            <p class="text-gray-500">Запази спомени и файлове за бъдещето.</p>
+            <p class="text-gray-500">Двойно кликване върху капсулата за добавяне.</p>
         </div>
 
-        <div id="drop-zone" class="drop-zone w-full h-48 rounded-[32px] flex flex-col items-center justify-center cursor-pointer mb-10 relative overflow-hidden group">
-            <input type="file" id="file-input" multiple accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer z-10">
-            <div class="w-16 h-16 bg-blue-50 text-[#007AFF] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition">
-                <i data-lucide="upload-cloud" class="w-8 h-8"></i>
+        <div class="capsule-container mb-12" ondblclick="triggerCapsuleUpload()" title="Double click to open">
+            <div class="capsule-shine"></div>
+            <div class="capsule-content">
+                <i data-lucide="fingerprint" class="w-12 h-12 mx-auto mb-2 opacity-80"></i>
+                <span class="text-xs font-bold uppercase tracking-wider">Отвори</span>
             </div>
-            <h3 class="font-bold text-gray-700">Плъзнете файлове тук</h3>
-            <p class="text-xs text-gray-400 mt-1">или кликнете за избор</p>
+            <input type="file" id="file-input" multiple accept="image/*" class="hidden" onchange="handleFiles(this.files)">
         </div>
 
-        <div id="capsule-gallery" class="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+        <div id="capsule-gallery" class="w-full columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
             </div>
         
-        <div id="empty-capsule-msg" class="text-center py-20 text-gray-300 hidden">
-            <i data-lucide="image" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+        <div id="empty-capsule-msg" class="text-center py-10 text-gray-300 hidden">
             <p>Капсулата е празна</p>
         </div>
     </section>
@@ -277,7 +302,7 @@
         const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev";
 
         let currentDeck = null, cards = [], cardIdx = 0, mode = 'standard', results = [], creationQueue = [];
-        let capsuleFiles = []; // Local storage for demo
+        let capsuleFiles = [];
 
         function showView(id) {
             document.querySelectorAll('section, .hidden-view').forEach(el => { if(!el.id.includes('modal')) el.classList.add('hidden-view'); });
@@ -289,22 +314,10 @@
 
         function goHome() { showView('library'); }
 
-        // CAPSULE LOGIC
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-input');
-        
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
-            dropZone.addEventListener(e, preventDefaults, false);
-        });
-        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
-        
-        ['dragenter', 'dragover'].forEach(e => dropZone.classList.add('dragover'));
-        ['dragleave', 'drop'].forEach(e => dropZone.classList.remove('dragover'));
-        
-        dropZone.addEventListener('drop', handleDrop, false);
-        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
-
-        function handleDrop(e) { handleFiles(e.dataTransfer.files); }
+        // --- TIME CAPSULE LOGIC ---
+        function triggerCapsuleUpload() {
+            document.getElementById('file-input').click();
+        }
         
         function handleFiles(files) {
             ([...files]).forEach(file => {
@@ -312,8 +325,9 @@
                     const reader = new FileReader();
                     reader.readAsDataURL(file);
                     reader.onloadend = () => {
-                        capsuleFiles.unshift(reader.result); // Add to beginning
+                        capsuleFiles.unshift(reader.result); // Add to top
                         renderCapsule();
+                        confetti({ particleCount: 50, spread: 50, origin: { y: 0.5 } }); // Effect on add
                     }
                 }
             });
@@ -336,8 +350,8 @@
                 </div>
             `).join('');
         }
+        // ---------------------------
 
-        // LIBRARY
         async function loadLibrary() {
             const { data } = await sb.from('decks').select('*').order('created_at', { ascending: false });
             const grid = document.getElementById('deck-grid');
