@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skyline OS | Education</title>
+    <title>Skyline OS | Time Capsule</title>
     
     <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap" rel="stylesheet">
@@ -17,23 +17,22 @@
         
         body {
             background-color: #F5F5F7;
-            font-family: 'Inter', sans-serif; /* Основен шрифт за UI */
+            font-family: 'Inter', sans-serif;
             color: #1D1D1F;
             -webkit-font-smoothing: antialiased;
         }
 
-        /* ТОВА Е ЛОГОТО ОТ homepage (3).html */
         .skyline-logo {
             font-family: 'Montserrat', Arial, sans-serif;
             font-weight: 700;
             font-size: 24px;
             letter-spacing: -1px;
-            color: #05294a; /* --accent-dark от стария файл */
+            color: #05294a;
             user-select: none;
             cursor: pointer;
         }
 
-        /* APPLE-LIKE BLUR & CARDS */
+        /* UI COMPONENTS */
         .ios-card {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(20px);
@@ -45,7 +44,27 @@
         .ios-btn { transition: all 0.2s var(--ease-apple); }
         .ios-btn:active { transform: scale(0.96); opacity: 0.8; }
 
-        /* 3D FLIP */
+        /* CAPSULE SPECIFIC */
+        .drop-zone {
+            border: 2px dashed #d1d5db;
+            transition: all 0.3s ease;
+            background: #F9FAFB;
+        }
+        .drop-zone.dragover {
+            border-color: #007AFF;
+            background: #EFF6FF;
+            transform: scale(1.02);
+        }
+        .photo-grid img {
+            width: 100%;
+            border-radius: 12px;
+            transition: transform 0.3s;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .photo-grid img:hover { transform: scale(1.03); }
+
+        /* 3D FLIP & ANIMATIONS */
         .card-container { perspective: 2000px; width: min(700px, 90vw); height: 420px; position: relative; }
         .card-inner {
             position: relative; width: 100%; height: 100%;
@@ -76,14 +95,17 @@
         }
     </style>
 </head>
-<body class="bg-[#F5F5F7] min-h-screen">
+<body class="bg-[#F5F5F7] min-h-screen pb-20">
 
     <nav class="sticky top-0 z-40 bg-white/70 backdrop-blur-md border-b border-gray-200">
         <div class="max-w-6xl mx-auto px-6 h-16 grid grid-cols-3 items-center">
             
-            <div class="flex justify-start">
-                <button onclick="goHome()" class="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black transition rounded-full hover:bg-black/5">
+            <div class="flex gap-2">
+                <button onclick="showView('library')" class="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black transition rounded-full hover:bg-black/5" title="Библиотека">
                     <i data-lucide="home" class="w-5 h-5"></i>
+                </button>
+                <button onclick="showView('capsule')" class="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-[#007AFF] transition rounded-full hover:bg-blue-50" title="Капсула на времето">
+                    <i data-lucide="hourglass" class="w-5 h-5"></i>
                 </button>
             </div>
 
@@ -93,20 +115,42 @@
 
             <div class="flex justify-end">
                 <button onclick="showView('create')" class="bg-[#007AFF] text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-blue-600 transition ios-btn shadow-md shadow-blue-500/20">
-                    + Нова карта
+                    + Нова
                 </button>
             </div>
-
         </div>
     </nav>
 
     <section id="view-library" class="max-w-6xl mx-auto px-6 py-10 fade-in">
         <div class="flex flex-col items-center mb-10 text-center">
             <h1 class="text-3xl font-bold tracking-tight text-[#1D1D1F] mb-2">Твоите Библиотеки</h1>
-            <p class="text-gray-500 max-w-md">Избери папка, за да започнеш сесия с преговор или AI изпит.</p>
+            <p class="text-gray-500 max-w-md">Управление на знанията и картите.</p>
         </div>
-        <div id="deck-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div id="deck-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+    </section>
+
+    <section id="view-capsule" class="hidden-view max-w-5xl mx-auto px-6 py-10 fade-in">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-black text-[#1D1D1F] mb-2 tracking-tight">Капсула на времето</h1>
+            <p class="text-gray-500">Запази спомени и файлове за бъдещето.</p>
+        </div>
+
+        <div id="drop-zone" class="drop-zone w-full h-48 rounded-[32px] flex flex-col items-center justify-center cursor-pointer mb-10 relative overflow-hidden group">
+            <input type="file" id="file-input" multiple accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer z-10">
+            <div class="w-16 h-16 bg-blue-50 text-[#007AFF] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                <i data-lucide="upload-cloud" class="w-8 h-8"></i>
             </div>
+            <h3 class="font-bold text-gray-700">Плъзнете файлове тук</h3>
+            <p class="text-xs text-gray-400 mt-1">или кликнете за избор</p>
+        </div>
+
+        <div id="capsule-gallery" class="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+            </div>
+        
+        <div id="empty-capsule-msg" class="text-center py-20 text-gray-300 hidden">
+            <i data-lucide="image" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+            <p>Капсулата е празна</p>
+        </div>
     </section>
 
     <section id="view-create" class="hidden-view pt-10 flex flex-col items-center">
@@ -114,10 +158,10 @@
             <div class="card-inner" id="createCard">
                 <div class="face front">
                     <div class="flex justify-between items-center mb-4">
-                        <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Въпрос / Тема</span>
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Тема</span>
                         <button onclick="goHome()" class="text-gray-400 hover:text-black"><i data-lucide="x"></i></button>
                     </div>
-                    <textarea id="q-in" class="flex-1 text-2xl font-bold bg-transparent outline-none resize-none placeholder-gray-300" placeholder="Напиши тема..."></textarea>
+                    <textarea id="q-in" class="flex-1 text-2xl font-bold bg-transparent outline-none resize-none placeholder-gray-300" placeholder="Въведи тема..."></textarea>
                     <button onclick="runAI()" id="genBtn" class="w-full py-3.5 bg-black text-white rounded-xl font-medium ios-btn flex items-center justify-center gap-2">
                         <i data-lucide="sparkles" class="w-4 h-4"></i> Авто-генериране
                     </button>
@@ -149,13 +193,11 @@
                 <h2 class="text-xl font-bold" id="modal-title">Настройки</h2>
                 <button onclick="closeModal()" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
-
             <div class="bg-gray-100 p-1 rounded-xl mb-6 flex relative">
                 <div id="toggle-bg" class="absolute top-1 left-1 w-[calc(50%-4px)] h-[calc(100%-8px)] bg-white rounded-lg shadow-sm transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"></div>
                 <button onclick="toggleMode('standard')" class="flex-1 py-2 text-sm font-semibold z-10 relative transition-colors duration-300 text-black" id="t-std">Преговор</button>
                 <button onclick="toggleMode('ai')" class="flex-1 py-2 text-sm font-semibold z-10 relative transition-colors duration-300 text-gray-400" id="t-ai">AI Изпит</button>
             </div>
-
             <div class="flex justify-between items-center mb-8 px-1">
                 <span class="font-medium text-gray-700">Разбъркване</span>
                 <label class="relative inline-flex items-center cursor-pointer">
@@ -163,7 +205,6 @@
                     <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-green-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm"></div>
                 </label>
             </div>
-
             <button onclick="startSession()" class="w-full py-4 bg-[#007AFF] text-white rounded-2xl font-bold text-lg hover:bg-blue-600 ios-btn shadow-lg shadow-blue-500/30">Започни</button>
         </div>
     </div>
@@ -179,7 +220,6 @@
             </div>
             <span id="counter" class="text-sm font-bold text-gray-500 font-mono">1/10</span>
         </div>
-
         <div class="card-container" id="session-card-wrapper">
             <div class="card-inner" id="sessionCard">
                 <div class="face front items-center justify-center text-center">
@@ -202,7 +242,6 @@
                 </div>
             </div>
         </div>
-
         <div id="std-controls" class="mt-8 flex gap-4">
             <button onclick="flipSessionCard()" class="px-8 py-3 bg-white border border-gray-200 rounded-full font-medium text-gray-700 hover:bg-gray-50 ios-btn shadow-sm">Обърни</button>
             <button onclick="nextCard()" class="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center ios-btn"><i data-lucide="arrow-right"></i></button>
@@ -220,9 +259,7 @@
             <div class="flex-1 mt-10">
                 <div class="text-center mb-10">
                     <h1 class="text-4xl font-black text-gray-900 mb-2">Резултат</h1>
-                    <div id="final-badge" class="inline-flex items-center justify-center px-4 py-1 rounded-full text-sm font-bold bg-gray-200 text-gray-600">
-                        Приключено
-                    </div>
+                    <div id="final-badge" class="inline-flex items-center justify-center px-4 py-1 rounded-full text-sm font-bold bg-gray-200 text-gray-600">Приключено</div>
                 </div>
                 <div id="summary-grid" class="space-y-4"></div>
             </div>
@@ -239,24 +276,68 @@
         const sb = window.supabase.createClient(S_URL, S_KEY);
         const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev";
 
-        let currentDeck = null;
-        let cards = [];
-        let cardIdx = 0;
-        let mode = 'standard';
-        let results = [];
-        let creationQueue = [];
+        let currentDeck = null, cards = [], cardIdx = 0, mode = 'standard', results = [], creationQueue = [];
+        let capsuleFiles = []; // Local storage for demo
 
         function showView(id) {
-            document.querySelectorAll('section, .hidden-view').forEach(el => {
-                if(!el.id.includes('modal')) el.classList.add('hidden-view');
-            });
+            document.querySelectorAll('section, .hidden-view').forEach(el => { if(!el.id.includes('modal')) el.classList.add('hidden-view'); });
             if(id !== 'modal-settings') document.getElementById('modal-settings').classList.add('hidden-view');
             document.getElementById('view-' + id).classList.remove('hidden-view');
             if(id === 'library') loadLibrary();
+            if(id === 'capsule') renderCapsule();
         }
 
         function goHome() { showView('library'); }
 
+        // CAPSULE LOGIC
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
+            dropZone.addEventListener(e, preventDefaults, false);
+        });
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+        
+        ['dragenter', 'dragover'].forEach(e => dropZone.classList.add('dragover'));
+        ['dragleave', 'drop'].forEach(e => dropZone.classList.remove('dragover'));
+        
+        dropZone.addEventListener('drop', handleDrop, false);
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        function handleDrop(e) { handleFiles(e.dataTransfer.files); }
+        
+        function handleFiles(files) {
+            ([...files]).forEach(file => {
+                if(file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onloadend = () => {
+                        capsuleFiles.unshift(reader.result); // Add to beginning
+                        renderCapsule();
+                    }
+                }
+            });
+        }
+
+        function renderCapsule() {
+            const gallery = document.getElementById('capsule-gallery');
+            const empty = document.getElementById('empty-capsule-msg');
+            
+            if(capsuleFiles.length === 0) {
+                gallery.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+            
+            gallery.innerHTML = capsuleFiles.map(src => `
+                <div class="mb-4 break-inside-avoid">
+                    <img src="${src}" class="w-full rounded-2xl border border-gray-100 shadow-sm hover:scale-[1.02] transition duration-300">
+                </div>
+            `).join('');
+        }
+
+        // LIBRARY
         async function loadLibrary() {
             const { data } = await sb.from('decks').select('*').order('created_at', { ascending: false });
             const grid = document.getElementById('deck-grid');
@@ -284,17 +365,12 @@
         }
 
         function closeModal() { document.getElementById('modal-settings').classList.add('hidden-view'); }
-
         function toggleMode(m) {
             mode = m;
             const bg = document.getElementById('toggle-bg');
-            const tStd = document.getElementById('t-std');
-            const tAi = document.getElementById('t-ai');
-            if (m === 'standard') {
-                bg.style.left = '4px'; tStd.classList.replace('text-gray-400', 'text-black'); tAi.classList.replace('text-black', 'text-gray-400');
-            } else {
-                bg.style.left = '50%'; tStd.classList.replace('text-black', 'text-gray-400'); tAi.classList.replace('text-gray-400', 'text-black');
-            }
+            const tStd = document.getElementById('t-std'), tAi = document.getElementById('t-ai');
+            if (m === 'standard') { bg.style.left = '4px'; tStd.classList.replace('text-gray-400', 'text-black'); tAi.classList.replace('text-black', 'text-gray-400'); }
+            else { bg.style.left = '50%'; tStd.classList.replace('text-black', 'text-gray-400'); tAi.classList.replace('text-gray-400', 'text-black'); }
         }
 
         async function startSession() {
@@ -302,14 +378,12 @@
             if(!data || data.length === 0) { alert('Папката е празна.'); return; }
             cards = [...data];
             if(document.getElementById('shuffle-check').checked) cards.sort(() => Math.random() - 0.5);
-            cardIdx = 0; results = [];
-            closeModal(); showView('focus'); setupCardUI();
+            cardIdx = 0; results = []; closeModal(); showView('focus'); setupCardUI();
         }
 
         function setupCardUI() {
             const c = cards[cardIdx];
-            document.getElementById('s-front').innerText = c.front;
-            document.getElementById('s-back').innerText = c.back;
+            document.getElementById('s-front').innerText = c.front; document.getElementById('s-back').innerText = c.back;
             document.getElementById('sessionCard').classList.remove('flipped');
             document.getElementById('ai-user-ans').value = '';
             document.getElementById('counter').innerText = `${cardIdx + 1}/${cards.length}`;
@@ -325,33 +399,25 @@
         function flipSessionCard() { document.getElementById('sessionCard').classList.toggle('flipped'); }
 
         async function checkAI() {
-            const uAns = document.getElementById('ai-user-ans').value;
-            if(!uAns) return;
-            const btn = document.getElementById('checkBtn');
-            btn.innerText = "Оценяване...";
-            
-            const card = cards[cardIdx];
+            const uAns = document.getElementById('ai-user-ans').value; if(!uAns) return;
+            const btn = document.getElementById('checkBtn'); btn.innerText = "Оценяване...";
             try {
-                const res = await fetch(WORKER, {
-                    method: 'POST', body: JSON.stringify({ prompt: `Act as teacher. Q: ${card.front}. A: ${card.back}. Student: ${uAns}. Rate 0-100. JSON: {"score":number, "feedback":string}` })
-                });
+                const res = await fetch(WORKER, { method: 'POST', body: JSON.stringify({ prompt: `Rate 0-100. Q:${cards[cardIdx].front} A:${cards[cardIdx].back} Student:${uAns}. JSON only: {"score":number, "feedback":string}` }) });
                 const data = await res.json();
-                let grade = { score: 0, feedback: data.answer };
-                try { const m = data.answer.match(/\{[\s\S]*\}/); if(m) grade = JSON.parse(m[0]); } catch(e){}
-
-                document.getElementById('score-circle').innerText = grade.score + '%';
-                document.getElementById('score-circle').className = `w-16 h-16 rounded-full border-4 flex items-center justify-center text-lg font-bold mb-4 ${grade.score > 60 ? 'border-green-500 text-green-600 bg-green-50' : 'border-red-500 text-red-600 bg-red-50'}`;
-                document.getElementById('ai-feedback-text').innerText = grade.feedback;
-
-                results.push({ ...card, score: grade.score, userAns: uAns, correct: grade.score > 60 });
+                let g = { score: 0, feedback: data.answer };
+                try { const m = data.answer.match(/\{[\s\S]*\}/); if(m) g = JSON.parse(m[0]); } catch(e){}
+                
+                document.getElementById('score-circle').innerText = g.score + '%';
+                document.getElementById('score-circle').className = `w-16 h-16 rounded-full border-4 flex items-center justify-center text-lg font-bold mb-4 ${g.score > 60 ? 'border-green-500 text-green-600 bg-green-50' : 'border-red-500 text-red-600 bg-red-50'}`;
+                document.getElementById('ai-feedback-text').innerText = g.feedback;
+                
+                results.push({ ...cards[cardIdx], score: g.score, userAns: uAns, correct: g.score > 60 });
                 document.getElementById('sessionCard').classList.add('flipped');
-            } catch(e) { console.log(e); alert("Грешка при връзката"); }
+            } catch(e) { console.log(e); alert("Error"); }
             btn.innerText = "Провери";
         }
 
-        function nextCard() {
-            if(cardIdx < cards.length - 1) { cardIdx++; setupCardUI(); } else { finishSession(); }
-        }
+        function nextCard() { if(cardIdx < cards.length - 1) { cardIdx++; setupCardUI(); } else { finishSession(); } }
 
         function finishSession() {
             if(mode === 'ai') {
@@ -362,11 +428,8 @@
         }
 
         function renderSummary() {
-            showView('summary');
-            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-            const grid = document.getElementById('summary-grid');
-            const badge = document.getElementById('final-badge');
-
+            showView('summary'); confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            const grid = document.getElementById('summary-grid'), badge = document.getElementById('final-badge');
             if (mode === 'standard') {
                 badge.innerText = "Преговор"; badge.className = "inline-flex items-center justify-center px-4 py-1 rounded-full text-sm font-bold bg-blue-100 text-blue-600";
                 grid.innerHTML = `<div class="text-center py-20 text-gray-400">Преминахте успешно през ${cards.length} карти.</div>`;
@@ -384,30 +447,15 @@
         }
 
         function restartDeck() { openSettings(currentDeck.id, currentDeck.name); }
-
         function flipBack() { document.getElementById('createCard').classList.remove('flipped'); }
         async function runAI() {
             const q = document.getElementById('q-in').value; if(!q) return;
-            const btn = document.getElementById('genBtn'); btn.innerHTML = `<div class="apple-loader w-4 h-4 mr-2 border-white"></div> Генериране...`;
-            try {
-                const res = await fetch(WORKER, { method: 'POST', body: JSON.stringify({ prompt: q }) });
-                const data = await res.json();
-                document.getElementById('a-out').value = data.answer;
-                document.getElementById('createCard').classList.add('flipped');
-            } catch(e) { alert('AI Error'); }
+            const btn = document.getElementById('genBtn'); btn.innerHTML = `<div class="apple-loader w-4 h-4 mr-2 border-white"></div>`;
+            try { const res = await fetch(WORKER, { method: 'POST', body: JSON.stringify({ prompt: q }) }); const data = await res.json(); document.getElementById('a-out').value = data.answer; document.getElementById('createCard').classList.add('flipped'); } catch(e){}
             btn.innerHTML = `<i data-lucide="sparkles" class="w-4 h-4"></i> Авто-генериране`;
         }
-
-        function addToQueue() {
-            const f = document.getElementById('q-in').value; const b = document.getElementById('a-out').value;
-            if(f && b) { creationQueue.push({front:f, back:b}); updateQueueUI(); flipBack(); document.getElementById('q-in').value = ''; }
-        }
-
-        function updateQueueUI() {
-            document.getElementById('q-count').innerText = creationQueue.length;
-            document.getElementById('carousel').innerHTML = creationQueue.map(c => `<div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0 border border-blue-200">?</div>`).join('');
-        }
-
+        function addToQueue() { const f = document.getElementById('q-in').value, b = document.getElementById('a-out').value; if(f&&b) { creationQueue.push({front:f, back:b}); updateQueueUI(); flipBack(); document.getElementById('q-in').value=''; } }
+        function updateQueueUI() { document.getElementById('q-count').innerText = creationQueue.length; document.getElementById('carousel').innerHTML = creationQueue.map(c => `<div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0 border border-blue-200">?</div>`).join(''); }
         async function saveAll() {
             const name = document.getElementById('deck-in').value || 'Нова папка';
             let { data: deck } = await sb.from('decks').select('id').eq('name', name).maybeSingle();
