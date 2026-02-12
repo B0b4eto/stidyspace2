@@ -3,153 +3,293 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skyline Studio | Final Fix</title>
+    <title>Skyline Studio | Mastermind</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
-        :root { --accent: #0b63c7; --ease: cubic-bezier(0.4, 0, 0.2, 1); }
+
+        :root { --accent: #0b63c7; --success: #10b981; --error: #ef4444; --ease: cubic-bezier(0.34, 1.56, 0.64, 1); }
+        
         body {
             background: radial-gradient(at top left, #ffffff 0%, #e6f2ff 40%, #cce4ff 100%);
             font-family: 'Plus Jakarta Sans', sans-serif;
-            min-height: 100vh; color: #05294a; margin: 0;
+            min-height: 100vh; color: #05294a; margin: 0; overflow-x: hidden;
         }
-        .card-container { perspective: 2000px; width: min(800px, 90vw); height: 400px; }
+
+        /* 3D CARD ENGINE */
+        .card-container { perspective: 2000px; width: min(800px, 90vw); height: 450px; position: relative; }
         .card-inner {
             position: relative; width: 100%; height: 100%;
-            transition: transform 0.8s var(--ease); transform-style: preserve-3d; cursor: pointer;
+            transition: transform 0.8s var(--ease); transform-style: preserve-3d;
         }
         .card-inner.flipped { transform: rotateY(180deg); }
         .face {
             position: absolute; inset: 0; backface-visibility: hidden;
             border-radius: 40px; padding: 40px; display: flex; flex-direction: column;
-            background: white; border: 1px solid rgba(255,255,255,0.8);
-            box-shadow: 0 30px 60px -12px rgba(11, 99, 199, 0.08);
+            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.8);
+            box-shadow: 0 25px 50px -12px rgba(11, 99, 199, 0.15);
         }
         .back { transform: rotateY(180deg); background: #f8fbff; }
-        .carousel-track {
-            display: flex; gap: 15px; overflow-x: auto; padding: 20px;
-            scroll-behavior: smooth; scrollbar-width: none;
+
+        /* UI ELEMENTS */
+        .glass-btn {
+            background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(255,255,255,0.8);
+            backdrop-filter: blur(10px); transition: all 0.3s var(--ease);
         }
-        .mini-card {
-            min-width: 180px; height: 100px; background: white; border-radius: 20px;
-            padding: 12px; border: 1px solid #eef2f8; flex-shrink: 0; position: relative;
+        .glass-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(11,99,199,0.1); background: white; }
+        
+        .mode-switch {
+            position: relative; background: #e0eaff; border-radius: 99px; padding: 5px; display: flex; cursor: pointer;
         }
-        .heatmap-day { width: 14px; height: 14px; border-radius: 4px; background: rgba(11, 99, 199, 0.1); }
-        .heatmap-active { background: var(--accent); box-shadow: 0 0 8px rgba(11, 99, 199, 0.4); }
-        .hidden-view { display: none !important; }
-        .theme-blue { --fb: #eff6ff; --ft: #2563eb; }
-        .theme-purple { --fb: #faf5ff; --ft: #9333ea; }
-        .theme-green { --fb: #f0fdf4; --ft: #16a34a; }
-        .deck-folder { background: var(--fb, #fff); color: var(--ft, #05294a); transition: 0.3s; }
+        .mode-switch input { display: none; }
+        .slider {
+            position: absolute; top: 5px; left: 5px; width: calc(50% - 5px); height: calc(100% - 10px);
+            background: white; border-radius: 99px; transition: 0.4s var(--ease);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        input:checked + .slider { left: 50%; }
+
+        .hidden-view { display: none !important; opacity: 0; }
+        .view-anim { animation: fadeIn 0.5s forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* AI GRADING STYLES */
+        .grade-perfect { border-color: var(--success); box-shadow: 0 0 30px rgba(16, 185, 129, 0.2); }
+        .grade-bad { border-color: var(--error); box-shadow: 0 0 30px rgba(239, 68, 68, 0.2); }
+        
+        /* SUMMARY GRID */
+        .summary-card {
+            background: white; border-radius: 16px; padding: 15px; margin-bottom: 10px;
+            border-left: 5px solid #ccc; transition: 0.3s;
+        }
+        .res-correct { border-left-color: var(--success); }
+        .res-wrong { border-left-color: var(--error); }
     </style>
 </head>
 <body>
 
-    <nav class="max-w-7xl mx-auto px-8 py-6 flex justify-between items-center">
-        <div class="flex items-center gap-3 cursor-pointer" onclick="showView('create')">
-            <div class="w-10 h-10 bg-[#0b63c7] rounded-xl flex items-center justify-center shadow-lg"><i data-lucide="layers" class="text-white w-5 h-5"></i></div>
-            <span class="font-black text-2xl tracking-tighter">Skyline</span>
+    <nav class="max-w-7xl mx-auto px-8 py-6 flex justify-between items-center z-50 relative">
+        <div class="flex items-center gap-3 cursor-pointer hover:scale-105 transition" onclick="showView('library')">
+            <div class="w-10 h-10 bg-[#0b63c7] rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
+                <i data-lucide="brain-circuit" class="text-white w-5 h-5"></i>
+            </div>
+            <span class="font-black text-2xl tracking-tighter text-[#05294a]">Skyline</span>
         </div>
-        <div class="flex gap-6">
-            <button onclick="showView('library')" class="text-sm font-bold opacity-60 hover:opacity-100">Библиотеки</button>
-            <button onclick="window.location.href='homepage.html'" class="text-sm font-bold opacity-60 hover:opacity-100">Начало</button>
+        <div class="flex gap-4">
+            <button onclick="window.location.href='homepage.html'" class="glass-btn px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest text-slate-500">Начало</button>
         </div>
     </nav>
 
-    <section id="view-create" class="flex flex-col items-center pt-5">
+    <section id="view-create" class="view-anim flex flex-col items-center pt-5 hidden-view">
         <div class="card-container mb-8">
-            <div class="card-inner" id="mainCard" onclick="this.classList.toggle('flipped')">
+            <div class="card-inner" id="createCard" onclick="this.classList.toggle('flipped'); playSound('flip')">
                 <div class="face front">
-                    <span class="text-[10px] font-black text-blue-500 mb-4 tracking-widest uppercase">Генерирай нова карта</span>
-                    <textarea id="q-in" class="text-3xl font-extrabold bg-transparent outline-none resize-none flex-1" placeholder="Въведи концепция..." onclick="event.stopPropagation()"></textarea>
-                    <button onclick="runAI(event)" id="genBtn" class="w-full py-4 bg-[#0b63c7] text-white rounded-2xl font-bold">AI Анализ</button>
+                    <div class="flex justify-between w-full mb-4">
+                        <span class="text-[10px] font-black text-blue-500 tracking-widest uppercase">НОВА КАРТА</span>
+                        <i data-lucide="sparkles" class="text-blue-300 w-5 h-5"></i>
+                    </div>
+                    <textarea id="q-in" class="text-3xl font-extrabold bg-transparent outline-none resize-none flex-1 placeholder-blue-100/50" placeholder="Каква е темата?" onclick="event.stopPropagation()"></textarea>
+                    <button onclick="runAI(event)" id="genBtn" class="w-full py-4 bg-[#0b63c7] text-white rounded-2xl font-bold shadow-lg shadow-blue-200 hover:shadow-blue-400 transition-all hover:scale-[1.02]">✨ AI Анализ</button>
                 </div>
                 <div class="face back">
-                    <span class="text-[10px] font-black text-green-500 mb-4 tracking-widest uppercase">AI Обяснение</span>
+                    <span class="text-[10px] font-black text-green-500 mb-4 tracking-widest uppercase">AI РЕЗУЛТАТ</span>
                     <textarea id="a-out" class="text-lg font-medium bg-transparent outline-none resize-none flex-1 text-slate-600" onclick="event.stopPropagation()"></textarea>
-                    <button onclick="addToQueue(event)" class="w-full py-4 bg-black text-white rounded-2xl font-bold">Добави в списъка</button>
+                    <button onclick="addToQueue(event)" class="w-full py-4 bg-black text-white rounded-2xl font-bold hover:bg-slate-800 transition">Добави в папка</button>
                 </div>
             </div>
         </div>
 
-        <div class="w-full max-w-5xl px-10">
+        <div class="w-full max-w-5xl px-6">
             <div class="flex justify-between items-center mb-4">
-                <h4 class="font-black text-[10px] uppercase tracking-widest text-slate-400">Списък за запис (<span id="q-count">0</span>)</h4>
+                <h4 class="font-black text-[10px] uppercase tracking-widest text-slate-400">Чакащи (<span id="q-count">0</span>)</h4>
                 <div class="flex gap-3">
-                    <input id="deck-in" type="text" placeholder="Име на папка..." class="px-4 py-2 rounded-xl border border-blue-100 outline-none text-sm">
-                    <button onclick="saveAll()" id="saveBtn" class="px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase hidden">Запази всичко</button>
+                    <input id="deck-in" type="text" placeholder="Име на папка..." class="px-5 py-2 rounded-xl border border-blue-100 outline-none text-sm focus:ring-2 focus:ring-blue-300 transition">
+                    <button onclick="saveAll()" id="saveBtn" class="px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase hidden hover:bg-blue-700 transition">Запази</button>
                 </div>
             </div>
-            <div id="carousel" class="carousel-track"></div>
+            <div id="carousel" class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide"></div>
         </div>
     </section>
 
-    <section id="view-library" class="hidden-view max-w-6xl mx-auto px-10 pt-10">
-        <div class="flex justify-between items-center mb-10">
-            <h2 class="text-4xl font-black tracking-tighter">Моите Библиотеки</h2>
-            <div id="heatmap" class="flex gap-1"></div>
+    <section id="view-library" class="view-anim max-w-6xl mx-auto px-10 pt-5">
+        <div class="flex flex-col md:flex-row justify-between items-end mb-12 gap-5">
+            <div>
+                <h1 class="text-5xl font-black tracking-tighter text-[#05294a] mb-2">Библиотека</h1>
+                <p class="text-slate-400 font-medium">Избери тема и започни да учиш.</p>
+            </div>
+            <button onclick="showView('create')" class="glass-btn px-8 py-4 rounded-2xl flex items-center gap-2 font-bold text-blue-600">
+                <i data-lucide="plus"></i> Създай нови
+            </button>
         </div>
-        <div id="deck-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+        <div id="deck-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20"></div>
     </section>
 
-    <section id="view-detail" class="hidden-view max-w-6xl mx-auto px-10 pt-10">
-        <div class="flex justify-between items-center mb-10">
-            <button onclick="showView('library')" class="p-3 bg-white rounded-full shadow-sm"><i data-lucide="arrow-left"></i></button>
-            <h2 id="deck-title" class="text-2xl font-black"></h2>
-            <button onclick="startFocus()" class="px-6 py-3 bg-black text-white rounded-full text-xs font-bold uppercase">Учи сега</button>
+    <section id="view-pre-session" class="hidden-view fixed inset-0 z-50 bg-[#e6f2ff]/90 backdrop-blur-xl flex items-center justify-center">
+        <div class="bg-white p-10 rounded-[40px] shadow-2xl max-w-md w-full text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 to-purple-500"></div>
+            <h2 class="text-3xl font-black mb-2" id="session-title">Настройки</h2>
+            <p class="text-slate-400 text-sm mb-8">Персонализирай своето учене</p>
+
+            <div class="bg-slate-50 p-1 rounded-2xl mb-6 flex relative">
+                <div id="mode-slider" class="absolute top-1 left-1 w-[calc(50%-4px)] h-[calc(100%-8px)] bg-white rounded-xl shadow-md transition-all duration-300"></div>
+                <button onclick="setMode('standard')" class="flex-1 py-3 text-sm font-bold z-10 relative transition-colors duration-300 text-blue-600" id="btn-std">Преговор</button>
+                <button onclick="setMode('ai')" class="flex-1 py-3 text-sm font-bold z-10 relative transition-colors duration-300 text-slate-400" id="btn-ai">AI Изпит</button>
+            </div>
+
+            <div class="flex justify-between items-center mb-8 px-2">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-purple-100 rounded-lg text-purple-600"><i data-lucide="shuffle"></i></div>
+                    <span class="font-bold text-sm">Разбъркване</span>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="shuffle-toggle" class="sr-only peer">
+                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+                </label>
+            </div>
+
+            <button onclick="launchSession()" class="w-full py-4 bg-[#05294a] text-white rounded-2xl font-bold text-lg hover:scale-[1.02] transition shadow-xl shadow-blue-900/20">🚀 ЗАПОЧНИ</button>
+            <button onclick="showView('library')" class="mt-4 text-xs font-bold text-slate-400 hover:text-slate-600">Отказ</button>
         </div>
-        <div id="cards-list" class="flex flex-col gap-3"></div>
     </section>
 
-    <div id="view-focus" class="focus-overlay hidden-view fixed inset-0 bg-[#e6f2ff] z-[100] flex flex-col items-center justify-center">
-        <div class="mb-8 flex flex-col items-center gap-2">
-            <span id="f-counter" class="text-[10px] font-black text-blue-500">1 / 10</span>
-            <div class="w-64 h-1.5 bg-blue-100 rounded-full overflow-hidden"><div id="f-progress" class="h-full bg-blue-600 transition-all duration-300"></div></div>
+    <div id="view-focus" class="hidden-view fixed inset-0 bg-[#e6f2ff] z-[100] flex flex-col items-center justify-center">
+        <div class="absolute top-8 w-full max-w-2xl px-6 flex items-center gap-4">
+            <button onclick="endSessionEarly()" class="p-3 bg-white rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition"><i data-lucide="x"></i></button>
+            <div class="flex-1 h-3 bg-white rounded-full overflow-hidden shadow-inner">
+                <div id="progress-bar" class="h-full bg-[#0b63c7] w-0 transition-all duration-500"></div>
+            </div>
+            <span id="card-counter" class="font-black text-blue-500 text-sm w-12 text-right">1/10</span>
         </div>
-        <div class="card-container" onclick="this.querySelector('.card-inner').classList.toggle('flipped')">
-            <div class="card-inner">
-                <div class="face front flex items-center justify-center text-center p-10"><p id="f-q" class="text-3xl font-bold"></p></div>
-                <div class="face back flex items-center justify-center text-center p-10"><p id="f-a" class="text-xl text-slate-600"></p></div>
+
+        <div class="card-container" id="session-card-container">
+            <div class="card-inner" id="sessionCard">
+                <div class="face front flex flex-col items-center justify-center text-center p-10">
+                    <span class="text-[10px] uppercase font-black tracking-[0.3em] text-slate-300 mb-6">ВЪПРОС</span>
+                    <p id="focus-q" class="text-3xl font-extrabold text-[#05294a] leading-tight"></p>
+                    
+                    <div id="ai-input-area" class="w-full mt-8 hidden">
+                        <textarea id="user-answer" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition" rows="3" placeholder="Напиши своя отговор тук..."></textarea>
+                        <button onclick="submitAIAnswer()" class="w-full mt-3 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition">Провери ме</button>
+                    </div>
+                </div>
+
+                <div class="face back flex flex-col items-center justify-center text-center p-10 relative overflow-hidden">
+                    <div id="std-back-content">
+                        <span class="text-[10px] uppercase font-black tracking-[0.3em] text-green-300 mb-6">ОТГОВОР</span>
+                        <p id="focus-a" class="text-2xl font-medium text-slate-600 leading-snug"></p>
+                    </div>
+
+                    <div id="ai-result-content" class="hidden w-full h-full flex flex-col items-center justify-center">
+                        <div id="ai-score-badge" class="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-black mb-4 bg-slate-100 border-4 border-slate-200">
+                            0%
+                        </div>
+                        <p id="ai-feedback" class="text-sm text-slate-500 mb-4 line-clamp-3">Анализиране...</p>
+                        <div class="flex gap-2 w-full">
+                            <button onclick="nextCard()" class="flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold">Напред</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="mt-10 flex gap-5">
-            <button onclick="changeCard(-1)" class="p-5 bg-white rounded-full shadow-xl"><i data-lucide="chevron-left"></i></button>
-            <button onclick="showView('detail')" class="p-5 bg-white rounded-full shadow-xl text-red-500"><i data-lucide="x"></i></button>
-            <button onclick="changeCard(1)" class="p-5 bg-white rounded-full shadow-xl"><i data-lucide="chevron-right"></i></button>
+
+        <div id="std-controls" class="mt-10 flex gap-6">
+            <button onclick="flipCard()" class="px-8 py-4 bg-white rounded-full font-bold shadow-lg shadow-blue-100 text-[#05294a] hover:scale-105 transition">Покажи отговора</button>
+            <button onclick="nextCard()" class="p-4 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-300 hover:scale-110 transition"><i data-lucide="arrow-right"></i></button>
+        </div>
+    </div>
+
+    <div id="view-summary" class="hidden-view fixed inset-0 z-[200] bg-[#e6f2ff] flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-2xl h-[90vh] rounded-[40px] shadow-2xl flex flex-col overflow-hidden relative">
+            <div class="p-8 text-center bg-[#05294a] text-white">
+                <h2 class="text-4xl font-black mb-1" id="sum-title">Браво!</h2>
+                <p class="text-blue-200 text-sm">Сесията приключи</p>
+                
+                <div id="sum-score-container" class="mt-6 hidden">
+                    <div class="w-24 h-24 rounded-full border-8 border-white/20 mx-auto flex items-center justify-center text-3xl font-black" id="final-score">85%</div>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-8 bg-slate-50" id="summary-list">
+                </div>
+
+            <div class="p-6 bg-white border-t border-slate-100 flex gap-4">
+                <button onclick="showView('library')" class="flex-1 py-4 text-slate-500 font-bold hover:bg-slate-50 rounded-2xl">Към библиотеката</button>
+                <button onclick="restartSession()" class="flex-1 py-4 bg-[#0b63c7] text-white font-bold rounded-2xl shadow-lg shadow-blue-200">Учи отново</button>
+            </div>
+            
+            <div id="ai-tutor-overlay" class="absolute inset-0 bg-white/95 backdrop-blur-md z-50 hidden flex-col p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-black text-2xl text-purple-600"><i data-lucide="sparkles" class="inline mr-2"></i>AI Tutor</h3>
+                    <button onclick="closeTutor()" class="p-2 bg-slate-100 rounded-full"><i data-lucide="x"></i></button>
+                </div>
+                <div id="tutor-content" class="text-lg text-slate-700 leading-relaxed font-medium"></div>
+            </div>
         </div>
     </div>
 
     <script>
+        // --- КОНФИГУРАЦИЯ ---
         const S_URL = "https://zfqpfhtbpfdudbpqzbbg.supabase.co";
         const S_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE";
         const sb = window.supabase.createClient(S_URL, S_KEY);
-        const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev";
-
-        let queue = [];
-        let currentDeckCards = [];
-        let fIdx = 0;
-
-        function showView(v) {
-            document.querySelectorAll('section, .focus-overlay').forEach(s => s.classList.add('hidden-view'));
-            document.getElementById('view-' + v).classList.remove('hidden-view');
-            if(v === 'library') loadDecks();
+        const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev"; // Твоят Worker
+        
+        // --- SOUND ENGINE ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+            
+            if(type === 'click') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(600, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.stop(now + 0.1);
+            } else if(type === 'flip') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(100, now + 0.2); gain.gain.linearRampToValueAtTime(0.01, now + 0.2); osc.stop(now + 0.2);
+            } else if(type === 'success') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(500, now); osc.frequency.setValueAtTime(1000, now + 0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4); osc.stop(now + 0.4);
+            } else if(type === 'error') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(100, now + 0.3); gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3); osc.stop(now + 0.3);
+            }
+            osc.start(now);
         }
 
+        // --- STATE ---
+        let queue = [];
+        let sessionCards = [];
+        let currentIdx = 0;
+        let sessionMode = 'standard'; // 'standard' or 'ai'
+        let sessionResults = []; // Stores answers/scores
+
+        // --- CORE VIEWS ---
+        function showView(id) {
+            document.querySelectorAll('section, .hidden-view').forEach(el => {
+                if(!el.id.includes('view-' + id)) el.classList.add('hidden-view');
+            });
+            const target = document.getElementById('view-' + id);
+            target.classList.remove('hidden-view');
+            if(id === 'library') loadDecks();
+        }
+
+        // --- 1. CREATE LOGIC ---
         async function runAI(e) {
             e.stopPropagation();
             const q = document.getElementById('q-in').value;
             if(!q) return;
-            const btn = document.getElementById('genBtn');
-            btn.innerText = "Генериране...";
+            document.getElementById('genBtn').innerText = "🧠 Мисля...";
             try {
                 const res = await fetch(WORKER, { method: 'POST', body: JSON.stringify({ prompt: q }) });
                 const data = await res.json();
                 document.getElementById('a-out').value = data.answer;
-                document.getElementById('mainCard').classList.add('flipped');
-            } catch (err) { alert("AI грешка. Провери конзолата."); }
-            btn.innerText = "AI Анализ";
+                document.getElementById('createCard').classList.add('flipped');
+                playSound('success');
+            } catch(err) { alert("AI Грешка"); }
+            document.getElementById('genBtn').innerText = "✨ AI Анализ";
         }
 
         function addToQueue(e) {
@@ -157,22 +297,22 @@
             const f = document.getElementById('q-in').value;
             const b = document.getElementById('a-out').value;
             if(!f || !b) return;
-            queue.push({ front: f, back: b });
-            updateQueueUI();
-            document.getElementById('mainCard').classList.remove('flipped');
-            document.getElementById('q-in').value = '';
-            document.getElementById('a-out').value = '';
+            queue.push({front:f, back:b});
+            renderQueue();
+            document.getElementById('createCard').classList.remove('flipped');
+            document.getElementById('q-in').value=''; document.getElementById('a-out').value='';
+            playSound('click');
         }
 
-        function updateQueueUI() {
-            const track = document.getElementById('carousel');
+        function renderQueue() {
+            const c = document.getElementById('carousel');
             document.getElementById('q-count').innerText = queue.length;
             document.getElementById('saveBtn').classList.toggle('hidden', queue.length === 0);
-            track.innerHTML = queue.map((c, i) => `
-                <div class="mini-card group">
-                    <button onclick="queue.splice(${i},1); updateQueueUI()" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg opacity-0 group-hover:opacity-100 transition"><i data-lucide="x" class="w-3 h-3"></i></button>
-                    <p class="text-[9px] font-black text-blue-400 mb-1">КАРТА ${i+1}</p>
-                    <p class="text-[11px] font-bold line-clamp-3">${c.front}</p>
+            c.innerHTML = queue.map((x,i) => `
+                <div class="min-w-[160px] h-[100px] bg-white rounded-xl p-3 border shadow-sm relative group shrink-0">
+                    <button onclick="queue.splice(${i},1); renderQueue()" class="absolute top-1 right-1 text-red-400 opacity-0 group-hover:opacity-100"><i data-lucide="x-circle" class="w-4 h-4"></i></button>
+                    <p class="text-[10px] font-bold text-blue-400">#${i+1}</p>
+                    <p class="text-xs font-bold line-clamp-3">${x.front}</p>
                 </div>
             `).join('');
             lucide.createIcons();
@@ -180,116 +320,234 @@
 
         async function saveAll() {
             const dName = document.getElementById('deck-in').value.trim() || "Общи";
-            const btn = document.getElementById('saveBtn');
-            btn.innerText = "Запис...";
-
-            // 1. Вземи или създай папка
             let { data: deck } = await sb.from('decks').select('id').eq('name', dName).maybeSingle();
             if(!deck) {
-                const { data: nD, error: dErr } = await sb.from('decks').insert({ name: dName }).select().single();
-                if(dErr) { console.error(dErr); return; }
-                deck = nD;
+                const { data: newD } = await sb.from('decks').insert({name: dName}).select().single();
+                deck = newD;
             }
-
-            // 2. Масов запис на карти
-            const toInsert = queue.map(c => ({ front: c.front, back: c.back, deck_id: deck.id }));
-            const { error: cErr } = await sb.from('flashcards').insert(toInsert);
-
-            if(!cErr) {
-                alert(`Успешно записани ${queue.length} карти в "${dName}"!`);
-                queue = [];
-                updateQueueUI();
-                showView('library');
-            } else {
-                console.error("Грешка при запис:", cErr);
-                alert("Грешка при запис. Провери конзолата (F12).");
-            }
-            btn.innerText = "Запази всичко";
+            await sb.from('flashcards').insert(queue.map(x => ({front:x.front, back:x.back, deck_id:deck.id})));
+            queue = []; renderQueue(); showView('library');
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
         }
 
+        // --- 2. LIBRARY LOGIC ---
         async function loadDecks() {
-            const { data, error } = await sb.from('decks').select('*');
-            if(error) return;
-            const grid = document.getElementById('deck-grid');
-            grid.innerHTML = data.map(d => `
-                <div onclick="openDeck(${d.id}, '${d.name}')" class="deck-folder p-8 rounded-[35px] border border-white cursor-pointer hover:scale-105 shadow-sm ${getTheme(d.name)}">
-                    <div class="w-10 h-10 bg-white/50 rounded-xl flex items-center justify-center mb-5"><i data-lucide="folder"></i></div>
-                    <h3 class="font-black text-xl">${d.name}</h3>
+            const { data } = await sb.from('decks').select('*');
+            document.getElementById('deck-grid').innerHTML = data.map(d => `
+                <div onclick="openDeckSetup(${d.id}, '${d.name}')" class="bg-white p-8 rounded-[32px] border border-blue-50 hover:shadow-xl hover:translate-y-[-5px] transition cursor-pointer group">
+                    <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition"><i data-lucide="folder-open"></i></div>
+                    <h3 class="text-xl font-black text-[#05294a]">${d.name}</h3>
+                    <p class="text-slate-400 text-sm mt-2">Кликни за преглед</p>
                 </div>
             `).join('');
             lucide.createIcons();
-            renderHeatmap();
         }
 
-        async function openDeck(id, name) {
-            document.getElementById('deck-title').innerText = name;
-            showView('detail');
-            const { data, error } = await sb.from('flashcards').select('*').eq('deck_id', id);
-            currentDeckCards = data || [];
-            renderCards();
+        let selectedDeckId = null;
+        async function openDeckSetup(id, name) {
+            selectedDeckId = id;
+            document.getElementById('session-title').innerText = name;
+            showView('pre-session');
         }
 
-        function renderCards() {
-            const list = document.getElementById('cards-list');
-            if(currentDeckCards.length === 0) {
-                list.innerHTML = `<p class="text-center py-10 opacity-40">Няма карти в тази папка.</p>`;
-                return;
+        // --- 3. SESSION SETUP ---
+        function setMode(m) {
+            sessionMode = m;
+            const slider = document.getElementById('mode-slider');
+            const bStd = document.getElementById('btn-std');
+            const bAi = document.getElementById('btn-ai');
+            
+            if(m === 'standard') {
+                slider.style.left = '5px';
+                bStd.classList.replace('text-slate-400', 'text-blue-600');
+                bAi.classList.replace('text-blue-600', 'text-slate-400');
+            } else {
+                slider.style.left = '50%';
+                bStd.classList.replace('text-blue-600', 'text-slate-400');
+                bAi.classList.replace('text-slate-400', 'text-blue-600');
             }
-            list.innerHTML = currentDeckCards.map(c => `
-                <div class="bg-white/80 p-5 rounded-2xl flex justify-between items-center group">
-                    <span class="font-bold">${c.front}</span>
-                    <button onclick="deleteCard(${c.id})" class="text-red-400 opacity-0 group-hover:opacity-100 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                </div>
-            `).join('');
-            lucide.createIcons();
+            playSound('click');
         }
 
-        async function deleteCard(id) {
-            if(!confirm("Изтриване?")) return;
-            await sb.from('flashcards').delete().eq('id', id);
-            currentDeckCards = currentDeckCards.filter(c => c.id !== id);
-            renderCards();
-        }
+        async function launchSession() {
+            const { data } = await sb.from('flashcards').select('*').eq('deck_id', selectedDeckId);
+            if(!data || data.length === 0) { alert("Папката е празна!"); return; }
+            
+            // 1. Shuffle Logic
+            sessionCards = [...data];
+            if(document.getElementById('shuffle-toggle').checked) {
+                sessionCards.sort(() => Math.random() - 0.5);
+            }
 
-        function startFocus() {
-            if(currentDeckCards.length === 0) return;
-            fIdx = 0;
+            // 2. Init Session
+            currentIdx = 0;
+            sessionResults = [];
+            
+            // 3. UI Setup based on Mode
+            const stdControls = document.getElementById('std-controls');
+            const aiInput = document.getElementById('ai-input-area');
+            const stdBack = document.getElementById('std-back-content');
+            const aiBack = document.getElementById('ai-result-content');
+
+            if(sessionMode === 'ai') {
+                stdControls.classList.add('hidden');
+                aiInput.classList.remove('hidden');
+                stdBack.classList.add('hidden');
+                aiBack.classList.remove('hidden');
+            } else {
+                stdControls.classList.remove('hidden');
+                aiInput.classList.add('hidden');
+                stdBack.classList.remove('hidden');
+                aiBack.classList.add('hidden');
+            }
+
             showView('focus');
-            updateFocus();
+            renderSessionCard();
         }
 
-        function updateFocus() {
-            const c = currentDeckCards[fIdx];
-            document.getElementById('f-q').innerText = c.front;
-            document.getElementById('f-a').innerText = c.back;
-            document.getElementById('f-counter').innerText = `${fIdx + 1} / ${currentDeckCards.length}`;
-            document.getElementById('f-progress').style.width = ((fIdx + 1) / currentDeckCards.length * 100) + '%';
-            document.querySelector('#view-focus .card-inner').classList.remove('flipped');
+        // --- 4. SESSION RUNTIME ---
+        function renderSessionCard() {
+            const card = sessionCards[currentIdx];
+            document.getElementById('focus-q').innerText = card.front;
+            document.getElementById('focus-a').innerText = card.back;
+            document.getElementById('user-answer').value = '';
+            
+            // Reset UI
+            const inner = document.getElementById('sessionCard');
+            inner.classList.remove('flipped');
+            
+            // Progress
+            const pct = ((currentIdx) / sessionCards.length) * 100;
+            document.getElementById('progress-bar').style.width = pct + '%';
+            document.getElementById('card-counter').innerText = `${currentIdx + 1}/${sessionCards.length}`;
         }
 
-        function changeCard(d) {
-            fIdx = (fIdx + d + currentDeckCards.length) % currentDeckCards.length;
-            updateFocus();
+        function flipCard() {
+            document.getElementById('sessionCard').classList.add('flipped');
+            playSound('flip');
         }
 
-        function getTheme(n) {
-            const t = ['theme-blue', 'theme-purple', 'theme-green'];
-            return t[n.length % t.length];
+        async function submitAIAnswer() {
+            const uAns = document.getElementById('user-answer').value;
+            if(!uAns) return;
+
+            const card = sessionCards[currentIdx];
+            const btn = document.querySelector('#ai-input-area button');
+            btn.innerText = "Оценяване...";
+            
+            // Call AI Worker for grading
+            // SIMULATED LOGIC FOR DEMO (Replace with actual prompt to your worker)
+            // We ask the worker: Compare A to B and give JSON.
+            const prompt = `Act as a teacher. Correct Answer: "${card.back}". Student Answer: "${uAns}". Rate 0-100 based on meaning. Return ONLY valid JSON: {"score": number, "feedback": "short explanation"}`;
+            
+            try {
+                const res = await fetch(WORKER, { method: 'POST', body: JSON.stringify({ prompt: prompt }) });
+                const aiData = await res.json();
+                
+                // Parse the response (assuming worker returns JSON string inside 'answer' or directly)
+                // Note: Your worker might return plain text, so we might need regex if it's not pure JSON.
+                // For safety, let's try to parse, if fails, use simple keyword match.
+                let result = { score: 0, feedback: aiData.answer };
+                try {
+                    const jsonMatch = aiData.answer.match(/\{[\s\S]*\}/);
+                    if(jsonMatch) result = JSON.parse(jsonMatch[0]);
+                } catch(e) {}
+
+                // Show Result
+                const badge = document.getElementById('ai-score-badge');
+                badge.innerText = result.score + '%';
+                badge.className = `w-20 h-20 rounded-full flex items-center justify-center text-2xl font-black mb-4 border-4 transition-all ${result.score > 60 ? 'bg-green-50 border-green-500 text-green-600' : 'bg-red-50 border-red-500 text-red-600'}`;
+                
+                document.getElementById('ai-feedback').innerText = result.feedback || aiData.answer;
+                
+                // Store result
+                sessionResults.push({
+                    card: card,
+                    userAns: uAns,
+                    score: result.score,
+                    feedback: result.feedback || aiData.answer,
+                    correct: result.score > 60
+                });
+
+                if(result.score > 60) playSound('success'); else playSound('error');
+
+            } catch(err) {
+                console.error(err);
+                sessionResults.push({ card, userAns: uAns, score: 0, feedback: "Error connecting to AI", correct: false });
+            }
+
+            btn.innerText = "Провери ме";
+            flipCard();
         }
 
-        async function renderHeatmap() {
-            const { data } = await sb.from('flashcards').select('created_at');
-            const h = document.getElementById('heatmap');
-            h.innerHTML = '';
-            const dates = data ? data.map(d => new Date(d.created_at).toDateString()) : [];
-            for(let i = 13; i >= 0; i--) {
-                const d = new Date(); d.setDate(d.getDate() - i);
-                const active = dates.includes(d.toDateString());
-                h.innerHTML += `<div class="heatmap-day ${active ? 'heatmap-active' : ''}"></div>`;
+        function nextCard() {
+            if(currentIdx < sessionCards.length - 1) {
+                currentIdx++;
+                renderSessionCard();
+            } else {
+                finishSession();
             }
         }
 
-        window.onload = () => lucide.createIcons();
+        function endSessionEarly() {
+            if(confirm("Прекъсване на сесията?")) showView('library');
+        }
+
+        // --- 5. SESSION SUMMARY ---
+        function finishSession() {
+            showView('summary');
+            const list = document.getElementById('summary-list');
+            const scoreContainer = document.getElementById('sum-score-container');
+            const finalScoreEl = document.getElementById('final-score');
+            
+            confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
+            playSound('success');
+
+            if(sessionMode === 'standard') {
+                scoreContainer.classList.add('hidden');
+                list.innerHTML = `<div class="text-center text-slate-400 py-10">Прехвърли ${sessionCards.length} карти. <br>Искаш ли да се тестваш с AI режим?</div>`;
+            } else {
+                // Calculate Average
+                const totalScore = sessionResults.reduce((acc, curr) => acc + curr.score, 0);
+                const avg = Math.round(totalScore / sessionCards.length);
+                
+                scoreContainer.classList.remove('hidden');
+                finalScoreEl.innerText = avg + '%';
+                finalScoreEl.className = `w-24 h-24 rounded-full border-8 mx-auto flex items-center justify-center text-3xl font-black ${avg >= 60 ? 'border-green-400 text-green-600' : 'border-red-400 text-red-600'}`;
+
+                list.innerHTML = sessionResults.map((r, i) => `
+                    <div class="summary-card ${r.correct ? 'res-correct' : 'res-wrong'}">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-bold text-xs uppercase text-slate-400">Карта ${i+1}</span>
+                            <span class="font-black ${r.correct ? 'text-green-500':'text-red-500'}">${r.score}%</span>
+                        </div>
+                        <p class="font-bold text-[#05294a] mb-1">${r.card.front}</p>
+                        <p class="text-sm text-slate-500 mb-2">Твоят отговор: "${r.userAns}"</p>
+                        ${!r.correct ? `<button onclick="openTutor('${r.feedback.replace(/'/g, "\\'")}')" class="text-xs bg-purple-100 text-purple-600 px-3 py-1 rounded-full font-bold flex items-center gap-1"><i data-lucide="sparkles" class="w-3 h-3"></i> AI Обяснение</button>` : ''}
+                    </div>
+                `).join('');
+                lucide.createIcons();
+            }
+        }
+
+        function openTutor(text) {
+            const overlay = document.getElementById('ai-tutor-overlay');
+            const content = document.getElementById('tutor-content');
+            content.innerText = text;
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+        }
+
+        function closeTutor() {
+            document.getElementById('ai-tutor-overlay').classList.add('hidden');
+            document.getElementById('ai-tutor-overlay').classList.remove('flex');
+        }
+
+        function restartSession() {
+            launchSession();
+        }
+
+        window.onload = () => { lucide.createIcons(); loadDecks(); };
     </script>
 </body>
 </html>
