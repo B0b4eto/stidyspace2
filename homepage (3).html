@@ -7,7 +7,7 @@
     <title>Study Space</title>
     <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="assets/auth.js" defer></script>
+    <script src="assets/auth.js"></script>
     <style>
         :root{
             --bg:#e6f2ff;
@@ -31,31 +31,6 @@
             color:var(--accent-dark);display:block;padding:0;min-height:100vh}
 
         /* Frame remains transparent */
-        .frame{
-            width:100vw;
-            max-width:100%;
-            background:transparent; /* no glass panel */
-            border-radius:0;
-            padding:clamp(18px,3.2vw,36px) clamp(20px,4vw,56px);
-            -webkit-backdrop-filter: none;
-            backdrop-filter: none;
-            border:0;
-            box-shadow:none;
-            margin:0;
-            position:relative;overflow:visible;
-        }
-
-        /* Top bar fully transparent so background shows through */
-        .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 8px;gap:var(--gap);background:transparent}
-
-        /* transparent, light glassy icon buttons */
-        .icon-btn{width:56px;height:56px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06));border:1px solid rgba(255,255,255,0.12);box-shadow:0 8px 20px rgba(4,30,60,0.12);position:relative;overflow:hidden;backdrop-filter:blur(6px)}
-
-        /* faint mouse-position reflection (uses CSS vars set by JS) */
-        .icon-btn::before{content:'';position:absolute;left:0;top:0;right:0;bottom:0;border-radius:999px;pointer-events:none;z-index:1;mix-blend-mode:screen;background:radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.40) 18%, rgba(255,255,255,0.18) 36%, rgba(255,255,255,0.04) 60%, transparent 75%);opacity:var(--ref-opacity,0);transition:opacity 360ms ease, transform 260ms ease;filter:blur(6px);}
-
-        /* elongated center bar (wide pill) */
-        .center-pill{flex:1;display:flex;justify-content:center;padding:0 8px}
         /* pill restored to semi-transparent glass */
         .pill{width:min(1100px,92%);background:linear-gradient(90deg, rgba(255,255,255,0.10), rgba(240,250,255,0.06));border-radius:40px;padding:12px 28px;border:1px solid rgba(255,255,255,0.12);display:flex;justify-content:center;gap:24px;font-weight:800;align-items:center;position:relative;overflow:visible;backdrop-filter:blur(6px)}
         .pill span{font-size:clamp(15px,1.4vw,18px);color:#e6f5ff;position:relative;z-index:2}
@@ -1243,7 +1218,43 @@
     </style>
  </head>
  <body>
-     <div class="frame">
+    <div id="ss-loading-overlay" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9999;background:linear-gradient(180deg, rgba(6,16,40,0.64), rgba(6,16,40,0.24));backdrop-filter:blur(6px);transition:opacity .36s ease">
+        <div style="text-align:center;color:#fff;max-width:480px;padding:20px">
+            <div style="width:72px;height:72px;border-radius:50%;border:8px solid rgba(255,255,255,0.12);border-top-color:#ffffff;animation:__ss_spin 1s linear infinite;margin:0 auto 14px"></div>
+            <div style="font-weight:800;font-size:18px;margin-bottom:6px">Зареждане на съдържание…</div>
+            <div style="opacity:0.95;font-size:13px">Свързване със сървъра, моля изчакайте.</div>
+        </div>
+    </div>
+    <style>
+        @keyframes __ss_spin { to { transform: rotate(360deg); } }
+        #ss-loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    </style>
+
+    <script>
+        (function(){
+            const overlay = document.getElementById('ss-loading-overlay');
+            let removed = false;
+            function hideOverlay() {
+                if (removed) return;
+                removed = true;
+                overlay.classList.add('hidden');
+                setTimeout(()=>{ if(overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 420);
+            }
+
+            // If auth.js dispatches the event, hide immediately
+            document.addEventListener('supabase-ready', function(){ try{ hideOverlay(); console.log('supabase-ready received, hiding overlay'); }catch(e){} });
+
+            // Also hide if window._supabase is already present
+            if (window._supabase || (window.supabase && typeof window.supabase.createClient === 'function')) {
+                setTimeout(hideOverlay, 80);
+            }
+
+            // Fallback: remove overlay after 12 seconds to avoid blocking forever
+            setTimeout(function(){ if(!removed){ console.warn('ss-loading: timeout, removing overlay'); hideOverlay(); } }, 12000);
+        })();
+    </script>
+
+    <div class="frame">
          <div class="topbar">
              <div class="icon-btn" title="Settings">⚙️</div>
 
@@ -1867,7 +1878,7 @@
                 }
                 return captured;
             }
-
+                
             const isFileDrag = (event) => {
                 const dt = event.dataTransfer;
                 if(!dt) return false;
@@ -4135,8 +4146,8 @@ setTimeout(loadUserCustomization, 1200);
     let attempts = 0;
 
     async function startDynamicLoading() {
-        // Търсим Supabase клиента под различни имена, за да сме сигурни
-        const sb = window.supabase || window._supabase;
+        // Търсим Supabase клиента под различни имена, предпочитайки вече инициализирания клиент
+        const sb = window._supabase || window.supabase;
 
         if (!sb || typeof sb.from !== 'function') {
             if (attempts < 20) {
@@ -4192,7 +4203,7 @@ setTimeout(loadUserCustomization, 1200);
 
     // Глобална функция за запис (за твоите бутони долу)
     window.logLib = async function(name, url) {
-        const sb = window.supabase || window._supabase;
+        const sb = window._supabase || window.supabase;
         if (!sb) return;
         const { data: { user } } = await sb.auth.getUser();
         if (!user) return;
