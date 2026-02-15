@@ -1264,15 +1264,16 @@
                  </div>
              </div>
 
-             <div class="profile-container">
-                <img src="images/user.png" id="profileBtn" class="profile-icon">
+            <div class="profile-container">
+        <img src="images/user.png" id="profileBtn" class="profile-icon">
 
-                <div class="profile-dropdown" id="profileDropdown">
-
-                    <div class="dropdown-header">
-                        <img src="images/user.png" class="dropdown-avatar">
-                        <h4>Your Name</h4>
-                    </div>
+        <div class="profile-dropdown" id="profileDropdown">
+        <div class="dropdown-header">
+                <img src="images/user.png" id="dropdown-avatar" class="dropdown-avatar">
+                <h4 id="user-full-name">Твоят Профил</h4>
+            </div>
+            </div>
+                </div>
 
                     <ul>
                         <li>
@@ -4196,6 +4197,42 @@ setTimeout(loadUserCustomization, 1200);
         }, { onConflict: 'user_id, name' });
     };
 })();
+</script>
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+    const SUPABASE_URL = 'https://zfqpfhtbpfdudbpqzbbg.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_pM0f1G...'; // Твоят ключ тук
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function loadHomeProfile() {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (user) {
+            // Изтегляме името и снимката от таблица 'profiles'
+            const { data, error } = await supabase.from('profiles')
+                .select('full_name, avatar_url')
+                .eq('id', user.id)
+                .single();
+
+            if (data) {
+                // 1. Обновяваме името
+                if (data.full_name) {
+                    document.getElementById('user-full-name').innerText = data.full_name;
+                }
+                
+                // 2. Обновяваме двете снимки, ако има качена такава
+                if (data.avatar_url) {
+                    document.getElementById('profileBtn').src = data.avatar_url;
+                    document.getElementById('dropdown-avatar').src = data.avatar_url;
+                }
+            }
+        } else {
+            // Опционално: скриваме иконката, ако не е логнат
+            // document.querySelector('.profile-container').style.display = 'none';
+        }
+    }
+
+    loadHomeProfile();
 </script>
  </body>
 </html>
