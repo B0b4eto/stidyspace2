@@ -4126,141 +4126,78 @@ setTimeout(loadUserCustomization, 1200);
 </style>
 
 <script>
-    // 1. Поправка на Logout и 404 грешката
-    async function handleLogout() {
-        console.log("Излизане...");
-        if (window.supabaseClient) {
-            await window.supabaseClient.auth.signOut();
-        }
-        localStorage.clear();
-        // Увери се, че файлът ти е login.html, а не log-in.html
-        window.location.href = 'login.html'; 
-    }
-
-    // 2. Функция за иконите
-    function setupMenuContent() {
-        const menuList = document.querySelector('.profile-dropdown ul');
-            if (menuList) {
-            menuList.innerHTML = `
-                <li><a href="account.html"><i class="fa-solid fa-user-pen"></i> Редактирай профил</a></li>
-                <li><a href="#"><i class="fa-solid fa-gear"></i> Настройки</a></li>
-                <li><a href="javascript:void(0)" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Изход</a></li>
-            `;
-        }
-    }
-
-    // Стартираме всичко безопасно
-    window.addEventListener('load', () => {
-        setupMenuContent();
-        
-        // Махаме името "Your Name" и слагаме реалното
-        setTimeout(async () => {
-            if (window.supabaseClient) {
-                const { data: { user } } = await supabaseClient.auth.getUser();
-                if (user) {
-                    const nameTag = document.querySelector('.user-info h3') || document.querySelector('.profile-dropdown h4');
-                    if (nameTag) nameTag.textContent = user.user_metadata.full_name || user.email.split('@')[0];
-                }
-            }
-        }, 1500);
-    });
-</script>
-<script>
 /**
- * STUDYSPACE - SUPABASE DYNAMIC RECENT LIBRARIES
- * Автоматично заменя статичните блокове с данни от облака
+ * STUDYSPACE REPAIR SCRIPT
  */
-(async function() {
-    // 1. Автоматично откриване на Supabase клиента в страницата
-    const sb = window.supabase || (typeof _supabase !== 'undefined' ? _supabase : null);
+(function() {
+    let retryCount = 0;
 
-    if (!sb) {
-        console.warn("Инжекция: Supabase клиентът не е намерен. Уверете се, че този скрипт е най-отдолу.");
-        return;
-    }
+    function initInjection() {
+        // Опитваме се да намерим supabase в глобалния обект window
+        const sb = window.supabase || window._supabase || window.supabaseClient;
 
-    const RECENT_TABLE = 'recent_libraries'; // Името на таблицата в Supabase
+        if (!sb || typeof sb.from !== 'function') {
+            if (retryCount < 10) {
+                retryCount++;
+                setTimeout(initInjection, 500); // Опитай пак след половин секунда
+                return;
+            }
+            console.error("Грешка: Supabase не може да бъде намерен след 10 опита.");
+            return;
+        }
 
-    // 2. Функция за рендиране на последните 2 библиотеки
-    async function renderRecentFromCloud() {
-        try {
+        console.log("Инжекция: Supabase е намерен успешно!");
+
+        // 1. Функция за показване
+        async function loadRecent() {
             const { data: { user } } = await sb.auth.getUser();
             if (!user) return;
 
-            // Вземаме последните 2 записани библиотеки за този потребител
-            const { data: recent, error } = await sb
-                .from(RECENT_TABLE)
+            const { data: recent } = await sb
+                .from('recent_libraries')
                 .select('*')
                 .eq('user_id', user.id)
                 .order('last_used', { ascending: false })
                 .limit(2);
 
-            if (error || !recent) return;
-
-            // Намираме всички карти в горния ред
-            const cardElements = document.querySelectorAll('.cards .card');
-            
-            // Заменяме 2-рия и 3-тия блок (индекси 1 и 2)
-            recent.forEach((item, index) => {
-                const targetCard = cardElements[index + 1];
-                if (targetCard) {
-                    targetCard.onclick = () => window.location.href = item.url;
-                    
-                    // Намираме контейнера за съдържание
-                    const content = targetCard.querySelector('.card-content') || targetCard;
-                    content.innerHTML = `
-                        <div style="text-align:center; pointer-events:none;">
-                            <p style="font-size: 10px; opacity: 0.6; margin-bottom: 5px;">ПОСЛЕДНО ОТВАРЯНА</p>
-                            <p style="font-weight: 800; font-size: 1.1rem; color: #2c3e50;">${item.name}</p>
-                        </div>
-                    `;
-                }
-            });
-        } catch (err) {
-            console.error("Грешка при зареждане на скорошни библиотеки:", err);
+            if (recent && recent.length > 0) {
+                const cards = document.querySelectorAll('.cards .card');
+                recent.forEach((item, i) => {
+                    const target = cards[i + 1]; // Блокове 2 и 3
+                    if (target) {
+                        target.onclick = () => window.location.href = item.url;
+                        const content = target.querySelector('.card-content') || target;
+                        content.innerHTML = `
+                            <div style="text-align:center;">
+                                <p style="font-size: 10px; opacity: 0.6; margin-bottom:4px;">ПОСЛЕДНО ОТВАРЯНА</p>
+                                <p style="font-weight: 800;">${item.name}</p>
+                            </div>`;
+                    }
+                });
+            }
         }
+
+        // 2. Функция за записване
+        window.logLibraryClick = async function(name, url) {
+            const { data: { user } } = await sb.auth.getUser();
+            if (!user) return;
+
+            await sb.from('recent_libraries').upsert({
+                user_id: user.id,
+                name: name,
+                url: url,
+                last_used: new Date().toISOString()
+            }, { onConflict: 'user_id, name' });
+        };
+
+        loadRecent();
     }
 
-    // 3. Функция за записване (Upsert) в Supabase при клик
-    window.logLibraryClick = async function(name, url) {
-        const { data: { user } } = await sb.auth.getUser();
-        if (!user) return;
-
-        await sb.from(RECENT_TABLE).upsert({
-            user_id: user.id,
-            name: name,
-            url: url,
-            last_used: new Date().toISOString()
-        }, { onConflict: 'user_id, name' });
-    };
-
-    // 4. Автоматично "закачане" към долните блокове
-    function attachTrackers() {
-        // Търсим всички блокове в секцията "Персонализирани блокове"
-        const personalBlocks = document.querySelectorAll('.block-item, .personal-blocks .card');
-        personalBlocks.forEach(block => {
-            block.addEventListener('click', function() {
-                const title = block.querySelector('h3, h4')?.innerText || block.innerText.split('\n')[0];
-                const onclickAttr = block.getAttribute('onclick') || "";
-                const urlMatch = onclickAttr.match(/'([^']+)'/);
-                const url = urlMatch ? urlMatch[1] : "#";
-                
-                if (title && url !== "#") {
-                    window.logLibraryClick(title.trim(), url);
-                }
-            });
-        });
-    }
-
-    // Изпълнение след зареждане на DOM
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            renderRecentFromCloud();
-            attachTrackers();
-        });
+    // Стартиране
+    if (document.readyState === 'complete') {
+        initInjection();
     } else {
-        renderRecentFromCloud();
-        attachTrackers();
+        window.addEventListener('load', initInjection);
     }
 })();
 </script>
