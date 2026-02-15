@@ -4127,78 +4127,82 @@ setTimeout(loadUserCustomization, 1200);
 
 <script>
 /**
- * STUDYSPACE REPAIR SCRIPT
+ * STUDYSPACE - SUPABASE INTEGRATION REPAIR
  */
 (function() {
-    let retryCount = 0;
+    let checkInterval;
+    let attempts = 0;
 
-    function initInjection() {
-        // Опитваме се да намерим supabase в глобалния обект window
-        const sb = window.supabase || window._supabase || window.supabaseClient;
+    async function startDynamicLoading() {
+        // Търсим Supabase клиента под различни имена, за да сме сигурни
+        const sb = window.supabase || window._supabase;
 
         if (!sb || typeof sb.from !== 'function') {
-            if (retryCount < 10) {
-                retryCount++;
-                setTimeout(initInjection, 500); // Опитай пак след половин секунда
-                return;
+            if (attempts < 20) {
+                attempts++;
+                return; // Продължаваме да чакаме
             }
-            console.error("Грешка: Supabase не може да бъде намерен след 10 опита.");
+            console.error("Инжекция: Supabase не бе намерен след 10 секунди.");
+            clearInterval(checkInterval);
             return;
         }
 
-        console.log("Инжекция: Supabase е намерен успешно!");
+        // Ако го намерим, спираме интервала и действаме
+        clearInterval(checkInterval);
+        console.log("Инжекция: Supabase е зареден успешно!");
 
-        // 1. Функция за показване
-        async function loadRecent() {
+        try {
             const { data: { user } } = await sb.auth.getUser();
             if (!user) return;
 
-            const { data: recent } = await sb
+            // Зареждане на библиотеките
+            const { data: recent, error } = await sb
                 .from('recent_libraries')
                 .select('*')
                 .eq('user_id', user.id)
                 .order('last_used', { ascending: false })
                 .limit(2);
 
+            if (error) throw error;
+
             if (recent && recent.length > 0) {
                 const cards = document.querySelectorAll('.cards .card');
-                recent.forEach((item, i) => {
-                    const target = cards[i + 1]; // Блокове 2 и 3
-                    if (target) {
-                        target.onclick = () => window.location.href = item.url;
-                        const content = target.querySelector('.card-content') || target;
+                recent.forEach((item, index) => {
+                    const targetCard = cards[index + 1]; // Слотове 2 и 3
+                    if (targetCard) {
+                        targetCard.onclick = () => window.location.href = item.url;
+                        const content = targetCard.querySelector('.card-content') || targetCard;
                         content.innerHTML = `
-                            <div style="text-align:center;">
-                                <p style="font-size: 10px; opacity: 0.6; margin-bottom:4px;">ПОСЛЕДНО ОТВАРЯНА</p>
-                                <p style="font-weight: 800;">${item.name}</p>
-                            </div>`;
+                            <div style="text-align:center; pointer-events:none;">
+                                <p style="font-size: 10px; opacity: 0.6; margin-bottom: 5px;">ПОСЛЕДНО ОТВАРЯНА</p>
+                                <p style="font-weight: 800; font-size: 1.1rem;">${item.name}</p>
+                            </div>
+                        `;
                     }
                 });
             }
+        } catch (err) {
+            console.error("Грешка при комуникация със Supabase:", err.message);
         }
-
-        // 2. Функция за записване
-        window.logLibraryClick = async function(name, url) {
-            const { data: { user } } = await sb.auth.getUser();
-            if (!user) return;
-
-            await sb.from('recent_libraries').upsert({
-                user_id: user.id,
-                name: name,
-                url: url,
-                last_used: new Date().toISOString()
-            }, { onConflict: 'user_id, name' });
-        };
-
-        loadRecent();
     }
 
-    // Стартиране
-    if (document.readyState === 'complete') {
-        initInjection();
-    } else {
-        window.addEventListener('load', initInjection);
-    }
+    // Проверяваме на всеки 500ms дали Supabase е зареден
+    checkInterval = setInterval(startDynamicLoading, 500);
+
+    // Глобална функция за запис (за твоите бутони долу)
+    window.logLib = async function(name, url) {
+        const sb = window.supabase || window._supabase;
+        if (!sb) return;
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return;
+
+        await sb.from('recent_libraries').upsert({
+            user_id: user.id,
+            name: name,
+            url: url,
+            last_used: new Date().toISOString()
+        }, { onConflict: 'user_id, name' });
+    };
 })();
 </script>
  </body>
