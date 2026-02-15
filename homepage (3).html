@@ -4165,5 +4165,104 @@ setTimeout(loadUserCustomization, 1200);
         }, 1500);
     });
 </script>
-</body>
+<script>
+/**
+ * STUDYSPACE - SUPABASE DYNAMIC RECENT LIBRARIES
+ * Автоматично заменя статичните блокове с данни от облака
+ */
+(async function() {
+    // 1. Автоматично откриване на Supabase клиента в страницата
+    const sb = window.supabase || (typeof _supabase !== 'undefined' ? _supabase : null);
+
+    if (!sb) {
+        console.warn("Инжекция: Supabase клиентът не е намерен. Уверете се, че този скрипт е най-отдолу.");
+        return;
+    }
+
+    const RECENT_TABLE = 'recent_libraries'; // Името на таблицата в Supabase
+
+    // 2. Функция за рендиране на последните 2 библиотеки
+    async function renderRecentFromCloud() {
+        try {
+            const { data: { user } } = await sb.auth.getUser();
+            if (!user) return;
+
+            // Вземаме последните 2 записани библиотеки за този потребител
+            const { data: recent, error } = await sb
+                .from(RECENT_TABLE)
+                .select('*')
+                .eq('user_id', user.id)
+                .order('last_used', { ascending: false })
+                .limit(2);
+
+            if (error || !recent) return;
+
+            // Намираме всички карти в горния ред
+            const cardElements = document.querySelectorAll('.cards .card');
+            
+            // Заменяме 2-рия и 3-тия блок (индекси 1 и 2)
+            recent.forEach((item, index) => {
+                const targetCard = cardElements[index + 1];
+                if (targetCard) {
+                    targetCard.onclick = () => window.location.href = item.url;
+                    
+                    // Намираме контейнера за съдържание
+                    const content = targetCard.querySelector('.card-content') || targetCard;
+                    content.innerHTML = `
+                        <div style="text-align:center; pointer-events:none;">
+                            <p style="font-size: 10px; opacity: 0.6; margin-bottom: 5px;">ПОСЛЕДНО ОТВАРЯНА</p>
+                            <p style="font-weight: 800; font-size: 1.1rem; color: #2c3e50;">${item.name}</p>
+                        </div>
+                    `;
+                }
+            });
+        } catch (err) {
+            console.error("Грешка при зареждане на скорошни библиотеки:", err);
+        }
+    }
+
+    // 3. Функция за записване (Upsert) в Supabase при клик
+    window.logLibraryClick = async function(name, url) {
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return;
+
+        await sb.from(RECENT_TABLE).upsert({
+            user_id: user.id,
+            name: name,
+            url: url,
+            last_used: new Date().toISOString()
+        }, { onConflict: 'user_id, name' });
+    };
+
+    // 4. Автоматично "закачане" към долните блокове
+    function attachTrackers() {
+        // Търсим всички блокове в секцията "Персонализирани блокове"
+        const personalBlocks = document.querySelectorAll('.block-item, .personal-blocks .card');
+        personalBlocks.forEach(block => {
+            block.addEventListener('click', function() {
+                const title = block.querySelector('h3, h4')?.innerText || block.innerText.split('\n')[0];
+                const onclickAttr = block.getAttribute('onclick') || "";
+                const urlMatch = onclickAttr.match(/'([^']+)'/);
+                const url = urlMatch ? urlMatch[1] : "#";
+                
+                if (title && url !== "#") {
+                    window.logLibraryClick(title.trim(), url);
+                }
+            });
+        });
+    }
+
+    // Изпълнение след зареждане на DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            renderRecentFromCloud();
+            attachTrackers();
+        });
+    } else {
+        renderRecentFromCloud();
+        attachTrackers();
+    }
+})();
+</script>
+ </body>
 </html>
