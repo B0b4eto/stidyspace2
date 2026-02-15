@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skyline OS | Time Capsule</title>
+    <title>Skyline OS | Flashcard Studio</title>
     
     <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap" rel="stylesheet">
@@ -127,16 +127,13 @@
         <div class="max-w-6xl mx-auto px-6 h-16 grid grid-cols-3 items-center">
             
             <div class="flex gap-2">
-                <button onclick="showView('library')" class="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black transition rounded-full hover:bg-black/5" title="Библиотека">
+                <button onclick="location.href='homepage (3) (1).html'" class="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black transition rounded-full hover:bg-black/5" title="Отиди към начална страница">
                     <i data-lucide="home" class="w-5 h-5"></i>
-                </button>
-                <button onclick="showView('capsule')" class="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-[#007AFF] transition rounded-full hover:bg-blue-50" title="Капсула на времето">
-                    <i data-lucide="hourglass" class="w-5 h-5"></i>
                 </button>
             </div>
 
             <div class="flex justify-center" onclick="goHome()">
-                <div class="skyline-logo">Skyline</div>
+                <div class="skyline-logo">StudySpace</div>
             </div>
 
             <div class="flex justify-end">
@@ -155,28 +152,7 @@
         <div id="deck-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
     </section>
 
-    <section id="view-capsule" class="hidden-view max-w-5xl mx-auto px-6 py-10 fade-in flex flex-col items-center">
-        <div class="text-center mb-10">
-            <h1 class="text-4xl font-black text-[#1D1D1F] mb-2 tracking-tight">Капсула на времето</h1>
-            <p class="text-gray-500">Двойно кликване върху капсулата за добавяне.</p>
-        </div>
-
-        <div class="capsule-container mb-12" ondblclick="triggerCapsuleUpload()" title="Double click to open">
-            <div class="capsule-shine"></div>
-            <div class="capsule-content">
-                <i data-lucide="fingerprint" class="w-12 h-12 mx-auto mb-2 opacity-80"></i>
-                <span class="text-xs font-bold uppercase tracking-wider">Отвори</span>
-            </div>
-            <input type="file" id="file-input" multiple accept="image/*" class="hidden" onchange="handleFiles(this.files)">
-        </div>
-
-        <div id="capsule-gallery" class="w-full columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-            </div>
-        
-        <div id="empty-capsule-msg" class="text-center py-10 text-gray-300 hidden">
-            <p>Капсулата е празна</p>
-        </div>
-    </section>
+    <!-- Time capsule removed from this page -->
 
     <section id="view-create" class="hidden-view pt-10 flex flex-col items-center">
         <div class="card-container mb-6">
@@ -302,54 +278,17 @@
         const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev";
 
         let currentDeck = null, cards = [], cardIdx = 0, mode = 'standard', results = [], creationQueue = [];
-        let capsuleFiles = [];
 
         function showView(id) {
             document.querySelectorAll('section, .hidden-view').forEach(el => { if(!el.id.includes('modal')) el.classList.add('hidden-view'); });
             if(id !== 'modal-settings') document.getElementById('modal-settings').classList.add('hidden-view');
             document.getElementById('view-' + id).classList.remove('hidden-view');
             if(id === 'library') loadLibrary();
-            if(id === 'capsule') renderCapsule();
         }
 
         function goHome() { showView('library'); }
 
-        // --- TIME CAPSULE LOGIC ---
-        function triggerCapsuleUpload() {
-            document.getElementById('file-input').click();
-        }
-        
-        function handleFiles(files) {
-            ([...files]).forEach(file => {
-                if(file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onloadend = () => {
-                        capsuleFiles.unshift(reader.result); // Add to top
-                        renderCapsule();
-                        confetti({ particleCount: 50, spread: 50, origin: { y: 0.5 } }); // Effect on add
-                    }
-                }
-            });
-        }
-
-        function renderCapsule() {
-            const gallery = document.getElementById('capsule-gallery');
-            const empty = document.getElementById('empty-capsule-msg');
-            
-            if(capsuleFiles.length === 0) {
-                gallery.innerHTML = '';
-                empty.classList.remove('hidden');
-                return;
-            }
-            empty.classList.add('hidden');
-            
-            gallery.innerHTML = capsuleFiles.map(src => `
-                <div class="mb-4 break-inside-avoid">
-                    <img src="${src}" class="w-full rounded-2xl border border-gray-100 shadow-sm hover:scale-[1.02] transition duration-300">
-                </div>
-            `).join('');
-        }
+        // Time capsule removed from this page; functions and state omitted.
         // ---------------------------
 
         async function loadLibrary() {
