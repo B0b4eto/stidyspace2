@@ -1317,7 +1317,7 @@
 
            <div class="cards-wrap">
                <div class="cards" id="recentCards">
-                 <div class="card add" role="button" aria-label="Добави нова колекция">
+                 <div class="card add" role="button" aria-label="Добави нова колекция" onclick="location.href='Flashcardcreate.html'">
                      <div class="card-content" style="text-align:center">
                          <div class="plus">＋</div>
                          <div class="label">Нова</div>
@@ -3968,37 +3968,67 @@ async function renderRecentCards() {
     if (!container || !window.supabaseClient) return;
 
     try {
+        // Try to show 3 most-recently updated/used decks (libraries)
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return;
 
-        const { data: cards, error } = await supabaseClient
-            .from('flashcards')
+        // Fetch up to 3 decks ordered by last update (fallback to created_at)
+        const { data: decks, error: decksErr } = await supabaseClient
+            .from('decks')
             .select('*')
             .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(5);
+            .order('updated_at', { ascending: false })
+            .limit(3);
 
-        if (error) throw error;
+        if (decksErr) throw decksErr;
 
         const addBtn = container.querySelector('.card.add');
         container.innerHTML = '';
         if (addBtn) container.appendChild(addBtn);
 
-        if (cards && cards.length > 0) {
-            cards.forEach(card => {
+        if (decks && decks.length > 0) {
+            // For each deck, also fetch a small count of flashcards (nice-to-have)
+            for (const d of decks) {
                 const cardDiv = document.createElement('div');
                 cardDiv.className = 'card';
                 cardDiv.innerHTML = `
                     <div class="card-content" style="text-align:center">
-                        <div style="font-size:14px;font-weight:800;margin-bottom:5px;">${card.front}</div>
-                        <div class="label" style="font-size:10px;opacity:0.7;">${card.tags ? card.tags[0] : 'Карта'}</div>
+                        <div style="font-size:14px;font-weight:800;margin-bottom:6px;">${escapeHtml(d.name)}</div>
+                        <div class="label" style="font-size:12px;opacity:0.75;">Зареждане...</div>
                     </div>
                 `;
-                cardDiv.onclick = () => window.location.href = `Flashcardcreate.html?id=${card.id}`;
+                cardDiv.onclick = () => window.location.href = `Flashcardcreate.html?deck=${d.id}`;
                 container.appendChild(cardDiv);
-            });
+
+                // fetch count of flashcards for this deck
+                (async (deckId, el) => {
+                    try {
+                        const { count, error: cntErr } = await supabaseClient
+                            .from('flashcards')
+                            .select('*', { count: 'exact', head: true })
+                            .eq('deck_id', deckId);
+                        if (!cntErr) {
+                            const lbl = el.querySelector('.label');
+                            if (lbl) lbl.textContent = (count || 0) + ' карти';
+                        }
+                    } catch (e) { console.warn('Count error', e); }
+                })(d.id, cardDiv);
+            }
+        } else {
+            // no decks found: keep a couple of placeholders
+            for (let i = 0; i < 2; i++) {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'card';
+                placeholder.innerHTML = `<div class="card-content" style="text-align:center"><div style="font-size:14px;font-weight:800">Последно използвани</div><div class="label">карта</div></div>`;
+                container.appendChild(placeholder);
+            }
         }
     } catch (err) { console.warn('Cards load error:', err); }
+}
+
+// small helper to avoid unsafe HTML in deck names
+function escapeHtml(unsafe) {
+    return (unsafe || '').replace(/[&<>"']/g, function(m) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]; });
 }
 
 async function syncBlockToCloud(el) {
@@ -4110,9 +4140,9 @@ setTimeout(loadUserCustomization, 1200);
     // 2. Функция за иконите
     function setupMenuContent() {
         const menuList = document.querySelector('.profile-dropdown ul');
-        if (menuList) {
+            if (menuList) {
             menuList.innerHTML = `
-                <li><a href="#"><i class="fa-solid fa-user-pen"></i> Редактирай профил</a></li>
+                <li><a href="account.html"><i class="fa-solid fa-user-pen"></i> Редактирай профил</a></li>
                 <li><a href="#"><i class="fa-solid fa-gear"></i> Настройки</a></li>
                 <li><a href="javascript:void(0)" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Изход</a></li>
             `;
