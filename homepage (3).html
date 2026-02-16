@@ -1249,9 +1249,7 @@
             }
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/auth.js" defer></script>
-    <script src="assets/auth.js" defer></script>
+    <!-- Supabase and auth.js are already included in the page head; avoid duplicates here -->
  </head>
  <body>
      <div class="frame">
@@ -1370,7 +1368,26 @@
                             console.debug('supabase auth check failed', e);
                         }
 
-                        // Build candidate filenames to try (user-id based first, then fallbacks)
+                        // If we have a user, first try to load avatar_url from profiles
+                        if (userId) {
+                            try {
+                                const { data: profile, error: profErr } = await supabaseClient
+                                    .from('profiles')
+                                    .select('avatar_url')
+                                    .eq('id', userId)
+                                    .maybeSingle();
+
+                                if (!profErr && profile && profile.avatar_url) {
+                                    if (profileBtn) profileBtn.src = profile.avatar_url;
+                                    if (dropdownAvatar) dropdownAvatar.src = profile.avatar_url;
+                                    return; // we are done
+                                }
+                            } catch (e) {
+                                console.debug('profile avatar load failed', e);
+                            }
+                        }
+
+                        // Fallback: build candidate filenames to try in the avatars bucket
                         const candidates = [];
                         if (userId) candidates.push(`${userId}.png`, `${userId}.jpg`, `${userId}.jpeg`, `${userId}.webp`);
                         candidates.push('profile.png', 'default.png');
