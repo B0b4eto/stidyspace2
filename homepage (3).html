@@ -1357,7 +1357,8 @@
 
                     try {
                         // `supabase` is exposed by the included Supabase JS UMD script
-                        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                        const supabaseClient = window.supabaseClient || supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                        window.supabaseClient = supabaseClient;
 
                         // Try to get currently authenticated user id (if auth is used)
                         let userId = null;
@@ -4044,57 +4045,43 @@
           // 1. ЗАРЕЖДАНЕ НА КАРТИ ОТ SUPABASE
 async function renderRecentCards() {
     const container = document.getElementById('recentCards');
-    if (!container || !window.supabaseClient) return;
+    const sb = window.supabaseClient;
+    if (!container || !sb) return;
 
     try {
-        // Try to show 3 most-recently updated/used decks (libraries)
-        const { data: { user } } = await supabaseClient.auth.getUser();
+        // Get current user
+        const { data: { user } } = await sb.auth.getUser();
         if (!user) return;
 
-        // Fetch up to 3 decks ordered by last update (fallback to created_at)
-        const { data: decks, error: decksErr } = await supabaseClient
-            .from('decks')
+        // Fetch up to 2 last-used libraries from recent_libraries
+        const { data: recent, error: recentErr } = await sb
+            .from('recent_libraries')
             .select('*')
             .eq('user_id', user.id)
-            .order('updated_at', { ascending: false })
-            .limit(3);
+            .order('last_used', { ascending: false })
+            .limit(2);
 
-        if (decksErr) throw decksErr;
+        if (recentErr) throw recentErr;
 
         const addBtn = container.querySelector('.card.add');
         container.innerHTML = '';
         if (addBtn) container.appendChild(addBtn);
 
-        if (decks && decks.length > 0) {
-            // For each deck, also fetch a small count of flashcards (nice-to-have)
-            for (const d of decks) {
+        if (recent && recent.length > 0) {
+            recent.forEach((item) => {
                 const cardDiv = document.createElement('div');
                 cardDiv.className = 'card';
+                cardDiv.onclick = () => window.location.href = item.url;
                 cardDiv.innerHTML = `
                     <div class="card-content" style="text-align:center">
-                        <div style="font-size:14px;font-weight:800;margin-bottom:6px;">${escapeHtml(d.name)}</div>
-                        <div class="label" style="font-size:12px;opacity:0.75;">Зареждане...</div>
+                        <div style="font-size:10px;opacity:0.6;margin-bottom:4px;">ПОСЛЕДНО ОТВАРЯНА</div>
+                        <div class="label" style="font-size:14px;font-weight:800;">${escapeHtml(item.name)}</div>
                     </div>
                 `;
-                cardDiv.onclick = () => window.location.href = `Flashcardcreate.html?deck=${d.id}`;
                 container.appendChild(cardDiv);
-
-                // fetch count of flashcards for this deck
-                (async (deckId, el) => {
-                    try {
-                        const { count, error: cntErr } = await supabaseClient
-                            .from('flashcards')
-                            .select('*', { count: 'exact', head: true })
-                            .eq('deck_id', deckId);
-                        if (!cntErr) {
-                            const lbl = el.querySelector('.label');
-                            if (lbl) lbl.textContent = (count || 0) + ' карти';
-                        }
-                    } catch (e) { console.warn('Count error', e); }
-                })(d.id, cardDiv);
-            }
+            });
         } else {
-            // no decks found: keep a couple of placeholders
+            // no recent rows found: keep a couple of placeholders
             for (let i = 0; i < 2; i++) {
                 const placeholder = document.createElement('div');
                 placeholder.className = 'card';
@@ -4111,9 +4098,10 @@ function escapeHtml(unsafe) {
 }
 
 async function syncBlockToCloud(el) {
-    if (!window.supabaseClient || !el) return;
+    const sb = window.supabaseClient;
+    if (!sb || !el) return;
     try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
+        const { data: { user } } = await sb.auth.getUser();
         if (!user) return;
 
         const blockId = el.getAttribute('data-id') || el.id;
@@ -4133,7 +4121,7 @@ async function syncBlockToCloud(el) {
         };
 
         // Записваме в базата данни
-        await supabaseClient.from('user_blocks').upsert(blockData, { onConflict: 'user_id, block_key' });
+        await sb.from('user_blocks').upsert(blockData, { onConflict: 'user_id, block_key' });
     } catch (err) { console.warn('Sync failed:', err); }
 }
 
@@ -4147,12 +4135,13 @@ function saveBlockDimensions() { document.querySelectorAll('.block-item, .custom
 
 // 3. ЗАРЕЖДАНЕ НА ПЕРСОНАЛИЗАЦИЯТА ПРИ СТАРТ
 async function loadUserCustomization() {
-    if (!window.supabaseClient) return;
+    const sb = window.supabaseClient;
+    if (!sb) return;
     try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
+        const { data: { user } } = await sb.auth.getUser();
         if (!user) return;
 
-        const { data: blocks, error } = await supabaseClient
+        const { data: blocks, error } = await sb
             .from('user_blocks')
             .select('*')
             .eq('user_id', user.id);
@@ -4213,8 +4202,8 @@ setTimeout(loadUserCustomization, 1200);
     let attempts = 0;
 
     async function startDynamicLoading() {
-        // Търсим Supabase клиента под различни имена, за да сме сигурни
-        const sb = window.supabase || window._supabase;
+        // Използваме споделения Supabase клиент от window.supabaseClient
+        const sb = window.supabaseClient;
 
         if (!sb || typeof sb.from !== 'function') {
             if (attempts < 20) {
@@ -4270,7 +4259,7 @@ setTimeout(loadUserCustomization, 1200);
 
     // Глобална функция за запис (за твоите бутони долу)
     window.logLib = async function(name, url) {
-        const sb = window.supabase || window._supabase;
+        const sb = window.supabaseClient;
         if (!sb) return;
         const { data: { user } } = await sb.auth.getUser();
         if (!user) return;
