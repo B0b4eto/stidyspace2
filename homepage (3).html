@@ -1267,46 +1267,40 @@
             <div class="profile-container">
         <img src="images/user.png" id="profileBtn" class="profile-icon">
 
-        <div class="profile-dropdown" id="profileDropdown">
+<div class="profile-container">
+    <img src="images/user.png" id="profileBtn" class="profile-icon" onclick="toggleDropdown()" style="cursor: pointer;">
+
+    <div class="profile-dropdown" id="profileDropdown" style="display: none;">
         <div class="dropdown-header">
-                <img src="images/user.png" id="dropdown-avatar" class="dropdown-avatar">
-                <h4 id="user-full-name">Твоят Профил</h4>
-            </div>
-            </div>
-                </div>
+            <img src="images/user.png" id="dropdown-avatar" class="dropdown-avatar">
+            <h4 id="user-full-name">Зареждане...</h4>
+        </div>
 
-                    <ul>
-                        <li>
-                            <a href="account.html">
-                                <img src="images/profile.png" class="icon">
-                                Edit Profile
-                                <span class="arrow">▶</span>
-                            </a>
-                        </li>
-
-        
-
-                  
-
-                        <li>
-                            <a href="help.html">
-                                <img src="images/help.png" class="icon">
-                                Help
-                                <span class="arrow">▶</span>
-                            </a>
-                        </li>
-
-                        <li>
-                            <a href="log-in.html">
-                                <img src="images/logout.png" class="icon">
-                                Logout
-                                <span class="arrow">▶</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-         </div>
+        <ul class="dropdown-list">
+            <li>
+                <a href="account.html">
+                    <img src="images/profile.png" class="icon">
+                    Edit Profile
+                    <span class="arrow">▶</span>
+                </a>
+            </li>
+            <li>
+                <a href="help.html">
+                    <img src="images/help.png" class="icon">
+                    Help
+                    <span class="arrow">▶</span>
+                </a>
+            </li>
+            <li>
+                <a href="#" onclick="signOut()">
+                    <img src="images/logout.png" class="icon">
+                    Logout
+                    <span class="arrow">▶</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
 
            <div class="cards-wrap">
                <div class="cards" id="recentCards">
@@ -4233,6 +4227,55 @@ setTimeout(loadUserCustomization, 1200);
     }
 
     loadHomeProfile();
+    <script>
+    // 1. Toggle Dropdown Visibility
+    function toggleDropdown() {
+        const dropdown = document.getElementById('profileDropdown');
+        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    }
+
+    // 2. Load Profile Data from Supabase (as saved in account.html)
+    async function loadHomeProfile() {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (user) {
+            // Fetch name and avatar_url from the 'profiles' table
+            const { data, error } = await supabase.from('profiles')
+                .select('full_name, avatar_url')
+                .eq('id', user.id)
+                .single();
+
+            if (data) {
+                // Update the Display Name
+                if (data.full_name) {
+                    document.getElementById('user-full-name').innerText = data.full_name;
+                }
+                
+                // Update BOTH profile images with the one saved last in account.html
+                if (data.avatar_url) {
+                    document.getElementById('profileBtn').src = data.avatar_url;
+                    document.getElementById('dropdown-avatar').src = data.avatar_url;
+                }
+            }
+        }
+    }
+
+    // 3. Sign Out Function
+    async function signOut() {
+        await supabase.auth.signOut();
+        window.location.href = 'log-in.html';
+    }
+
+    // Close dropdown when clicking outside
+    window.addEventListener('click', function(e) {
+        if (!document.querySelector('.profile-container').contains(e.target)) {
+            document.getElementById('profileDropdown').style.display = 'none';
+        }
+    });
+
+    // Run on page load
+    loadHomeProfile();
+</script>
 </script>
  </body>
 </html>
