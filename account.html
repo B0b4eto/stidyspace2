@@ -287,7 +287,18 @@
 
                 const { data } = supabaseClient.storage.from('avatars').getPublicUrl(fileName);
                 if (data?.publicUrl) {
-                    await supabaseClient.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', user.id);
+                    // Записваме/създаваме ред в profiles с avatar_url,
+                    // за да може началната страница да го прочете.
+                    const { error: profErr } = await supabaseClient
+                        .from('profiles')
+                        .upsert({
+                            id: user.id,
+                            avatar_url: data.publicUrl,
+                            updated_at: new Date().toISOString()
+                        });
+
+                    if (profErr) console.warn('profiles upsert avatar_url error', profErr);
+
                     profileImg.src = data.publicUrl;
                     closeCropper();
                     showToast('Снимката е обновена!');
