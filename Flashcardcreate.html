@@ -279,6 +279,23 @@
 
         let currentDeck = null, cards = [], cardIdx = 0, mode = 'standard', results = [], creationQueue = [];
 
+        // Записва/обновява последно използвана библиотека за началната страница
+        async function logRecentLibrary(name, deckId) {
+            try {
+                const { data: { user } } = await sb.auth.getUser();
+                if (!user) return;
+
+                await sb.from('recent_libraries').upsert({
+                    user_id: user.id,
+                    name: name,
+                    url: `Flashcardcreate.html?deck=${deckId}`,
+                    last_used: new Date().toISOString()
+                }, { onConflict: 'user_id, name' });
+            } catch (err) {
+                console.warn('recent_libraries log failed', err);
+            }
+        }
+
         function showView(id) {
             document.querySelectorAll('section, .hidden-view').forEach(el => { if(!el.id.includes('modal')) el.classList.add('hidden-view'); });
             if(id !== 'modal-settings') document.getElementById('modal-settings').classList.add('hidden-view');
@@ -315,6 +332,8 @@
             document.getElementById('modal-settings').classList.remove('hidden-view');
             toggleMode('standard');
             document.getElementById('shuffle-check').checked = false;
+            // отбелязваме, че тази библиотека е отворена наскоро
+            logRecentLibrary(name, id);
         }
 
         function closeModal() { document.getElementById('modal-settings').classList.add('hidden-view'); }
@@ -414,6 +433,10 @@
             let { data: deck } = await sb.from('decks').select('id').eq('name', name).maybeSingle();
             if(!deck) { const { data } = await sb.from('decks').insert({name}).select().single(); deck = data; }
             await sb.from('flashcards').insert(creationQueue.map(c => ({...c, deck_id: deck.id})));
+
+            // отбелязваме новата/обновената библиотека като последно използвана
+            if (deck && deck.id) await logRecentLibrary(name, deck.id);
+
             creationQueue = []; updateQueueUI(); goHome();
         }
 
