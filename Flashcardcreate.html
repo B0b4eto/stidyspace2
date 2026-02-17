@@ -31,6 +31,261 @@
             -webkit-font-smoothing: antialiased;
         }
 
+        /* Frame + capsule navbar copied from homepage */
+        .frame{
+            width:100vw;
+            max-width:100%;
+            background:transparent;
+            border-radius:0;
+            padding:clamp(18px,3.2vw,36px) clamp(20px,4vw,56px);
+            -webkit-backdrop-filter:none;
+            backdrop-filter:none;
+            border:0;
+            box-shadow:none;
+            margin:0;
+            position:relative;
+            overflow:visible;
+            z-index:100; /* keep capsule navbar above overlays */
+        }
+
+        .topbar{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            padding:12px 8px;
+            gap:clamp(10px,1.4vw,18px);
+            background:transparent;
+        }
+
+        .icon-btn{
+            width:56px;
+            height:56px;
+            border-radius:999px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06));
+            border:1px solid rgba(255,255,255,0.12);
+            box-shadow:0 8px 20px rgba(4,30,60,0.12);
+            position:relative;
+            overflow:hidden;
+            backdrop-filter:blur(6px);
+            cursor:pointer;
+        }
+
+        .icon-btn::before{
+            content:'';
+            position:absolute;
+            left:0;top:0;right:0;bottom:0;
+            border-radius:999px;
+            pointer-events:none;
+            z-index:1;
+            mix-blend-mode:screen;
+            background:radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.40) 18%, rgba(255,255,255,0.18) 36%, rgba(255,255,255,0.04) 60%, transparent 75%);
+            opacity:var(--ref-opacity,0);
+            transition:opacity 360ms ease, transform 260ms ease;
+            filter:blur(6px);
+        }
+
+        .center-pill{flex:1;display:flex;justify-content:center;padding:0 8px}
+
+        .pill{
+            width:min(1100px,92%);
+            background:linear-gradient(90deg, rgba(255,255,255,0.16), rgba(240,250,255,0.10));
+            border-radius:44px;
+            padding:16px 32px;
+            border:1px solid rgba(255,255,255,0.16);
+            display:flex;
+            justify-content:center;
+            gap:26px;
+            font-weight:800;
+            align-items:center;
+            position:relative;
+            overflow:visible;
+            backdrop-filter:blur(10px);
+        }
+
+        .pill span{font-size:clamp(16px,1.6vw,19px);color:var(--capsule-text-color,#020617);position:relative;z-index:2}
+
+        /* faint mouse-position reflection for pill (like homepage) */
+        .pill{overflow:hidden}
+        .pill::before{
+            content:'';position:absolute;left:0;top:0;right:0;bottom:0;border-radius:40px;pointer-events:none;z-index:1;mix-blend-mode:screen;
+            background:radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.42) 16%, rgba(255,255,255,0.18) 34%, rgba(255,255,255,0.06) 60%, transparent 76%);
+            opacity:var(--pill-ref-opacity,0);transition:opacity 420ms ease, transform 260ms ease;filter:blur(8px);
+        }
+        .pill::after{z-index:2}
+        .pill > span{position:relative;z-index:3}
+
+        .home-clipboard{position:relative;display:flex;flex-direction:column;align-items:center;width:min(1100px,96%);gap:12px;z-index:1;padding-bottom:28px}
+        .home-clipboard.open{z-index:460}
+        .home-clipboard .pill{width:100%;position:relative;padding:14px 32px;border-radius:40px}
+        .home-capsule{justify-content:center;gap:24px;cursor:default;transition:transform 0.5s cubic-bezier(.25,.85,.35,1),box-shadow 0.4s ease,border-color 0.25s ease, padding 0.45s cubic-bezier(.25,1,.5,1), border-radius 0.45s cubic-bezier(.25,1,.5,1);min-height:60px;outline:none;position:relative;z-index:2;box-shadow:0 16px 42px rgba(6,40,90,0.18);will-change:transform,box-shadow}
+        .home-capsule span{color:#e6f5ff;font-size:clamp(16px,1.6vw,19px);font-weight:inherit}
+        .home-clipboard-count{position:absolute;top:50%;right:12px;min-width:32px;height:22px;padding:0 12px;border-radius:999px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 36px rgba(11,99,199,0.32);transform:translateY(-50%) scale(0);opacity:0;transition:transform 0.3s ease,opacity 0.3s ease;pointer-events:none;z-index:4}
+        .home-clipboard.has-items .home-clipboard-count{transform:translateY(-50%) scale(1);opacity:1}
+        .home-clipboard.drag-ready{z-index:480}
+        .home-clipboard.drag-ready .home-capsule{transform:scale(1.12);box-shadow:0 58px 120px rgba(6,40,90,0.26);border-color:rgba(255,255,255,0.32)}
+        .home-clipboard.captured .home-capsule{animation:homeCapsuleSnap 0.6s cubic-bezier(.3,1.2,.3,1)}
+        @keyframes homeCapsuleSnap{0%{transform:scale(1.08);}50%{transform:scale(0.96);}100%{transform:scale(1);}}
+        .home-clipboard-panel{position:absolute;left:0;top:calc(100% - 10px);width:100%;background:linear-gradient(200deg, rgba(255,255,255,0.28), rgba(235,245,255,0.12));border:1px solid rgba(255,255,255,0.32);border-radius:30px;padding:0 24px;max-height:0;opacity:0;overflow:hidden;transition:max-height 0.45s cubic-bezier(.25,.9,.3,1),opacity 0.28s ease,padding 0.3s ease,transform 0.35s cubic-bezier(.3,.95,.4,1);pointer-events:none;backdrop-filter:blur(24px);box-shadow:0 44px 88px rgba(5,20,45,0.32);transform:translateY(-26px) scaleY(0.88);transform-origin:top center}
+        .home-clipboard-panel::before{content:'';position:absolute;left:40px;right:40px;top:-28px;height:36px;border-radius:20px;background:linear-gradient(200deg, rgba(255,255,255,0.3), rgba(235,245,255,0.14));opacity:0;transform:translateY(12px);transition:opacity 0.32s ease,transform 0.32s cubic-bezier(.3,.95,.4,1);pointer-events:none}
+        .home-clipboard.open .home-clipboard-panel{max-height:420px;opacity:1;padding:22px 24px 26px;pointer-events:auto;transform:translateY(0) scaleY(1);overflow:auto}
+        .home-clipboard.open .home-clipboard-panel::before{opacity:1;transform:translateY(0)}
+        .home-clipboard-empty{margin:0 0 12px;font-size:13px;color:rgba(230,245,255,0.82);text-align:center}
+        .home-clipboard.has-items .home-clipboard-empty{display:none}
+        .home-clipboard-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+        .home-clipboard-item{position:relative;display:flex;align-items:flex-start;gap:14px;padding:14px 16px;border-radius:18px;background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.28);box-shadow:0 18px 42px rgba(5,20,45,0.18);cursor:grab;transition:transform 0.25s ease,box-shadow 0.25s ease,opacity 0.2s ease}
+        .home-clipboard-item:hover{transform:translateY(-4px);box-shadow:0 24px 52px rgba(5,20,45,0.24)}
+        .home-clipboard-preview{flex:0 0 64px;width:64px;height:64px;border-radius:14px;background:rgba(255,255,255,0.16);border:1px solid rgba(255,255,255,0.26);overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--accent-dark);text-align:center}
+        .home-clipboard-preview img{width:100%;height:100%;object-fit:cover;display:block}
+        .home-clipboard-preview-icon{font-size:24px}
+        .home-clipboard-info{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+        .home-clipboard-item-title{font-size:13px;font-weight:600;color:var(--accent-dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .home-clipboard-snippet{font-size:11px;line-height:1.35;color:var(--accent-dark);margin:0;overflow:hidden;display:-webkit-box;line-clamp:2;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+        .home-clipboard-item-details{font-size:10px;color:#6b87b7;text-transform:uppercase;letter-spacing:0.5px}
+
+        /* Capsule progress mode (Apple-like) */
+        .capsule-progress{
+            position:absolute;
+            inset:0;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            gap:4px;
+            min-width:180px;
+            opacity:0;
+            transform:translateY(10px) scale(0.96);
+            transition:opacity 0.38s cubic-bezier(.25,1,.5,1), transform 0.38s cubic-bezier(.25,1,.5,1);
+            pointer-events:none;
+        }
+
+        .capsule-progress-label{
+            font-size:11px;
+            letter-spacing:0.14em;
+            text-transform:uppercase;
+            color:var(--capsule-muted-color,rgba(15,23,42,0.72));
+        }
+
+        .capsule-progress-row{
+            display:flex;
+            align-items:center;
+            gap:14px;
+            width:100%;
+            padding:0 52px;
+            box-sizing:border-box;
+        }
+
+        .capsule-progress-bar{
+            flex:1;
+            height:6px;
+            border-radius:999px;
+            background:rgba(255,255,255,0.26);
+            overflow:hidden;
+            position:relative;
+            box-shadow:inset 0 0 0 1px rgba(255,255,255,0.18);
+        }
+
+        .capsule-progress-fill{
+            position:absolute;
+            inset:0;
+            width:0%;
+            background:linear-gradient(90deg,var(--accent),var(--accent-2));
+            border-radius:inherit;
+            box-shadow:0 0 16px rgba(11,99,199,0.8);
+            transform-origin:left center;
+            transition:width 0.5s cubic-bezier(.25,1,.5,1);
+        }
+
+        .capsule-progress-counter{
+            min-width:42px;
+            font-size:12px;
+            font-weight:600;
+            text-align:right;
+            color:var(--capsule-muted-color,rgba(15,23,42,0.72));
+        }
+
+        .home-clipboard.progress-mode .home-capsule,
+        .home-clipboard.summary-mode .home-capsule{
+            padding-top:10px;
+            padding-bottom:10px;
+            gap:12px;
+            border-radius:999px;
+            box-shadow:0 30px 80px rgba(6,40,90,0.4);
+            max-width:680px;
+            margin:0 auto;
+            animation:capsuleMorphBounce 0.7s var(--ease-apple);
+        }
+
+        .home-clipboard.progress-mode #date,
+        .home-clipboard.progress-mode #time,
+        .home-clipboard.progress-mode #homeClipboardCount,
+        .home-clipboard.summary-mode #date,
+        .home-clipboard.summary-mode #time,
+        .home-clipboard.summary-mode #homeClipboardCount{
+            opacity:0;
+            transform:translateY(-10px);
+            transition:opacity 0.28s ease, transform 0.28s ease;
+            pointer-events:none;
+            position:absolute;
+        }
+
+        .home-clipboard.progress-mode .capsule-progress{
+            opacity:1;
+            transform:translateY(0) scale(1);
+            pointer-events:auto;
+        }
+
+        .home-clipboard:not(.progress-mode) .capsule-progress{
+            opacity:0;
+            transform:translateY(8px) scale(0.96);
+            pointer-events:none;
+        }
+
+        .capsule-summary-label{
+            position:absolute;
+            inset:0;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:13px;
+            font-weight:700;
+            letter-spacing:0.16em;
+            text-transform:uppercase;
+            color:var(--capsule-text-color,#123055);
+            opacity:0;
+            transform:translateY(8px) scale(0.96);
+            transition:opacity 0.4s cubic-bezier(.25,1,.5,1), transform 0.4s cubic-bezier(.25,1,.5,1);
+            pointer-events:none;
+        }
+
+        .home-clipboard.summary-mode .capsule-summary-label{
+            opacity:1;
+            transform:translateY(0) scale(1);
+            color:rgba(15,23,42,0.96);
+        }
+
+        @keyframes capsuleMorphBounce{
+            0%{transform:scale(0.96);}
+            50%{transform:scale(1.04);}
+            100%{transform:scale(1);}
+        }
+
+        @media (max-width:640px){
+            .topbar{gap:10px}
+            .pill{min-width:160px;padding:clamp(8px,4vw,14px)}
+            .home-capsule{flex-direction:column;align-items:center;gap:8px}
+            .home-capsule span{text-align:center}
+        }
+
+        @media (prefers-reduced-motion: reduce){
+            .home-capsule{transition:none}
+            .home-clipboard-panel{transition:none;transform:none}
+            .home-clipboard.drag-ready .home-capsule{transform:none;box-shadow:0 12px 34px rgba(6,40,90,0.14)}
+            .home-clipboard.captured .home-capsule{animation:none}
+        }
+
         .skyline-logo {
             font-family: 'Montserrat', Arial, sans-serif;
             font-weight: 700;
@@ -138,29 +393,43 @@
         body.dark-mode nav { background: rgba(15,23,42,0.88); border-color: rgba(148,163,184,0.4); }
         body.dark-mode .ios-card { background: rgba(15,23,42,0.9); border-color: rgba(148,163,184,0.35); box-shadow: 0 18px 40px rgba(0,0,0,0.5); }
     </style>
-</head>
-<body class="bg-[#F5F5F7] min-h-screen pb-20">
+    </head>
+<body class="min-h-screen pb-20">
 
-    <nav class="sticky top-0 z-40 bg-white/70 backdrop-blur-md border-b border-gray-200">
-        <div class="max-w-6xl mx-auto px-6 h-16 grid grid-cols-3 items-center">
-            
-            <div class="flex gap-2">
-                <button onclick="location.href='homepage (3).html'" class="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-black transition rounded-full hover:bg-black/5" title="Отиди към начална страница">
-                    <i data-lucide="home" class="w-5 h-5"></i>
-                </button>
+    <div class="frame">
+        <div class="topbar">
+            <div class="icon-btn" id="homeNavBtn" title="Начало" onclick="location.href='homepage (3).html'">
+                <i data-lucide="home" class="w-5 h-5 text-white"></i>
             </div>
 
-            <div class="flex justify-center" onclick="goHome()">
-                <div class="skyline-logo">StudySpace</div>
+            <div class="center-pill">
+                <div class="home-clipboard" id="homeClipboard">
+                    <div class="pill home-capsule" id="homeClipboardCapsule" role="button" tabindex="0" aria-expanded="false" aria-controls="homeClipboardPanel">
+                        <span id="date">17.02.2026 г.</span>
+                        <span id="time">10:29 PM</span>
+                        <span class="home-clipboard-count" id="homeClipboardCount" aria-hidden="true">0</span>
+                        <div class="capsule-progress" id="capsuleProgress" aria-hidden="true">
+                            <div class="capsule-progress-label">ПРОГРЕС</div>
+                            <div class="capsule-progress-row">
+                                <div class="capsule-progress-bar">
+                                    <div class="capsule-progress-fill" id="capsuleProgressFill"></div>
+                                </div>
+                                <div class="capsule-progress-counter" id="capsuleProgressCounter">0/0</div>
+                            </div>
+                        </div>
+                        <span class="capsule-summary-label" id="capsuleSummaryLabel" aria-hidden="true">Резултат</span>
+                    </div>
+                    <div class="home-clipboard-panel" id="homeClipboardPanel" aria-hidden="true">
+                        <p class="home-clipboard-empty" id="homeClipboardEmpty">Плъзни файлове върху капсулата, за да ги запазиш временно.</p>
+                        <ul class="home-clipboard-list" id="homeClipboardList"></ul>
+                    </div>
+                </div>
             </div>
 
-            <div class="flex justify-end">
-                <button onclick="showView('create')" class="bg-[#007AFF] text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-blue-600 transition ios-btn shadow-md shadow-blue-500/20">
-                    + Нова
-                </button>
+            <div class="icon-btn" title="Нова библиотека" onclick="showView('create')">
+                <i data-lucide="plus" class="w-5 h-5 text-white"></i>
             </div>
         </div>
-    </nav>
 
     <section id="view-library" class="max-w-6xl mx-auto px-6 py-10 fade-in">
         <div class="flex flex-col items-center mb-10 text-center">
@@ -264,17 +533,8 @@
         </div>
     </div>
 
-    <section id="view-focus" class="hidden-view fixed inset-0 z-40 bg-[#F5F5F7] flex flex-col items-center justify-center">
-        <div class="absolute top-0 w-full p-6 flex items-center justify-between max-w-4xl">
-            <button onclick="goHome()" class="text-gray-400 hover:text-red-500 transition font-medium">Отказ</button>
-            <div class="flex flex-col items-center">
-                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">ПРОГРЕС</span>
-                <div class="w-32 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div id="progress-fill" class="h-full bg-[#007AFF] w-0 transition-all duration-500"></div>
-                </div>
-            </div>
-            <span id="counter" class="text-sm font-bold text-gray-500 font-mono">1/10</span>
-        </div>
+    <section id="view-focus" class="hidden-view fixed left-0 right-0 bottom-0 top-24 z-40 bg-transparent flex flex-col items-center justify-center pt-10">
+        <span id="counter" class="sr-only">1/10</span>
         <div class="card-container" id="session-card-wrapper">
             <div class="card-inner" id="sessionCard">
                 <div class="face front items-center justify-center text-center">
@@ -297,7 +557,10 @@
                 </div>
             </div>
         </div>
-        <div id="std-controls" class="mt-8 flex gap-4">
+        <div id="std-controls" class="mt-8 flex items-center gap-4">
+            <button onclick="confirmLeaveSession()" class="w-12 h-12 bg-white/80 border border-gray-200 rounded-full flex items-center justify-center ios-btn shadow-sm">
+                <i data-lucide="arrow-left"></i>
+            </button>
             <button onclick="flipSessionCard()" class="px-8 py-3 bg-white border border-gray-200 rounded-full font-medium text-gray-700 hover:bg-gray-50 ios-btn shadow-sm">Обърни</button>
             <button onclick="nextCard()" class="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center ios-btn"><i data-lucide="arrow-right"></i></button>
         </div>
@@ -309,12 +572,11 @@
         <p class="text-sm text-gray-500 mt-2">Анализ на резултатите...</p>
     </div>
 
-    <section id="view-summary" class="hidden-view fixed inset-0 z-[50] bg-[#F5F5F7] overflow-y-auto">
-        <div class="max-w-2xl mx-auto min-h-screen p-6 flex flex-col">
-            <div class="flex-1 mt-10">
-                <div class="text-center mb-10">
-                    <h1 class="text-4xl font-black text-gray-900 mb-2">Резултат</h1>
-                    <div id="final-badge" class="inline-flex items-center justify-center px-4 py-1 rounded-full text-sm font-bold bg-gray-200 text-gray-600">Приключено</div>
+    <section id="view-summary" class="hidden-view fixed left-0 right-0 bottom-0 top-24 z-[50] bg-transparent overflow-y-auto pt-4">
+        <div class="max-w-2xl mx-auto min-h-[calc(100vh-6rem)] px-6 pb-6 flex flex-col">
+            <div class="flex-1 mt-6">
+                <div class="text-center mb-8">
+                    <div id="final-badge" class="inline-flex items-center justify-center px-4 py-1 rounded-full text-sm font-bold bg-gray-200 text-gray-700">Приключено</div>
                 </div>
                 <div id="summary-grid" class="space-y-4"></div>
             </div>
@@ -353,9 +615,27 @@
             root.style.setProperty('--accent', accent);
             root.style.setProperty('--accent-2', accent);
             root.style.setProperty('--grad-start', hexToRgbaStart(accent));
-            document.body.classList.toggle('dark-mode', !!s.darkMode);
+
+            const dark = !!s.darkMode;
+            const capsuleText = dark ? '#f9fbff' : '#020617';
+            const capsuleMuted = dark ? 'rgba(226,232,240,0.96)' : 'rgba(15,23,42,0.72)';
+            root.style.setProperty('--capsule-text-color', capsuleText);
+            root.style.setProperty('--capsule-muted-color', capsuleMuted);
+
+            document.body.classList.toggle('dark-mode', dark);
             window.studyspaceSettings = { soundEnabled: !!s.sound, sfxEnabled: !!s.sfx };
         })();
+
+        // Date + time inside the capsule
+        function updateDateTime(){
+            const d = new Date();
+            const dateEl = document.getElementById('date');
+            const timeEl = document.getElementById('time');
+            if(dateEl) dateEl.textContent = d.toLocaleDateString('bg-BG');
+            if(timeEl) timeEl.textContent = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        }
+        updateDateTime();
+        setInterval(updateDateTime, 60000);
 
         const S_URL = "https://zfqpfhtbpfdudbpqzbbg.supabase.co";
         const S_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE";
@@ -363,6 +643,20 @@
         const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev";
 
         let currentDeck = null, cards = [], cardIdx = 0, mode = 'standard', results = [], creationQueue = [];
+
+        // Capsule progress elements (top navbar)
+        const capsuleProgress = document.getElementById('capsuleProgress');
+        const capsuleProgressFill = document.getElementById('capsuleProgressFill');
+        const capsuleProgressCounter = document.getElementById('capsuleProgressCounter');
+        const capsuleClipboardRoot = document.getElementById('homeClipboard');
+        const capsuleSummaryLabel = document.getElementById('capsuleSummaryLabel');
+
+        function setClipboardEnabled(enabled) {
+            if (!capsuleClipboardRoot) return;
+            capsuleClipboardRoot.style.pointerEvents = enabled ? '' : 'none';
+            capsuleClipboardRoot.classList.toggle('clipboard-disabled', !enabled);
+            document.body.classList.toggle('capsule-locked', !enabled);
+        }
 
         // Записва/обновява последно използвана библиотека за началната страница
         async function logRecentLibrary(name, deckId) {
@@ -385,10 +679,31 @@
             document.querySelectorAll('section, .hidden-view').forEach(el => { if(!el.id.includes('modal')) el.classList.add('hidden-view'); });
             if(id !== 'modal-settings') document.getElementById('modal-settings').classList.add('hidden-view');
             document.getElementById('view-' + id).classList.remove('hidden-view');
+
+            if(id === 'library' || id === 'create') setClipboardEnabled(true); else setClipboardEnabled(false);
+
+            const homeNav = document.getElementById('homeNavBtn');
+            if (homeNav) {
+                homeNav.style.visibility = (id === 'focus' || id === 'summary') ? 'hidden' : 'visible';
+            }
+
             if(id === 'library') loadLibrary();
         }
 
-        function goHome() { showView('library'); }
+        function goHome() {
+            exitCapsuleProgressMode();
+            showView('library');
+        }
+
+        function confirmLeaveSession() {
+            const leave = confirm('Ако напуснете теста, текущите отговори ще бъдат изтрити. Сигурни ли сте, че искате да продължите?');
+            if (!leave) return;
+            results = [];
+            cards = [];
+            cardIdx = 0;
+            exitCapsuleProgressMode();
+            showView('library');
+        }
 
         // Time capsule removed from this page; functions and state omitted.
         // ---------------------------
@@ -506,12 +821,50 @@
             else { bg.style.left = '50%'; tStd.classList.replace('text-black', 'text-gray-400'); tAi.classList.replace('text-gray-400', 'text-black'); }
         }
 
+        function enterCapsuleProgressMode(total) {
+            if (!capsuleClipboardRoot || !capsuleProgress) return;
+            capsuleClipboardRoot.classList.remove('summary-mode');
+            capsuleClipboardRoot.classList.add('progress-mode');
+            capsuleProgress.setAttribute('aria-hidden', 'false');
+            if (capsuleSummaryLabel) capsuleSummaryLabel.setAttribute('aria-hidden','true');
+            updateCapsuleProgress(1, total);
+        }
+
+        function updateCapsuleProgress(currentIndex, total) {
+            if (!capsuleClipboardRoot || !capsuleProgress || !capsuleProgressFill || !capsuleProgressCounter) return;
+            const safeTotal = Math.max(total, 1);
+            const clamped = Math.min(Math.max(currentIndex, 1), safeTotal);
+            const pct = (clamped / safeTotal) * 100;
+            capsuleProgressFill.style.width = `${pct}%`;
+            capsuleProgressCounter.textContent = `${clamped}/${safeTotal}`;
+        }
+
+        function exitCapsuleProgressMode() {
+            if (!capsuleClipboardRoot || !capsuleProgress) return;
+            capsuleClipboardRoot.classList.remove('progress-mode');
+            capsuleClipboardRoot.classList.remove('summary-mode');
+            capsuleProgress.setAttribute('aria-hidden', 'true');
+            if (capsuleProgressFill) capsuleProgressFill.style.width = '0%';
+            if (capsuleSummaryLabel) capsuleSummaryLabel.setAttribute('aria-hidden','true');
+        }
+
+        function enterCapsuleSummaryMode() {
+            if (!capsuleClipboardRoot) return;
+            capsuleClipboardRoot.classList.remove('progress-mode');
+            capsuleClipboardRoot.classList.add('summary-mode');
+            capsuleProgress.setAttribute('aria-hidden','true');
+            if (capsuleSummaryLabel) capsuleSummaryLabel.setAttribute('aria-hidden','false');
+        }
+
         async function startSession() {
             const { data } = await sb.from('flashcards').select('*').eq('deck_id', currentDeck.id);
             if(!data || data.length === 0) { alert('Папката е празна.'); return; }
             cards = [...data];
             if(document.getElementById('shuffle-check').checked) cards.sort(() => Math.random() - 0.5);
-            cardIdx = 0; results = []; closeModal(); showView('focus'); setupCardUI();
+            cardIdx = 0; results = []; closeModal();
+            enterCapsuleProgressMode(cards.length);
+            showView('focus');
+            setupCardUI();
         }
 
         function setupCardUI() {
@@ -520,7 +873,7 @@
             document.getElementById('sessionCard').classList.remove('flipped');
             document.getElementById('ai-user-ans').value = '';
             document.getElementById('counter').innerText = `${cardIdx + 1}/${cards.length}`;
-            document.getElementById('progress-fill').style.width = `${((cardIdx)/cards.length)*100}%`;
+            updateCapsuleProgress(cardIdx + 1, cards.length);
             
             const isAI = mode === 'ai';
             document.getElementById('std-controls').classList.toggle('hidden', isAI);
@@ -561,7 +914,9 @@
         }
 
         function renderSummary() {
-            showView('summary'); confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            enterCapsuleSummaryMode();
+            showView('summary');
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
             const grid = document.getElementById('summary-grid'), badge = document.getElementById('final-badge');
             if (mode === 'standard') {
                 badge.innerText = "Преговор"; badge.className = "inline-flex items-center justify-center px-4 py-1 rounded-full text-sm font-bold bg-blue-100 text-blue-600";
@@ -579,7 +934,17 @@
             }
         }
 
-        function restartDeck() { openSettings(currentDeck.id, currentDeck.name); }
+        function restartDeck() {
+            if (!currentDeck) {
+                showView('library');
+                return;
+            }
+            // Reset local session state and smoothly morph capsule from summary back into progress mode
+            results = [];
+            cards = [];
+            cardIdx = 0;
+            startSession();
+        }
         function flipBack() { document.getElementById('createCard').classList.remove('flipped'); }
         async function runAI() {
             const q = document.getElementById('q-in').value; if(!q) return;
@@ -602,6 +967,452 @@
         }
 
         window.onload = () => { lucide.createIcons(); loadLibrary(); };
+    </script>
+
+    <!-- Clipboard behavior copied from homepage so capsule works 1:1 -->
+    <script>
+        (function(){
+            const clipboard = document.getElementById('homeClipboard');
+            const capsule = document.getElementById('homeClipboardCapsule');
+            const panel = document.getElementById('homeClipboardPanel');
+            const list = document.getElementById('homeClipboardList');
+            const countEl = document.getElementById('homeClipboardCount');
+            const emptyEl = document.getElementById('homeClipboardEmpty');
+            if(!clipboard || !capsule || !panel || !list) return;
+
+            const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const clipboardElementMap = new Map();
+            const TEXT_SNIPPET_TYPES = new Set([
+                'application/json',
+                'application/xml',
+                'application/javascript',
+                'application/x-javascript',
+                'application/svg+xml'
+            ]);
+            const MAX_TEXT_PREVIEW_CHARS = 160;
+            let clipboardItems = [];
+            let clipboardOpen = false;
+            let dragDepth = 0;
+            let dragGhostEl = null;
+
+            function formatBytes(bytes){
+                if(typeof bytes !== 'number' || Number.isNaN(bytes)) return '0 B';
+                const units = ['B','KB','MB','GB','TB'];
+                let value = bytes;
+                let index = 0;
+                while(value >= 1024 && index < units.length - 1){
+                    value /= 1024;
+                    index++;
+                }
+                const formatted = value % 1 === 0 ? value : value.toFixed(1);
+                return `${formatted} ${units[index]}`;
+            }
+
+            function pickPreviewIcon(type){
+                if(!type) return '📄';
+                if(type.includes('sheet') || type.includes('excel') || type.includes('spreadsheet')) return '📊';
+                if(type.includes('presentation') || type.includes('powerpoint') || type.includes('slideshow')) return '📽️';
+                if(type.includes('word') || type.includes('document') || type.includes('msword')) return '📃';
+                if(type.includes('audio')) return '🎵';
+                if(type.includes('video')) return '🎬';
+                if(type.includes('pdf')) return '📕';
+                if(type.includes('zip') || type.includes('compressed') || type.includes('archive')) return '🗜️';
+                return '📄';
+            }
+
+            function fillPreview(previewEl, item){
+                previewEl.innerHTML = '';
+                if(item.previewKind === 'image' && item.previewUrl){
+                    const img = document.createElement('img');
+                    img.src = item.previewUrl;
+                    img.alt = item.name;
+                    previewEl.appendChild(img);
+                } else {
+                    const iconEl = document.createElement('div');
+                    iconEl.className = 'home-clipboard-preview-icon';
+                    iconEl.textContent = item.previewIcon || pickPreviewIcon((item.type || '').toLowerCase());
+                    previewEl.appendChild(iconEl);
+                }
+            }
+
+            function refreshItemPreview(item){
+                const record = clipboardElementMap.get(item.id);
+                if(record){
+                    fillPreview(record.preview, item);
+                }
+            }
+
+            function updateSnippetDisplay(item){
+                const record = clipboardElementMap.get(item.id);
+                if(!record) return;
+                if(item.snippet){
+                    if(record.snippet){
+                        record.snippet.textContent = item.snippet;
+                    } else {
+                        const snippetEl = document.createElement('p');
+                        snippetEl.className = 'home-clipboard-snippet';
+                        snippetEl.textContent = item.snippet;
+                        record.info.insertBefore(snippetEl, record.details);
+                        record.snippet = snippetEl;
+                    }
+                } else if(record.snippet){
+                    record.snippet.remove();
+                    record.snippet = null;
+                }
+            }
+
+            function prepareItemPreview(item){
+                if(!item || !item.file || item.previewPrepared) return;
+                const mime = (item.type || item.file.type || '').toLowerCase();
+                if(mime.startsWith('image/')){
+                    item.previewKind = 'image';
+                    if(!item.previewUrl){
+                        item.previewUrl = URL.createObjectURL(item.file);
+                    }
+                    refreshItemPreview(item);
+                } else if(mime.startsWith('text/') || TEXT_SNIPPET_TYPES.has(mime)){
+                    item.previewKind = 'icon';
+                    item.previewIcon = '📝';
+                    refreshItemPreview(item);
+                    const snippetSource = item.file.slice(0, 4096);
+                    snippetSource.text().then(text => {
+                        if(typeof text !== 'string'){
+                            item.previewKind = 'icon';
+                            item.previewIcon = pickPreviewIcon(mime);
+                            refreshItemPreview(item);
+                            item.snippet = '';
+                            updateSnippetDisplay(item);
+                            return;
+                        }
+                        const cleaned = text.replace(/\s+/g,' ').trim();
+                        if(!cleaned){
+                            item.previewKind = 'icon';
+                            item.previewIcon = pickPreviewIcon(mime);
+                            refreshItemPreview(item);
+                            item.snippet = '';
+                            updateSnippetDisplay(item);
+                            return;
+                        }
+                        item.snippet = cleaned.slice(0, MAX_TEXT_PREVIEW_CHARS);
+                        if(cleaned.length > MAX_TEXT_PREVIEW_CHARS){
+                            item.snippet = `${item.snippet}…`;
+                        }
+                        updateSnippetDisplay(item);
+                        refreshItemPreview(item);
+                    }).catch(()=>{
+                        item.previewKind = 'icon';
+                        item.previewIcon = pickPreviewIcon(mime);
+                        refreshItemPreview(item);
+                        item.snippet = '';
+                        updateSnippetDisplay(item);
+                    });
+                } else {
+                    item.previewKind = 'icon';
+                    item.previewIcon = pickPreviewIcon(mime);
+                    refreshItemPreview(item);
+                }
+                item.previewPrepared = true;
+            }
+
+            function createDragGhost(entry){
+                const ghost = entry.cloneNode(true);
+                ghost.style.position = 'absolute';
+                ghost.style.top = '-9999px';
+                ghost.style.left = '-9999px';
+                ghost.style.pointerEvents = 'none';
+                ghost.style.width = `${entry.offsetWidth}px`;
+                document.body.appendChild(ghost);
+                return ghost;
+            }
+
+            function handleItemDragStart(event, item, entry){
+                entry.classList.add('dragging');
+                if(event.dataTransfer){
+                    event.dataTransfer.effectAllowed = 'copy';
+                    event.dataTransfer.setData('text/plain', item.name);
+                    try{
+                        event.dataTransfer.setData('application/x-study-clipboard', JSON.stringify({ name: item.name, size: item.size, type: item.displayType || 'Файл', mime: item.type || '' }));
+                    } catch(err){}
+                    if(event.dataTransfer.items && typeof event.dataTransfer.items.add === 'function' && item.file){
+                        try{ event.dataTransfer.items.add(item.file); } catch(err){}
+                    }
+                    const ghost = createDragGhost(entry);
+                    if(ghost){
+                        dragGhostEl = ghost;
+                        event.dataTransfer.setDragImage(ghost, ghost.offsetWidth / 2, ghost.offsetHeight / 2);
+                    }
+                }
+            }
+
+            function handleItemDragEnd(event){
+                event.currentTarget.classList.remove('dragging');
+                if(dragGhostEl && dragGhostEl.parentNode){
+                    dragGhostEl.parentNode.removeChild(dragGhostEl);
+                }
+                dragGhostEl = null;
+            }
+
+            function createClipboardEntry(item){
+                const entry = document.createElement('li');
+                entry.className = 'home-clipboard-item';
+                entry.setAttribute('draggable', 'true');
+                entry.dataset.itemId = item.id;
+
+                const preview = document.createElement('div');
+                preview.className = 'home-clipboard-preview';
+                fillPreview(preview, item);
+
+                const title = document.createElement('div');
+                title.className = 'home-clipboard-item-title';
+                title.textContent = item.name;
+
+                const info = document.createElement('div');
+                info.className = 'home-clipboard-info';
+                info.appendChild(title);
+
+                let snippetEl = null;
+                if(item.snippet){
+                    snippetEl = document.createElement('p');
+                    snippetEl.className = 'home-clipboard-snippet';
+                    snippetEl.textContent = item.snippet;
+                    info.appendChild(snippetEl);
+                }
+
+                const details = document.createElement('div');
+                details.className = 'home-clipboard-item-details';
+                details.textContent = `${item.displayType || 'Файл'} · ${formatBytes(item.size)}`;
+                info.appendChild(details);
+
+                entry.append(preview, info);
+                entry.addEventListener('dragstart', (event) => handleItemDragStart(event, item, entry));
+                entry.addEventListener('dragend', handleItemDragEnd);
+
+                clipboardElementMap.set(item.id, { entry, preview, info, details, snippet: snippetEl });
+                return entry;
+            }
+
+            function clearClipboardPreviews(){
+                clipboardItems.forEach(item => {
+                    if(item.previewUrl){
+                        URL.revokeObjectURL(item.previewUrl);
+                        item.previewUrl = null;
+                    }
+                });
+            }
+
+            function updateClipboardUI(){
+                if(countEl){
+                    countEl.textContent = clipboardItems.length.toString();
+                    countEl.setAttribute('aria-hidden', clipboardItems.length > 0 ? 'false' : 'true');
+                }
+                clipboard.classList.toggle('has-items', clipboardItems.length > 0);
+                if(emptyEl){
+                    emptyEl.setAttribute('aria-hidden', clipboardItems.length > 0 ? 'true' : 'false');
+                }
+                clipboardElementMap.clear();
+                list.innerHTML = '';
+                clipboardItems.forEach(item => {
+                    prepareItemPreview(item);
+                    const entry = createClipboardEntry(item);
+                    list.appendChild(entry);
+                });
+            }
+
+            function setClipboardOpen(nextState){
+                if(nextState === clipboardOpen) return;
+                clipboardOpen = nextState;
+                clipboard.classList.toggle('open', nextState);
+                capsule.setAttribute('aria-expanded', nextState ? 'true' : 'false');
+                panel.setAttribute('aria-hidden', nextState ? 'false' : 'true');
+                if(!nextState){
+                    panel.scrollTop = 0;
+                }
+            }
+
+            function captureClipboardFiles(files){
+                let captured = false;
+                Array.from(files || []).forEach(file => {
+                    const mime = file.type || '';
+                    clipboardItems.push({
+                        id: `${file.name}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                        name: file.name,
+                        size: file.size,
+                        type: mime,
+                        displayType: mime || 'Файл',
+                        file,
+                        previewUrl: null,
+                        previewKind: null,
+                        previewIcon: null,
+                        snippet: '',
+                        previewPrepared: false
+                    });
+                    captured = true;
+                });
+                if(captured){
+                    updateClipboardUI();
+                }
+                return captured;
+            }
+
+            const isFileDrag = (event) => {
+                const dt = event.dataTransfer;
+                if(!dt) return false;
+                const types = dt.types ? Array.from(dt.types) : [];
+                if(types.includes('Files')) return true;
+                if(types.length === 0) return true;
+                return dt.files && dt.files.length > 0;
+            };
+
+            clipboard.addEventListener('dragenter', (event) => {
+                if(clipboard.classList.contains('clipboard-disabled')) return;
+                if(!isFileDrag(event)) return;
+                event.preventDefault();
+                dragDepth += 1;
+                clipboard.classList.add('drag-ready');
+                if(event.dataTransfer){
+                    event.dataTransfer.dropEffect = 'copy';
+                }
+            });
+
+            clipboard.addEventListener('dragover', (event) => {
+                if(clipboard.classList.contains('clipboard-disabled')) return;
+                if(!isFileDrag(event)) return;
+                event.preventDefault();
+                if(event.dataTransfer){
+                    event.dataTransfer.dropEffect = 'copy';
+                }
+            });
+
+            clipboard.addEventListener('dragleave', (event) => {
+                if(clipboard.classList.contains('clipboard-disabled')) return;
+                if(!isFileDrag(event)) return;
+                event.preventDefault();
+                dragDepth = Math.max(dragDepth - 1, 0);
+                if(dragDepth === 0){
+                    clipboard.classList.remove('drag-ready');
+                }
+            });
+
+            clipboard.addEventListener('drop', (event) => {
+                if(clipboard.classList.contains('clipboard-disabled')) return;
+                if(!isFileDrag(event)) return;
+                event.preventDefault();
+                dragDepth = 0;
+                clipboard.classList.remove('drag-ready');
+                const files = event.dataTransfer ? event.dataTransfer.files : null;
+                if(captureClipboardFiles(files)){
+                    if(!reducedMotion){
+                        clipboard.classList.remove('captured');
+                        void clipboard.offsetWidth;
+                        clipboard.classList.add('captured');
+                        setTimeout(() => clipboard.classList.remove('captured'), 600);
+                    }
+                    setTimeout(() => setClipboardOpen(false), 180);
+                }
+            });
+
+            capsule.addEventListener('dblclick', () => {
+                if(clipboard.classList.contains('clipboard-disabled')) return;
+                setClipboardOpen(!clipboardOpen);
+            });
+
+            let hoverIntentTimer = null;
+
+            function scheduleAutoClose(){
+                if(hoverIntentTimer){
+                    clearTimeout(hoverIntentTimer);
+                }
+                hoverIntentTimer = setTimeout(() => {
+                    if(!clipboard.matches(':hover') && clipboardOpen){
+                        setClipboardOpen(false);
+                    }
+                }, 260);
+            }
+
+            clipboard.addEventListener('mouseleave', () => {
+                if(!clipboardOpen) return;
+                scheduleAutoClose();
+            });
+
+            clipboard.addEventListener('mouseenter', () => {
+                if(hoverIntentTimer){
+                    clearTimeout(hoverIntentTimer);
+                    hoverIntentTimer = null;
+                }
+            });
+
+            capsule.addEventListener('keydown', (event) => {
+                if(event.key === 'Enter' || event.key === ' '){
+                    event.preventDefault();
+                    setClipboardOpen(!clipboardOpen);
+                } else if(event.key === 'Escape' && clipboardOpen){
+                    setClipboardOpen(false);
+                }
+            });
+
+            document.addEventListener('click', (event) => {
+                if(clipboardOpen && !clipboard.contains(event.target)){
+                    setClipboardOpen(false);
+                }
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if(event.key === 'Escape' && clipboardOpen){
+                    setClipboardOpen(false);
+                }
+            });
+
+            window.addEventListener('beforeunload', clearClipboardPreviews);
+            window.addEventListener('blur', () => {
+                if(clipboardOpen){
+                    setClipboardOpen(false);
+                }
+            });
+
+            updateClipboardUI();
+            setClipboardOpen(false);
+        })();
+    </script>
+
+    <!-- Glare/reflection effect for icon buttons and capsule pill (copied from homepage) -->
+    <script>
+        (function(){
+            if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+            const btns = document.querySelectorAll('.icon-btn');
+            btns.forEach(btn=>{
+                btn.addEventListener('mousemove', (e)=>{
+                    const r = btn.getBoundingClientRect();
+                    const x = ((e.clientX - r.left)/r.width)*100;
+                    const y = ((e.clientY - r.top)/r.height)*100;
+                    btn.style.setProperty('--mx', x + '%');
+                    btn.style.setProperty('--my', y + '%');
+                    btn.style.setProperty('--ref-opacity', '0.9');
+                });
+                btn.addEventListener('mouseenter', ()=> btn.style.setProperty('--ref-opacity','0.9'));
+                btn.addEventListener('mouseleave', ()=> btn.style.setProperty('--ref-opacity','0'));
+            });
+
+            const pills = document.querySelectorAll('.pill');
+            pills.forEach(pill=>{
+                pill.addEventListener('mousemove', (e)=>{
+                    if(document.body.classList.contains('capsule-locked')) return;
+                    const r = pill.getBoundingClientRect();
+                    const x = ((e.clientX - r.left)/r.width)*100;
+                    const y = ((e.clientY - r.top)/r.height)*100;
+                    pill.style.setProperty('--mx', x + '%');
+                    pill.style.setProperty('--my', y + '%');
+                    pill.style.setProperty('--pill-ref-opacity', '0.85');
+                });
+                pill.addEventListener('mouseenter', ()=>{
+                    if(document.body.classList.contains('capsule-locked')) return;
+                    pill.style.setProperty('--pill-ref-opacity','0.85');
+                });
+                pill.addEventListener('mouseleave', ()=>{
+                    pill.style.setProperty('--pill-ref-opacity','0');
+                });
+            });
+        })();
     </script>
 </body>
 </html>
