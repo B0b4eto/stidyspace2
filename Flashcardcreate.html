@@ -13,10 +13,19 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        :root { --ios-blue: #007AFF; --ios-gray: #F2F2F7; --ease-apple: cubic-bezier(0.25, 1, 0.5, 1); }
+        :root {
+            --ios-blue: #007AFF;
+            --ios-gray: #F2F2F7;
+            --ease-apple: cubic-bezier(0.25, 1, 0.5, 1);
+            --accent: #0b63c7;
+            --accent-2: #009fe6;
+            --grad-start: rgba(32, 102, 255, 0.72);
+            --grad-end: rgba(255, 255, 255, 0.5);
+        }
         
         body {
-            background-color: #F5F5F7;
+            background:
+                linear-gradient(180deg, var(--grad-start), var(--grad-end));
             font-family: 'Inter', sans-serif;
             color: #1D1D1F;
             -webkit-font-smoothing: antialiased;
@@ -110,7 +119,7 @@
         .back { transform: rotateY(180deg); background: #FAFAFA; }
         
         .apple-loader {
-            width: 60px; height: 60px; background: var(--ios-blue);
+            width: 60px; height: 60px; background: var(--accent);
             border-radius: 50%;
             animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
         }
@@ -119,6 +128,15 @@
             70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(0, 122, 255, 0); }
             100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 122, 255, 0); }
         }
+
+        /* Dark mode variant similar to homepage */
+        body.dark-mode {
+            color: #e5e7eb;
+            background:
+                linear-gradient(180deg, rgba(15,23,42,0.96), rgba(15,23,42,0.92));
+        }
+        body.dark-mode nav { background: rgba(15,23,42,0.88); border-color: rgba(148,163,184,0.4); }
+        body.dark-mode .ios-card { background: rgba(15,23,42,0.9); border-color: rgba(148,163,184,0.35); box-shadow: 0 18px 40px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body class="bg-[#F5F5F7] min-h-screen pb-20">
@@ -206,7 +224,43 @@
                     <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-green-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm"></div>
                 </label>
             </div>
-            <button onclick="startSession()" class="w-full py-4 bg-[#007AFF] text-white rounded-2xl font-bold text-lg hover:bg-blue-600 ios-btn shadow-lg shadow-blue-500/30">Започни</button>
+            <div class="mt-1 rounded-2xl bg-gray-50 border border-gray-200 p-3">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Управление на папката</p>
+                <div class="flex gap-2">
+                    <button onclick="openRenameDeck()" class="flex-1 py-2.5 bg-white text-gray-800 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 ios-btn">Преименувай</button>
+                    <button onclick="confirmDeleteDeck()" class="flex-1 py-2.5 bg-red-50 text-red-600 rounded-xl border border-red-100 text-sm font-semibold hover:bg-red-100 ios-btn">Изтрий</button>
+                </div>
+            </div>
+
+            <button onclick="startSession()" class="mt-4 w-full py-4 bg-[#007AFF] text-white rounded-2xl font-bold text-lg hover:bg-blue-600 ios-btn shadow-lg shadow-blue-500/30">Започни</button>
+        </div>
+    </div>
+
+    <!-- Rename deck modal -->
+    <div id="rename-modal" class="hidden-view fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onclick="if(event.target === this) closeRenameModal()">
+        <div class="bg-white/95 backdrop-blur-xl w-full max-w-sm p-6 rounded-[32px] shadow-2xl border border-white/60">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-900">Преименуване</h3>
+                <button onclick="closeRenameModal()" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <p class="text-sm text-gray-500 mb-4">Въведи ново име за избраната папка.</p>
+            <input id="rename-input" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ново име">
+            <div class="flex gap-2 mt-5">
+                <button onclick="closeRenameModal()" class="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 ios-btn">Отказ</button>
+                <button onclick="applyRenameDeck()" class="flex-1 py-2.5 rounded-xl bg-[#007AFF] text-white text-sm font-semibold hover:bg-blue-600 ios-btn">Запази</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete deck confirmation modal -->
+    <div id="delete-modal" class="hidden-view fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onclick="if(event.target === this) closeDeleteModal()">
+        <div class="bg-white/95 backdrop-blur-xl w-full max-w-sm p-6 rounded-[32px] shadow-2xl border border-white/60">
+            <h3 class="text-lg font-bold text-gray-900 mb-2">Изтриване на папка</h3>
+            <p class="text-sm text-gray-600 mb-4">Сигурни ли сте, че искате да изтриете „<span id="delete-name" class="font-semibold"></span>“? Всички карти в нея ще бъдат премахнати.</p>
+            <div class="flex gap-2 mt-2">
+                <button onclick="closeDeleteModal()" class="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 ios-btn">Отказ</button>
+                <button onclick="performDeleteDeck()" class="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 ios-btn">Изтрий</button>
+            </div>
         </div>
     </div>
 
@@ -272,6 +326,37 @@
     </section>
 
     <script>
+        // Apply shared StudySpace theme based on saved settings
+        (function(){
+            const DEFAULT = { accentColor:'#2f6bff', darkMode:false, sound:true, sfx:true };
+            let s = { ...DEFAULT };
+            function hexToRgbaStart(hex){
+                if (!hex || hex[0] !== '#' || (hex.length !== 7 && hex.length !== 4)) return 'rgba(32, 102, 255, 0.72)';
+                let r,g,b;
+                if (hex.length === 7) {
+                    r = parseInt(hex.slice(1,3),16);
+                    g = parseInt(hex.slice(3,5),16);
+                    b = parseInt(hex.slice(5,7),16);
+                } else {
+                    r = parseInt(hex[1] + hex[1],16);
+                    g = parseInt(hex[2] + hex[2],16);
+                    b = parseInt(hex[3] + hex[3],16);
+                }
+                return `rgba(${r}, ${g}, ${b}, 0.72)`;
+            }
+            try {
+                const raw = localStorage.getItem('studyspace_settings');
+                if (raw) s = { ...s, ...JSON.parse(raw) };
+            } catch(e) {}
+            const root = document.documentElement;
+            const accent = s.accentColor || DEFAULT.accentColor;
+            root.style.setProperty('--accent', accent);
+            root.style.setProperty('--accent-2', accent);
+            root.style.setProperty('--grad-start', hexToRgbaStart(accent));
+            document.body.classList.toggle('dark-mode', !!s.darkMode);
+            window.studyspaceSettings = { soundEnabled: !!s.sound, sfxEnabled: !!s.sfx };
+        })();
+
         const S_URL = "https://zfqpfhtbpfdudbpqzbbg.supabase.co";
         const S_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE";
         const sb = window.supabase.createClient(S_URL, S_KEY);
@@ -337,6 +422,82 @@
         }
 
         function closeModal() { document.getElementById('modal-settings').classList.add('hidden-view'); }
+
+        // Rename / delete helpers
+        function openRenameDeck() {
+            if (!currentDeck) return;
+            const input = document.getElementById('rename-input');
+            input.value = currentDeck.name || '';
+            document.getElementById('rename-modal').classList.remove('hidden-view');
+        }
+
+        function closeRenameModal() {
+            document.getElementById('rename-modal').classList.add('hidden-view');
+        }
+
+        async function applyRenameDeck() {
+            if (!currentDeck) return;
+            const input = document.getElementById('rename-input');
+            const newName = (input.value || '').trim();
+            if (!newName) return;
+
+            try {
+                const { error } = await sb.from('decks').update({ name: newName }).eq('id', currentDeck.id);
+                if (error) {
+                    console.warn('rename deck error', error);
+                    return;
+                }
+                currentDeck.name = newName;
+                document.getElementById('modal-title').innerText = newName;
+                closeRenameModal();
+                await logRecentLibrary(newName, currentDeck.id);
+                await loadLibrary();
+            } catch (e) {
+                console.warn('rename deck failed', e);
+            }
+        }
+
+        function confirmDeleteDeck() {
+            if (!currentDeck) return;
+            document.getElementById('delete-name').innerText = currentDeck.name || '';
+            document.getElementById('delete-modal').classList.remove('hidden-view');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.add('hidden-view');
+        }
+
+        async function performDeleteDeck() {
+            if (!currentDeck) return;
+            const deckId = currentDeck.id;
+            try {
+                // Първо изтриваме картите в тази папка
+                await sb.from('flashcards').delete().eq('deck_id', deckId);
+                // После самата папка
+                await sb.from('decks').delete().eq('id', deckId);
+
+                // Премахваме я и от recent_libraries за текущия потребител
+                try {
+                    const { data: { user } } = await sb.auth.getUser();
+                    if (user) {
+                        await sb
+                            .from('recent_libraries')
+                            .delete()
+                            .eq('user_id', user.id)
+                            .eq('url', `Flashcardcreate.html?deck=${deckId}`);
+                    }
+                } catch (e) {
+                    console.warn('recent_libraries cleanup failed', e);
+                }
+
+                closeDeleteModal();
+                closeModal();
+                currentDeck = null;
+                await loadLibrary();
+            } catch (e) {
+                console.warn('delete deck failed', e);
+            }
+        }
         function toggleMode(m) {
             mode = m;
             const bg = document.getElementById('toggle-bg');
