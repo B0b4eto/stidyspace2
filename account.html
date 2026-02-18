@@ -42,15 +42,227 @@
             background: radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 40%);
         }
 
-        /* --- NAV --- */
-        nav {
-            position: fixed; top: 0; width: 100%; padding: 15px 5%; z-index: 100;
-            backdrop-filter: blur(20px); background: rgba(255, 255, 255, 0.7);
-            border-bottom: 1px solid var(--border); display: grid;
-            grid-template-columns: 1fr auto 1fr; align-items: center;
+        /* --- FRAME + TOPBAR (copied from homepage for 1:1 look) --- */
+        .frame{
+            width:100vw;
+            max-width:100%;
+            background:transparent;
+            border-radius:0;
+            padding:clamp(18px,3.2vw,36px) clamp(20px,4vw,56px);
+            -webkit-backdrop-filter:none;
+            backdrop-filter:none;
+            border:0;
+            box-shadow:none;
+            margin:0;
+            position:relative;
+            overflow:visible;
+            z-index:10;
         }
-        .home-btn { font-size: 22px; text-decoration: none; color: var(--text-main); transition: 0.3s; display:inline-flex; align-items:center; justify-content:center; }
-        .nav-center-title { grid-column: 2; font-weight: 700; font-size: 17px; }
+
+        .topbar{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            padding:12px 8px;
+            gap:clamp(10px,1.4vw,18px);
+            background:transparent;
+        }
+
+        .icon-btn{
+            width:56px;
+            height:56px;
+            border-radius:999px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06));
+            border:1px solid rgba(255,255,255,0.12);
+            box-shadow:0 8px 20px rgba(4,30,60,0.12);
+            position:relative;
+            overflow:hidden;
+            backdrop-filter:blur(6px);
+            cursor:pointer;
+        }
+
+        .icon-btn::before{
+            content:'';
+            position:absolute;
+            left:0;top:0;right:0;bottom:0;
+            border-radius:999px;
+            pointer-events:none;
+            z-index:1;
+            mix-blend-mode:screen;
+            background:radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.40) 18%, rgba(255,255,255,0.18) 36%, rgba(255,255,255,0.04) 60%, transparent 75%);
+            opacity:var(--ref-opacity,0);
+            transition:opacity 360ms ease, transform 260ms ease;
+            filter:blur(6px);
+        }
+
+        .center-pill{flex:1;display:flex;justify-content:center;padding:0 8px}
+
+        .pill{
+            width:min(1100px,92%);
+            background:linear-gradient(90deg, rgba(255,255,255,0.10), rgba(240,250,255,0.06));
+            border-radius:40px;
+            padding:12px 28px;
+            border:1px solid rgba(255,255,255,0.12);
+            display:flex;
+            justify-content:center;
+            gap:24px;
+            font-weight:800;
+            align-items:center;
+            position:relative;
+            overflow:visible;
+            backdrop-filter:blur(6px);
+        }
+
+        .pill span{font-size:clamp(15px,1.4vw,18px);color:#e6f5ff;position:relative;z-index:2}
+
+        /* faint mouse-position reflection for pill (like homepage) */
+        .pill{overflow:hidden}
+        .pill::before{
+            content:'';position:absolute;left:0;top:0;right:0;bottom:0;border-radius:40px;pointer-events:none;z-index:1;mix-blend-mode:screen;
+            background:radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.42) 16%, rgba(255,255,255,0.18) 34%, rgba(255,255,255,0.06) 60%, transparent 76%);
+            opacity:var(--pill-ref-opacity,0);transition:opacity 420ms ease, transform 260ms ease;filter:blur(8px);
+        }
+        .pill::after{z-index:2}
+        .pill > span{position:relative;z-index:3}
+
+        /* Clipboard capsule styles */
+        .home-clipboard{position:relative;display:flex;flex-direction:column;align-items:center;width:min(1100px,92%);gap:10px;z-index:1;padding-bottom:24px}
+        .home-clipboard.open{z-index:460}
+        .home-clipboard .pill{width:100%;position:relative;padding-right:110px;padding-left:28px;padding-top:10px;padding-bottom:10px;border-radius:34px}
+        .home-capsule{justify-content:center;gap:20px;cursor:default;transition:transform 0.5s cubic-bezier(.25,.85,.35,1),box-shadow 0.4s ease,border-color 0.25s ease;min-height:48px;outline:none;position:relative;z-index:2;box-shadow:0 12px 34px rgba(6,40,90,0.14);will-change:transform,box-shadow}
+        .home-capsule span{color:#e6f5ff;font-size:clamp(15px,1.4vw,18px);font-weight:inherit}
+        .home-clipboard-count{position:absolute;top:50%;right:12px;min-width:32px;height:22px;padding:0 12px;border-radius:999px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 36px rgba(11,99,199,0.32);transform:translateY(-50%) scale(0);opacity:0;transition:transform 0.3s ease,opacity 0.3s ease;pointer-events:none;z-index:4}
+        .home-clipboard.has-items .home-clipboard-count{transform:translateY(-50%) scale(1);opacity:1}
+        .home-clipboard.drag-ready{z-index:480}
+        .home-clipboard.drag-ready .home-capsule{transform:scale(1.12);box-shadow:0 58px 120px rgba(6,40,90,0.26);border-color:rgba(255,255,255,0.32)}
+        .home-clipboard.captured .home-capsule{animation:homeCapsuleSnap 0.6s cubic-bezier(.3,1.2,.3,1)}
+        @keyframes homeCapsuleSnap{0%{transform:scale(1.08);}50%{transform:scale(0.96);}100%{transform:scale(1);}}
+        .home-clipboard-panel{position:absolute;left:0;top:calc(100% - 10px);width:100%;background:linear-gradient(200deg, rgba(255,255,255,0.28), rgba(235,245,255,0.12));border:1px solid rgba(255,255,255,0.32);border-radius:30px;padding:0 24px;max-height:0;opacity:0;overflow:hidden;transition:max-height 0.45s cubic-bezier(.25,.9,.3,1),opacity 0.28s ease,padding 0.3s ease,transform 0.35s cubic-bezier(.3,.95,.4,1);pointer-events:none;backdrop-filter:blur(24px);box-shadow:0 44px 88px rgba(5,20,45,0.32);transform:translateY(-26px) scaleY(0.88);transform-origin:top center}
+        .home-clipboard-panel::before{content:'';position:absolute;left:40px;right:40px;top:-28px;height:36px;border-radius:20px;background:linear-gradient(200deg, rgba(255,255,255,0.3), rgba(235,245,255,0.14));opacity:0;transform:translateY(12px);transition:opacity 0.32s ease,transform 0.32s cubic-bezier(.3,.95,.4,1);pointer-events:none}
+        .home-clipboard.open .home-clipboard-panel{max-height:420px;opacity:1;padding:22px 24px 26px;pointer-events:auto;transform:translateY(0) scaleY(1);overflow:auto}
+        .home-clipboard.open .home-clipboard-panel::before{opacity:1;transform:translateY(0)}
+        .home-clipboard-empty{margin:0 0 12px;font-size:13px;color:rgba(230,245,255,0.82);text-align:center}
+        .home-clipboard.has-items .home-clipboard-empty{display:none}
+        .home-clipboard-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+        .home-clipboard-item{position:relative;display:flex;align-items:flex-start;gap:14px;padding:14px 16px;border-radius:18px;background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.28);box-shadow:0 18px 42px rgba(5,20,45,0.18);cursor:grab;transition:transform 0.25s ease,box-shadow 0.25s ease,opacity 0.2s ease}
+        .home-clipboard-item:hover{transform:translateY(-4px);box-shadow:0 24px 52px rgba(5,20,45,0.24)}
+        .home-clipboard-preview{flex:0 0 64px;width:64px;height:64px;border-radius:14px;background:rgba(255,255,255,0.16);border:1px solid rgba(255,255,255,0.26);overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--accent-dark);text-align:center}
+        .home-clipboard-preview img{width:100%;height:100%;object-fit:cover;display:block}
+        .home-clipboard-preview-icon{font-size:24px}
+        .home-clipboard-info{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+        .home-clipboard-item-title{font-size:13px;font-weight:600;color:var(--accent-dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .home-clipboard-snippet{font-size:11px;line-height:1.35;color:var(--accent-dark);margin:0;overflow:hidden;display:-webkit-box;line-clamp:2;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+        .home-clipboard-item-details{font-size:10px;color:var(--text-sub);text-transform:uppercase;letter-spacing:0.5px}
+
+        @media (max-width:640px){
+            .topbar{gap:10px}
+            .pill{min-width:160px;padding:clamp(8px,4vw,14px)}
+            .home-capsule{flex-direction:column;align-items:center;gap:8px}
+            .home-capsule span{text-align:center}
+        }
+
+        @media (prefers-reduced-motion: reduce){
+            .home-capsule{transition:none}
+            .home-clipboard-panel{transition:none;transform:none}
+            .home-clipboard.drag-ready .home-capsule{transform:none;box-shadow:0 12px 34px rgba(6,40,90,0.14)}
+            .home-clipboard.captured .home-capsule{animation:none}
+        }
+
+        /* Profile dropdown styles copied from homepage */
+        .profile-container { position: relative; }
+
+        .profile-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .profile-icon:hover { transform: scale(1.07); }
+
+        .profile-dropdown {
+            position: absolute;
+            right: 0;
+            top: 58px;
+            width: 220px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 10px 0;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.22s ease;
+            z-index: 999;
+        }
+
+        .profile-dropdown.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-header {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .dropdown-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .profile-dropdown ul {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+
+        .profile-dropdown li a {
+            display: block;
+            padding: 12px 18px;
+            font-size: 15px;
+            color: #333;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .profile-dropdown li a:hover {
+            background: #f5f5f5;
+            transform: translateX(3px);
+        }
+
+        .profile-dropdown .icon {
+            width: 18px;
+            height: 18px;
+            margin-right: 10px;
+            opacity: 0.85;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-dropdown .arrow {
+            margin-left: auto;
+            opacity: 0;
+            transform: translateX(-6px);
+            transition: 0.25s ease;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .profile-dropdown ul li a:hover .arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
 
         /* --- CONTAINER --- */
         .main-container { position: relative; z-index: 10; max-width: 1000px; margin: 0 auto; padding: 100px 20px; }
@@ -104,15 +316,63 @@
 
     <div class="background-blobs"></div>
 
-    <nav>
-        <a href="homepage (3).html" class="home-btn" aria-label="Начало">
-            <i class="fa-solid fa-house-chimney"></i>
-        </a>
-        <div class="nav-center-title">Профил</div>
-        <div></div>
-    </nav>
+    <div class="frame">
+        <div class="topbar">
+            <div class="icon-btn" title="Начало" onclick="window.location.href='homepage (3).html'">
+                <i class="fa-solid fa-house-chimney" style="color:#ffffff;"></i>
+            </div>
 
-    <div class="main-container">
+            <div class="center-pill">
+                <div class="home-clipboard" id="homeClipboard">
+                    <div class="pill home-capsule" id="homeClipboardCapsule" role="button" tabindex="0" aria-expanded="false" aria-controls="homeClipboardPanel">
+                        <span id="date">17.02.2026 г.</span>
+                        <span id="time">10:29 PM</span>
+                        <span class="home-clipboard-count" id="homeClipboardCount" aria-hidden="true">0</span>
+                    </div>
+                    <div class="home-clipboard-panel" id="homeClipboardPanel" aria-hidden="true">
+                        <p class="home-clipboard-empty" id="homeClipboardEmpty">Плъзни файлове върху капсулата, за да ги запазиш временно.</p>
+                        <ul class="home-clipboard-list" id="homeClipboardList"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-container">
+                <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22128%22%20height%3D%22128%22%20viewBox%3D%220%200%20128%20128%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20x2%3D%221%22%20y1%3D%220%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23009fe6%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230b63c7%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2264%22%20r%3D%2264%22%20fill%3D%22url%28%23g%29%22%2F%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2250%22%20r%3D%2222%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.92%29%22%2F%3E%3Cpath%20d%3D%22M24%20118c9-20%2027-32%2040-32s31%2012%2040%2032%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.92%29%22%2F%3E%3C%2Fsvg%3E" id="profileBtn" class="profile-icon" alt="Profile">
+
+                <div class="profile-dropdown" id="profileDropdown">
+                    <div class="dropdown-header">
+                        <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22128%22%20height%3D%22128%22%20viewBox%3D%220%200%20128%20128%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20x2%3D%221%22%20y1%3D%220%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23009fe6%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230b63c7%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2264%22%20r%3D%2264%22%20fill%3D%22url%28%23g%29%22%2F%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2250%22%20r%3D%2222%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.92%29%22%2F%3E%3Cpath%20d%3D%22M24%20118c9-20%2027-32%2040-32s31%2012%2040%2032%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.92%29%22%2F%3E%3C%2Fsvg%3E" class="dropdown-avatar" alt="Avatar">
+                        <h4>Твоят профил</h4>
+                    </div>
+
+                    <ul>
+                        <li>
+                            <a href="account (1).html">
+                                <i class="fa-solid fa-user-pen icon" aria-hidden="true"></i>
+                                Редактирай профил
+                                <span class="arrow">▶</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="homepage (3).html">
+                                <i class="fa-solid fa-house-chimney icon" aria-hidden="true"></i>
+                                Начало
+                                <span class="arrow">▶</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" onclick="signOut(); return false;">
+                                <i class="fa-solid fa-right-from-bracket icon" aria-hidden="true"></i>
+                                Изход
+                                <span class="arrow">▶</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-container">
         <div class="profile-grid">
             <aside class="glass-card avatar-section">
                 <div class="avatar-wrap">
@@ -382,6 +642,32 @@
             window.location.href = 'login.html';
         }
 
+        // Account Dropdown Toggle for top-right avatar
+        const topProfileBtn = document.getElementById("profileBtn");
+        const profileDropdown = document.getElementById("profileDropdown");
+
+        if (topProfileBtn && profileDropdown) {
+            topProfileBtn.addEventListener("click", () => {
+                profileDropdown.classList.toggle("show");
+            });
+
+            document.addEventListener("click", (e) => {
+                if (!topProfileBtn.contains(e.target) && !profileDropdown.contains(e.target)) {
+                    profileDropdown.classList.remove("show");
+                }
+            });
+        }
+
+        function updateDateTime(){
+            const d = new Date();
+            const dateEl = document.getElementById('date');
+            const timeEl = document.getElementById('time');
+            if(dateEl) dateEl.textContent = d.toLocaleDateString('bg-BG');
+            if(timeEl) timeEl.textContent = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        }
+        updateDateTime();
+        setInterval(updateDateTime, 60000);
+
         // Expose small helpers for existing inline attributes (keeps backward compatibility)
         window.toggleLogoutModal = toggleLogoutModal;
         window.closeCropper = closeCropper;
@@ -389,6 +675,441 @@
 
         // Kick off
         loadProfile();
+    </script>
+
+    <!-- Clipboard behavior copied from homepage -->
+    <script>
+        (function(){
+            const clipboard = document.getElementById('homeClipboard');
+            const capsule = document.getElementById('homeClipboardCapsule');
+            const panel = document.getElementById('homeClipboardPanel');
+            const list = document.getElementById('homeClipboardList');
+            const countEl = document.getElementById('homeClipboardCount');
+            const emptyEl = document.getElementById('homeClipboardEmpty');
+            if(!clipboard || !capsule || !panel || !list) return;
+
+            const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const clipboardElementMap = new Map();
+            const TEXT_SNIPPET_TYPES = new Set([
+                'application/json',
+                'application/xml',
+                'application/javascript',
+                'application/x-javascript',
+                'application/svg+xml'
+            ]);
+            const MAX_TEXT_PREVIEW_CHARS = 160;
+            let clipboardItems = [];
+            let clipboardOpen = false;
+            let dragDepth = 0;
+            let dragGhostEl = null;
+
+            function formatBytes(bytes){
+                if(typeof bytes !== 'number' || Number.isNaN(bytes)) return '0 B';
+                const units = ['B','KB','MB','GB','TB'];
+                let value = bytes;
+                let index = 0;
+                while(value >= 1024 && index < units.length - 1){
+                    value /= 1024;
+                    index++;
+                }
+                const formatted = value % 1 === 0 ? value : value.toFixed(1);
+                return `${formatted} ${units[index]}`;
+            }
+
+            function pickPreviewIcon(type){
+                if(!type) return '📄';
+                if(type.includes('sheet') || type.includes('excel') || type.includes('spreadsheet')) return '📊';
+                if(type.includes('presentation') || type.includes('powerpoint') || type.includes('slideshow')) return '📽️';
+                if(type.includes('word') || type.includes('document') || type.includes('msword')) return '📃';
+                if(type.includes('audio')) return '🎵';
+                if(type.includes('video')) return '🎬';
+                if(type.includes('pdf')) return '📕';
+                if(type.includes('zip') || type.includes('compressed') || type.includes('archive')) return '🗜️';
+                return '📄';
+            }
+
+            function fillPreview(previewEl, item){
+                previewEl.innerHTML = '';
+                if(item.previewKind === 'image' && item.previewUrl){
+                    const img = document.createElement('img');
+                    img.src = item.previewUrl;
+                    img.alt = item.name;
+                    previewEl.appendChild(img);
+                } else {
+                    const iconEl = document.createElement('div');
+                    iconEl.className = 'home-clipboard-preview-icon';
+                    iconEl.textContent = item.previewIcon || pickPreviewIcon((item.type || '').toLowerCase());
+                    previewEl.appendChild(iconEl);
+                }
+            }
+
+            function refreshItemPreview(item){
+                const record = clipboardElementMap.get(item.id);
+                if(record){
+                    fillPreview(record.preview, item);
+                }
+            }
+
+            function updateSnippetDisplay(item){
+                const record = clipboardElementMap.get(item.id);
+                if(!record) return;
+                if(item.snippet){
+                    if(record.snippet){
+                        record.snippet.textContent = item.snippet;
+                    } else {
+                        const snippetEl = document.createElement('p');
+                        snippetEl.className = 'home-clipboard-snippet';
+                        snippetEl.textContent = item.snippet;
+                        record.info.insertBefore(snippetEl, record.details);
+                        record.snippet = snippetEl;
+                    }
+                } else if(record.snippet){
+                    record.snippet.remove();
+                    record.snippet = null;
+                }
+            }
+
+            function prepareItemPreview(item){
+                if(!item || !item.file || item.previewPrepared) return;
+                const mime = (item.type || item.file.type || '').toLowerCase();
+                if(mime.startsWith('image/')){
+                    item.previewKind = 'image';
+                    if(!item.previewUrl){
+                        item.previewUrl = URL.createObjectURL(item.file);
+                    }
+                    refreshItemPreview(item);
+                } else if(mime.startsWith('text/') || TEXT_SNIPPET_TYPES.has(mime)){
+                    item.previewKind = 'icon';
+                    item.previewIcon = '📝';
+                    refreshItemPreview(item);
+                    const snippetSource = item.file.slice(0, 4096);
+                    snippetSource.text().then(text => {
+                        if(typeof text !== 'string'){
+                            item.previewKind = 'icon';
+                            item.previewIcon = pickPreviewIcon(mime);
+                            refreshItemPreview(item);
+                            item.snippet = '';
+                            updateSnippetDisplay(item);
+                            return;
+                        }
+                        const cleaned = text.replace(/\s+/g,' ').trim();
+                        if(!cleaned){
+                            item.previewKind = 'icon';
+                            item.previewIcon = pickPreviewIcon(mime);
+                            refreshItemPreview(item);
+                            item.snippet = '';
+                            updateSnippetDisplay(item);
+                            return;
+                        }
+                        item.snippet = cleaned.slice(0, MAX_TEXT_PREVIEW_CHARS);
+                        if(cleaned.length > MAX_TEXT_PREVIEW_CHARS){
+                            item.snippet = `${item.snippet}…`;
+                        }
+                        updateSnippetDisplay(item);
+                        refreshItemPreview(item);
+                    }).catch(()=>{
+                        item.previewKind = 'icon';
+                        item.previewIcon = pickPreviewIcon(mime);
+                        refreshItemPreview(item);
+                        item.snippet = '';
+                        updateSnippetDisplay(item);
+                    });
+                } else {
+                    item.previewKind = 'icon';
+                    item.previewIcon = pickPreviewIcon(mime);
+                    refreshItemPreview(item);
+                }
+                item.previewPrepared = true;
+            }
+
+            function createDragGhost(entry){
+                const ghost = entry.cloneNode(true);
+                ghost.style.position = 'absolute';
+                ghost.style.top = '-9999px';
+                ghost.style.left = '-9999px';
+                ghost.style.pointerEvents = 'none';
+                ghost.style.width = `${entry.offsetWidth}px`;
+                document.body.appendChild(ghost);
+                return ghost;
+            }
+
+            function handleItemDragStart(event, item, entry){
+                entry.classList.add('dragging');
+                if(event.dataTransfer){
+                    event.dataTransfer.effectAllowed = 'copy';
+                    event.dataTransfer.setData('text/plain', item.name);
+                    try{
+                        event.dataTransfer.setData('application/x-study-clipboard', JSON.stringify({ name: item.name, size: item.size, type: item.displayType || 'Файл', mime: item.type || '' }));
+                    } catch(err){}
+                    if(event.dataTransfer.items && typeof event.dataTransfer.items.add === 'function' && item.file){
+                        try{ event.dataTransfer.items.add(item.file); } catch(err){}
+                    }
+                    const ghost = createDragGhost(entry);
+                    if(ghost){
+                        dragGhostEl = ghost;
+                        event.dataTransfer.setDragImage(ghost, ghost.offsetWidth / 2, ghost.offsetHeight / 2);
+                    }
+                }
+            }
+
+            function handleItemDragEnd(event){
+                event.currentTarget.classList.remove('dragging');
+                if(dragGhostEl && dragGhostEl.parentNode){
+                    dragGhostEl.parentNode.removeChild(dragGhostEl);
+                }
+                dragGhostEl = null;
+            }
+
+            function createClipboardEntry(item){
+                const entry = document.createElement('li');
+                entry.className = 'home-clipboard-item';
+                entry.setAttribute('draggable', 'true');
+                entry.dataset.itemId = item.id;
+
+                const preview = document.createElement('div');
+                preview.className = 'home-clipboard-preview';
+                fillPreview(preview, item);
+
+                const title = document.createElement('div');
+                title.className = 'home-clipboard-item-title';
+                title.textContent = item.name;
+
+                const info = document.createElement('div');
+                info.className = 'home-clipboard-info';
+                info.appendChild(title);
+
+                let snippetEl = null;
+                if(item.snippet){
+                    snippetEl = document.createElement('p');
+                    snippetEl.className = 'home-clipboard-snippet';
+                    snippetEl.textContent = item.snippet;
+                    info.appendChild(snippetEl);
+                }
+
+                const details = document.createElement('div');
+                details.className = 'home-clipboard-item-details';
+                details.textContent = `${item.displayType || 'Файл'} · ${formatBytes(item.size)}`;
+                info.appendChild(details);
+
+                entry.append(preview, info);
+                entry.addEventListener('dragstart', (event) => handleItemDragStart(event, item, entry));
+                entry.addEventListener('dragend', handleItemDragEnd);
+
+                clipboardElementMap.set(item.id, { entry, preview, info, details, snippet: snippetEl });
+                return entry;
+            }
+
+            function clearClipboardPreviews(){
+                clipboardItems.forEach(item => {
+                    if(item.previewUrl){
+                        URL.revokeObjectURL(item.previewUrl);
+                        item.previewUrl = null;
+                    }
+                });
+            }
+
+            function updateClipboardUI(){
+                if(countEl){
+                    countEl.textContent = clipboardItems.length.toString();
+                    countEl.setAttribute('aria-hidden', clipboardItems.length > 0 ? 'false' : 'true');
+                }
+                clipboard.classList.toggle('has-items', clipboardItems.length > 0);
+                if(emptyEl){
+                    emptyEl.setAttribute('aria-hidden', clipboardItems.length > 0 ? 'true' : 'false');
+                }
+                clipboardElementMap.clear();
+                list.innerHTML = '';
+                clipboardItems.forEach(item => {
+                    prepareItemPreview(item);
+                    const entry = createClipboardEntry(item);
+                    list.appendChild(entry);
+                });
+            }
+
+            function setClipboardOpen(nextState){
+                if(nextState === clipboardOpen) return;
+                clipboardOpen = nextState;
+                clipboard.classList.toggle('open', nextState);
+                capsule.setAttribute('aria-expanded', nextState ? 'true' : 'false');
+                panel.setAttribute('aria-hidden', nextState ? 'false' : 'true');
+                if(!nextState){
+                    panel.scrollTop = 0;
+                }
+            }
+
+            function captureClipboardFiles(files){
+                let captured = false;
+                Array.from(files || []).forEach(file => {
+                    const mime = file.type || '';
+                    clipboardItems.push({
+                        id: `${file.name}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                        name: file.name,
+                        size: file.size,
+                        type: mime,
+                        displayType: mime || 'Файл',
+                        file,
+                        previewUrl: null,
+                        previewKind: null,
+                        previewIcon: null,
+                        snippet: '',
+                        previewPrepared: false
+                    });
+                    captured = true;
+                });
+                if(captured){
+                    updateClipboardUI();
+                }
+                return captured;
+            }
+
+            const isFileDrag = (event) => {
+                const dt = event.dataTransfer;
+                if(!dt) return false;
+                const types = dt.types ? Array.from(dt.types) : [];
+                if(types.includes('Files')) return true;
+                if(types.length === 0) return true;
+                return dt.files && dt.files.length > 0;
+            };
+
+            clipboard.addEventListener('dragenter', (event) => {
+                if(!isFileDrag(event)) return;
+                event.preventDefault();
+                dragDepth += 1;
+                clipboard.classList.add('drag-ready');
+                if(event.dataTransfer){
+                    event.dataTransfer.dropEffect = 'copy';
+                }
+            });
+
+            clipboard.addEventListener('dragover', (event) => {
+                if(!isFileDrag(event)) return;
+                event.preventDefault();
+                if(event.dataTransfer){
+                    event.dataTransfer.dropEffect = 'copy';
+                }
+            });
+
+            clipboard.addEventListener('dragleave', (event) => {
+                if(!isFileDrag(event)) return;
+                event.preventDefault();
+                dragDepth = Math.max(dragDepth - 1, 0);
+                if(dragDepth === 0){
+                    clipboard.classList.remove('drag-ready');
+                }
+            });
+
+            clipboard.addEventListener('drop', (event) => {
+                if(!isFileDrag(event)) return;
+                event.preventDefault();
+                dragDepth = 0;
+                clipboard.classList.remove('drag-ready');
+                const files = event.dataTransfer ? event.dataTransfer.files : null;
+                if(captureClipboardFiles(files)){
+                    if(!reducedMotion){
+                        clipboard.classList.remove('captured');
+                        void clipboard.offsetWidth;
+                        clipboard.classList.add('captured');
+                        setTimeout(() => clipboard.classList.remove('captured'), 600);
+                    }
+                    setTimeout(() => setClipboardOpen(false), 180);
+                }
+            });
+
+            capsule.addEventListener('dblclick', () => {
+                setClipboardOpen(!clipboardOpen);
+            });
+
+            let hoverIntentTimer = null;
+
+            function scheduleAutoClose(){
+                if(hoverIntentTimer){
+                    clearTimeout(hoverIntentTimer);
+                }
+                hoverIntentTimer = setTimeout(() => {
+                    if(!clipboard.matches(':hover') && clipboardOpen){
+                        setClipboardOpen(false);
+                    }
+                }, 260);
+            }
+
+            clipboard.addEventListener('mouseleave', () => {
+                if(!clipboardOpen) return;
+                scheduleAutoClose();
+            });
+
+            clipboard.addEventListener('mouseenter', () => {
+                if(hoverIntentTimer){
+                    clearTimeout(hoverIntentTimer);
+                    hoverIntentTimer = null;
+                }
+            });
+
+            capsule.addEventListener('keydown', (event) => {
+                if(event.key === 'Enter' || event.key === ' '){
+                    event.preventDefault();
+                    setClipboardOpen(!clipboardOpen);
+                } else if(event.key === 'Escape' && clipboardOpen){
+                    setClipboardOpen(false);
+                }
+            });
+
+            document.addEventListener('click', (event) => {
+                if(clipboardOpen && !clipboard.contains(event.target)){
+                    setClipboardOpen(false);
+                }
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if(event.key === 'Escape' && clipboardOpen){
+                    setClipboardOpen(false);
+                }
+            });
+
+            window.addEventListener('beforeunload', clearClipboardPreviews);
+            window.addEventListener('blur', () => {
+                if(clipboardOpen){
+                    setClipboardOpen(false);
+                }
+            });
+
+            updateClipboardUI();
+            setClipboardOpen(false);
+        })();
+    </script>
+
+    <!-- Glare/reflection effect for icon buttons and capsule pill (copied from homepage) -->
+    <script>
+        (function(){
+            if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+            const btns = document.querySelectorAll('.icon-btn');
+            btns.forEach(btn=>{
+                btn.addEventListener('mousemove', (e)=>{
+                    const r = btn.getBoundingClientRect();
+                    const x = ((e.clientX - r.left)/r.width)*100;
+                    const y = ((e.clientY - r.top)/r.height)*100;
+                    btn.style.setProperty('--mx', x + '%');
+                    btn.style.setProperty('--my', y + '%');
+                    btn.style.setProperty('--ref-opacity', '0.9');
+                });
+                btn.addEventListener('mouseenter', ()=> btn.style.setProperty('--ref-opacity','0.9'));
+                btn.addEventListener('mouseleave', ()=> btn.style.setProperty('--ref-opacity','0'));
+            });
+
+            const pills = document.querySelectorAll('.pill');
+            pills.forEach(pill=>{
+                pill.addEventListener('mousemove', (e)=>{
+                    const r = pill.getBoundingClientRect();
+                    const x = ((e.clientX - r.left)/r.width)*100;
+                    const y = ((e.clientY - r.top)/r.height)*100;
+                    pill.style.setProperty('--mx', x + '%');
+                    pill.style.setProperty('--my', y + '%');
+                    pill.style.setProperty('--pill-ref-opacity', '0.85');
+                });
+                pill.addEventListener('mouseenter', ()=> pill.style.setProperty('--pill-ref-opacity','0.85'));
+                pill.addEventListener('mouseleave', ()=> pill.style.setProperty('--pill-ref-opacity','0'));
+            });
+        })();
     </script>
 </body>
 </html>
