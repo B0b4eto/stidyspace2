@@ -2434,28 +2434,64 @@
         // Account Dropdown Toggle
         const profileBtn = document.getElementById("profileBtn");
         const profileDropdown = document.getElementById("profileDropdown");
+
+        const DROPDOWN_BACKDROP_ID = 'profileDropdownBackdrop';
+        function ensureDropdownBackdrop(){
+            let backdrop = document.getElementById(DROPDOWN_BACKDROP_ID);
+            if (backdrop) return backdrop;
+            backdrop = document.createElement('div');
+            backdrop.id = DROPDOWN_BACKDROP_ID;
+            backdrop.style.position = 'fixed';
+            backdrop.style.inset = '0';
+            backdrop.style.background = 'transparent';
+            backdrop.style.zIndex = '5001';
+            backdrop.style.display = 'none';
+            backdrop.style.pointerEvents = 'auto';
+            document.body.appendChild(backdrop);
+            return backdrop;
+        }
+
+        const dropdownBackdrop = ensureDropdownBackdrop();
+
+        function setDropdownOpen(open){
+            if (!profileDropdown) return;
+            profileDropdown.classList.toggle('show', !!open);
+            document.body.classList.toggle('dropdown-open', !!open);
+            if (dropdownBackdrop) dropdownBackdrop.style.display = open ? 'block' : 'none';
+        }
+
+        function isDropdownOpen(){
+            return !!(profileDropdown && profileDropdown.classList.contains('show'));
+        }
     
-        profileBtn.addEventListener("click", () => {
-            profileDropdown.classList.toggle("show");
-            document.body.classList.toggle('dropdown-open', profileDropdown.classList.contains('show'));
-        });
+        if (profileBtn && profileDropdown) {
+            profileBtn.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setDropdownOpen(!isDropdownOpen());
+            });
+        }
 
         // Don't let clicks inside the dropdown trigger underlying UI (e.g., cards)
         if (profileDropdown) {
             profileDropdown.addEventListener('click', (e) => {
                 e.stopPropagation();
-            });
+            }, true);
 
             // Navigate using each dropdown link's href (prevents click-through to underlying cards)
             profileDropdown.querySelectorAll('a').forEach((a) => {
                 a.addEventListener('click', (e) => {
                     e.preventDefault();
-                    e.stopPropagation();
-                    document.body.classList.remove('dropdown-open');
+                    e.stopImmediatePropagation();
                     const href = a.getAttribute('href') || 'account.html';
+                    setDropdownOpen(false);
                     window.location.href = href;
-                });
+                }, true);
             });
+        }
+
+        if (dropdownBackdrop) {
+            dropdownBackdrop.addEventListener('click', () => setDropdownOpen(false));
         }
     
         // Close dropdown on outside click
@@ -2463,11 +2499,10 @@
             const pBtn = document.querySelector('.profile-icon');
             const pDrop = document.querySelector('.profile-dropdown');
             if (pBtn && pDrop && !pBtn.contains(e.target) && !pDrop.contains(e.target)) {
-                pDrop.classList.remove("show");
+                setDropdownOpen(false);
                 pDrop.classList.remove("active");
-                document.body.classList.remove('dropdown-open');
             }
-        });
+        }, true);
 
         (function(){
             const LANG_KEY = 'studyspace_language';
