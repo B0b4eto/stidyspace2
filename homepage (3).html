@@ -1,10 +1,15 @@
 <!DOCTYPE html>
 <html lang="bg">
 <head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Supabase config (added by assistant) -->
+    <meta name="supabase-url" content="https://zfqpfhtbpfdudbpqzbbg.supabase.co">
+    <meta name="supabase-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE">
     <title>Study Space</title>
     <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root{
             --bg:#e6f2ff;
@@ -15,17 +20,33 @@
             --accent-dark:#05294a;
             --muted:#6b87b7;
             --soft:#f6fbff;
+            /* Themeable gradient colors */
+            --grad-start: rgba(32, 102, 255, 0.72);
+            --grad-end: rgba(255, 255, 255, 0.5);
             --frame-pad:clamp(14px,2.2vw,28px);
             --gap:clamp(10px,1.4vw,18px);
         }
 
         *{box-sizing:border-box}
         html,body{height:100%}
-        /* Dark page background (edge-to-edge) */
-        body{margin:0;font-family:'Montserrat',Arial,sans-serif;background:
-            linear-gradient(180deg, rgba(32, 102, 255, 0.72), rgba(255, 255, 255, 0.5)),
-            url('assets/bg-silk.jpg') center/cover no-repeat;
-            color:var(--accent-dark);display:block;padding:0;min-height:100vh}
+        /* Page background
+           Smooth gradient that fades into solid background
+           so tall pages don't show hard horizontal bands. */
+        body{
+            margin:0;
+            font-family:'Montserrat',Arial,sans-serif;
+            background:linear-gradient(
+                180deg,
+                var(--grad-start) 0,
+                var(--grad-end) 420px,
+                var(--bg) 840px,
+                var(--bg) 100%
+            );
+            color:var(--accent-dark);
+            display:block;
+            padding:0;
+            min-height:100vh;
+        }
 
         /* Frame remains transparent */
         .frame{
@@ -43,7 +64,7 @@
         }
 
         /* Top bar fully transparent so background shows through */
-        .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 8px;gap:var(--gap);background:transparent}
+        .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 8px;gap:var(--gap);background:transparent;position:relative;z-index:5000}
 
         /* transparent, light glassy icon buttons */
         .icon-btn{width:56px;height:56px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06));border:1px solid rgba(255,255,255,0.12);box-shadow:0 8px 20px rgba(4,30,60,0.12);position:relative;overflow:hidden;backdrop-filter:blur(6px)}
@@ -74,7 +95,10 @@
         .card.sheen-end::before{transform:skewX(-18deg) translateX(220%) !important;opacity:0 !important;transition:none !important}
 
         /* Cards area */
-        .cards-wrap{margin-top:calc(var(--gap) * 1.2);padding:18px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.4), rgba(240,250,255,0.18));border:1px solid rgba(255,255,255,0.6);display:flex;align-items:flex-start;box-shadow:0 8px 24px rgba(45,80,150,0.04)}
+        .cards-wrap{margin-top:calc(var(--gap) * 1.2);padding:18px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.4), rgba(240,250,255,0.18));border:1px solid rgba(255,255,255,0.6);display:flex;align-items:flex-start;box-shadow:0 8px 24px rgba(45,80,150,0.04);position:relative;z-index:1}
+
+        /* When the profile dropdown is open, prevent clicking through to cards underneath */
+        body.dropdown-open .cards-wrap{pointer-events:none}
 
         /* Responsive flow: cards will wrap and scale to available width */
         .cards{display:flex;gap:var(--gap);width:100%;flex-wrap:wrap;align-items:flex-start}
@@ -146,6 +170,13 @@
         /* gentle lift on hover (now JS-controlled via .lift) */
         .card.lift{transform:translateY(-6px);box-shadow:0 26px 64px rgba(6,40,90,0.12);transition:transform 240ms cubic-bezier(.2,.9,.3,1),box-shadow 240ms}
         .icon-btn.lift{transform:translateY(-4px);box-shadow:0 18px 44px rgba(6,40,90,0.10);transition:transform 220ms cubic-bezier(.2,.9,.3,1),box-shadow 220ms}
+
+        /* Drag-over emphasis for the "Нова" card when dropping файлове */
+        .card.add.drag-ready{
+            transform:scale(1.04);
+            box-shadow:0 32px 88px rgba(11,99,199,0.38);
+            border-color:rgba(255,255,255,0.6);
+        }
 
         /* 'Land' animation: smooth return to original position without overshoot */
         @keyframes land { from { transform: translateY(-8px); } to { transform: translateY(0); } }
@@ -223,6 +254,12 @@
             padding: 0 8px;
         }
 
+        .section-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .section-title {
             font-size: clamp(18px, 2.2vw, 24px);
             font-weight: 700;
@@ -278,6 +315,17 @@
             border-color: rgba(255,255,255,0.4);
         }
 
+        .edit-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .edit-btn:disabled::before {
+            opacity: 0;
+        }
+
         .edit-btn.active {
             background: linear-gradient(180deg, var(--accent-2), var(--accent));
             color: white;
@@ -297,41 +345,23 @@
             min-height: 400px; /* Ensure minimum container height */
         }
 
-        /* Grid mode for free positioning */
+        /* Grid mode for free positioning
+           Grid is shown only while actively dragging a block. */
         .custom-blocks.edit-mode {
             position: relative;
             min-height: 600px;
-            background-size: clamp(15px, 2vw, 25px) clamp(15px, 2vw, 25px);
+            display: block; /* Change from grid to block for free positioning */
+            overflow: visible; /* Allow content to extend beyond initial bounds */
+            transition: min-height 0.3s ease, background-size 0.3s ease, background-image 0.25s ease;
+        }
+
+        .custom-blocks.edit-mode.show-grid {
+            background-image: radial-gradient(circle, rgba(107, 135, 183, 0.3) 2px, transparent 2px);
             background-size: clamp(15px, 2vw, 25px) clamp(15px, 2vw, 25px);
             background-position: 0 0;
-            display: block; /* Change from grid to block for free positioning */
-            animation: gridFadeIn 0.3s ease;
-            overflow: visible; /* Allow content to extend beyond initial bounds */
-            transition: min-height 0.3s ease, background-size 0.3s ease; /* Smooth height and grid transitions */
         }
 
-        @keyframes gridFadeIn {
-            from { 
-                background-image: none;
-                background-size: 0;
-            }
-            to { 
-                background-image: radial-gradient(circle, rgba(107, 135, 183, 0.3) 2px, transparent 2px);
-                background-size: clamp(15px, 2vw, 25px) clamp(15px, 2vw, 25px);
-            }
-        }
-
-        @keyframes gridFadeOut {
-            from { 
-                background-image: radial-gradient(circle, rgba(107, 135, 183, 0.3) 2px, transparent 2px);
-                background-size: clamp(15px, 2vw, 25px) clamp(15px, 2vw, 25px);
-            }
-            to { 
-                background-image: none;
-                background-size: 0;
-            }
-        }
-
+        /* Exit state keeps behaviour but no longer controls grid visibility */
         .custom-blocks.edit-mode-exit {
             animation: gridFadeOut 0.3s ease;
         }
@@ -357,6 +387,16 @@
             width: clamp(280px, 40vw, 320px);
             height: clamp(180px, 25vh, 220px);
             z-index: 1;
+        }
+
+        .custom-block.long-press-preview {
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: 0 20px 56px rgba(2,18,40,0.18);
+        }
+
+        .custom-block.long-press-morph {
+            transform: translateY(-10px) scale(1.04);
+            box-shadow: 0 32px 80px rgba(2,18,40,0.26);
         }
 
         /* Edit mode styles */
@@ -551,17 +591,17 @@
             }
         }
 
-        /* Block builder modal */
+        /* Block builder modal (used after choosing from the widget library) */
         .block-selector-modal {
             position: fixed;
             inset: 0;
             background: rgba(9, 23, 43, 0.55);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(14px);
             display: none;
             align-items: center;
             justify-content: center;
             padding: clamp(20px, 4vw, 48px);
-            z-index: 2200;
+            z-index: 2400;
         }
 
         .block-selector-modal.show {
@@ -570,15 +610,52 @@
 
         .builder-panel {
             position: relative;
-            width: min(620px, 92vw);
-            background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(235,245,255,0.9));
+            width: min(980px, 94vw);
+            background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(235,245,255,0.9));
             border-radius: 28px;
             padding: clamp(26px, 3vw, 36px);
-            box-shadow: 0 40px 90px rgba(5,20,45,0.35);
-            border: 1px solid rgba(255,255,255,0.7);
+            box-shadow: 0 40px 90px rgba(5,20,45,0.45);
+            border: 1px solid rgba(255,255,255,0.75);
             display: flex;
             flex-direction: column;
             gap: clamp(16px, 2vw, 22px);
+            max-height: 86vh;
+            overflow: hidden;
+        }
+
+        .builder-layout {
+            display: grid;
+            grid-template-columns: minmax(300px, 1fr) minmax(360px, 1.2fr);
+            gap: 18px;
+            align-items: stretch;
+            min-height: 0;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .builder-left,
+        .builder-right {
+            min-height: 0;
+        }
+
+        .builder-left {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .builder-right {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .builder-right-scroll {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+            padding-right: 6px;
         }
 
         .builder-close {
@@ -614,6 +691,147 @@
             color: var(--muted);
         }
 
+        .builder-preview {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(11,99,199,0.14);
+            background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(235,245,255,0.38));
+            flex: 1;
+            min-height: 0;
+        }
+
+        .builder-preview-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .builder-preview-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent-dark);
+        }
+
+        .builder-preview-hint {
+            font-size: 11px;
+            color: var(--muted);
+            text-align: right;
+        }
+
+        .builder-preview-stage {
+            border-radius: 18px;
+            padding: 12px;
+            border: 1px solid rgba(255,255,255,0.55);
+            background: rgba(255,255,255,0.35);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            overflow: hidden;
+            perspective: 900px;
+            transform-style: preserve-3d;
+            touch-action: none;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+        }
+
+        .builder-preview-inner {
+            --builder-preview-margin: 14px;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 260px;
+            border-radius: 16px;
+            overflow: hidden;
+            padding: var(--builder-preview-margin);
+            box-sizing: border-box;
+            background: rgba(255,255,255,0.12);
+        }
+
+        .builder-preview-inner::before {
+            content: '';
+            position: absolute;
+            inset: var(--builder-preview-margin);
+            border-radius: 12px;
+            background-image:
+                radial-gradient(circle, rgba(11,99,199,0.16) 1px, transparent 1px);
+            background-size: 18px 18px;
+            background-position: 0 0;
+            pointer-events: none;
+        }
+
+        .builder-preview-block {
+            position: absolute;
+            cursor: grab;
+            pointer-events: auto;
+            margin: 0;
+            transform-style: preserve-3d;
+            will-change: transform;
+            transition: transform 160ms ease;
+            touch-action: none;
+        }
+
+        .builder-preview-block:active {
+            cursor: grabbing;
+        }
+
+        .builder-preview-resize-handle {
+            position: absolute;
+            right: 8px;
+            bottom: 8px;
+            width: 18px;
+            height: 18px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.55);
+            border: 1px solid rgba(11,99,199,0.18);
+            box-shadow: 0 10px 24px rgba(11,99,199,0.12);
+            pointer-events: auto;
+            cursor: nwse-resize;
+            z-index: 5;
+        }
+
+        .builder-preview-stage:hover .builder-preview-block {
+            transition: transform 60ms linear;
+        }
+
+        .builder-preview-block.praglass {
+            --rx: 0deg;
+            --ry: 0deg;
+            transform: rotateX(var(--rx)) rotateY(var(--ry));
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .builder-preview-block.praglass {
+                transform: none;
+            }
+
+            .builder-preview-stage:hover .builder-preview-block {
+                transition: none;
+            }
+        }
+
+        .builder-preview-block * {
+            pointer-events: none !important;
+        }
+
+        @media (max-width: 900px) {
+            .builder-panel {
+                width: min(720px, 94vw);
+            }
+
+            .builder-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .builder-right {
+                overflow: visible;
+                padding-right: 0;
+            }
+        }
+
         .builder-type-grid {
             display: flex;
             flex-wrap: wrap;
@@ -633,6 +851,10 @@
             color: var(--accent-dark);
             cursor: pointer;
             transition: all 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
         }
 
         .builder-type-btn:hover {
@@ -640,11 +862,31 @@
             box-shadow: 0 10px 26px rgba(11,99,199,0.2);
         }
 
+        .builder-type-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
         .builder-type-btn.active {
             background: linear-gradient(135deg, var(--accent), var(--accent-2));
             color: #fff;
             border-color: var(--accent);
             box-shadow: 0 16px 40px rgba(11,99,199,0.35);
+        }
+
+        .builder-type-icon {
+            font-size: 18px;
+        }
+
+        .builder-type-main {
+            font-size: 14px;
+        }
+
+        .builder-type-sub {
+            font-size: 11px;
+            opacity: 0.8;
         }
 
         #blockBuilderForm {
@@ -695,6 +937,23 @@
             display: flex;
             align-items: center;
             gap: 12px;
+        }
+
+        .builder-color-palette {
+            display: flex;
+            gap: 6px;
+            margin-left: auto;
+        }
+
+        .builder-color-dot {
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(0,0,0,0.08);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            padding: 0;
+            cursor: pointer;
+            background-clip: padding-box;
         }
 
         .builder-color-value {
@@ -786,7 +1045,12 @@
             display: flex;
             justify-content: flex-end;
             gap: 12px;
-            margin-top: 8px;
+            margin-top: 10px;
+            padding: 14px 0 2px;
+            border-top: 1px solid rgba(11,99,199,0.12);
+            background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.92) 40%, rgba(235,245,255,0.92));
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
 
         .builder-primary,
@@ -842,6 +1106,221 @@
                 width: 32px;
                 height: 32px;
                 border-radius: 10px;
+            }
+        }
+
+        /* Floating widget library (Apple-style overlay) */
+        .block-library-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: flex-end;
+            justify-content: stretch;
+            padding: 0;
+            background: transparent; /* no page dimming */
+            backdrop-filter: none;
+            z-index: 2300;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.35s ease;
+        }
+
+        .block-library-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .block-library-panel {
+            width: 100%;
+            max-width: 100%;
+            min-height: 170px;
+            max-height: min(520px, 72vh);
+            background: linear-gradient(180deg, rgba(255,255,255,0.74), rgba(230,245,255,0.52));
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            /* Rounded only on the top corners so the bottom edge sits
+               flush with the page edge. */
+            border-radius: 24px 24px 0 0;
+            padding: clamp(20px, 3vw, 26px);
+            box-shadow: 0 40px 90px rgba(5,20,45,0.28);
+            border: 1px solid rgba(255,255,255,0.55);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            /* Tight to the page edges horizontally and to the bottom. */
+            margin: 0 clamp(10px, 1.8vw, 22px) 0;
+            transform: translateY(60px) scale(0.97);
+            opacity: 0;
+            transition: transform 0.45s cubic-bezier(.25,.9,.3,1), opacity 0.35s ease, margin 0.35s ease;
+        }
+
+        .block-library-overlay.show .block-library-panel {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+
+        /* While dragging a widget out of the library, keep the library visible
+           but slide it further down so it doesn't block the homepage. */
+        .block-library-overlay.show.dragging-out .block-library-panel {
+            transform: translateY(clamp(240px, 46vh, 520px)) scale(0.98);
+        }
+
+        /* Expanded mode intentionally disabled (buggy UX). */
+
+        .block-library-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .block-library-header-main h3 {
+            margin: 0 0 4px;
+            font-size: clamp(18px, 2.3vw, 22px);
+            font-weight: 700;
+            color: var(--accent-dark);
+        }
+
+        .block-library-header-main p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .block-library-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.65);
+            background: linear-gradient(180deg, rgba(255,255,255,0.72), rgba(230,245,255,0.45));
+            color: var(--accent-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 10px 26px rgba(11,99,199,0.18);
+            transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .block-library-close:hover {
+            transform: rotate(90deg) scale(1.05);
+            background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(230,245,255,0.58));
+            box-shadow: 0 14px 34px rgba(11,99,199,0.22);
+        }
+
+        .block-library-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            padding-top: 10px;
+            overflow-y: hidden;
+        }
+
+        .block-library-overlay.expanded .block-library-grid {
+            overflow-y: auto;
+        }
+
+        .library-block {
+            position: relative;
+            border-radius: 22px;
+            padding: 16px 18px;
+            background: radial-gradient(circle at top left, rgba(255,255,255,0.36), rgba(255,255,255,0.05)) ,
+                        linear-gradient(135deg, var(--lib-color, #2563eb), var(--lib-color-soft, #4f46e5));
+            box-shadow: none;
+            border: 1px solid rgba(255,255,255,0.28);
+            cursor: pointer;
+            overflow: hidden;
+            color: #f9fafb;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 140px;
+            transition: transform 0.22s cubic-bezier(.25,.9,.3,1), border-color 0.22s ease;
+        }
+
+        .library-block.tall {
+            min-height: 190px;
+        }
+        
+        
+        .library-block::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at top left, rgba(255,255,255,0.45), transparent 55%);
+            opacity: 0.85;
+            mix-blend-mode: screen;
+            pointer-events: none;
+        }
+
+        .library-block-inner {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .library-block-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .library-block-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .library-block-chip {
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(15,23,42,0.2);
+            font-size: 11px;
+            font-weight: 600;
+            backdrop-filter: blur(12px);
+        }
+
+        .library-block-preview-lines {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            opacity: 0.92;
+        }
+
+        .library-block-line {
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(15,23,42,0.2);
+        }
+
+        .library-block-line.short {
+            width: 60%;
+        }
+
+        .library-block-line.medium {
+            width: 78%;
+        }
+
+        .library-block-line.tiny {
+            width: 32%;
+        }
+
+        .library-block:hover {
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: none;
+            border-color: rgba(255,255,255,0.6);
+        }
+
+        @media (max-width: 720px) {
+            .block-library-panel {
+                max-height: 78vh;
+                border-radius: 28px;
+            }
+
+            .block-library-grid {
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             }
         }
 
@@ -1091,7 +1570,7 @@
                 align-items: flex-start;
             }
 
-            .edit-btn {
+            .section-actions {
                 align-self: flex-end;
             }
         }
@@ -1127,6 +1606,7 @@
         /* --- Profile Dropdown --- */
         .profile-container {
             position: relative;
+            z-index: 5001;
         }
 
         .profile-icon {
@@ -1154,13 +1634,15 @@
             visibility: hidden;
             transform: translateY(-10px);
             transition: all 0.22s ease;
-            z-index: 999;
+            z-index: 5002;
+            pointer-events: none;
         }
 
         .profile-dropdown.show {
             opacity: 1;
             visibility: visible;
             transform: translateY(0);
+            pointer-events: auto;
         }
 
         .dropdown-header {
@@ -1202,7 +1684,12 @@
             height: 18px;
             margin-right: 10px;
             opacity: 0.85;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
+        .profile-dropdown i.icon{font-size:16px;line-height:1}
+        .profile-dropdown img.icon{object-fit:contain;display:block}
         
         /* Arrow that appears on hover */
         .profile-dropdown .arrow {
@@ -1237,13 +1724,292 @@
                 height: 30px;
             }
         }
+
+        /* Settings modal (Apple-like) */
+        .settings-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.25);
+            backdrop-filter: blur(18px);
+            z-index: 999;
+        }
+        .settings-overlay.hidden { display: none; }
+        .settings-card {
+            width: 100%;
+            max-width: 420px;
+            background: rgba(255,255,255,0.92);
+            border-radius: 32px;
+            padding: 22px 22px 18px;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.25);
+            border: 1px solid rgba(255,255,255,0.7);
+        }
+        .settings-header {
+            display:flex;
+            align-items:flex-start;
+            justify-content:space-between;
+            gap:16px;
+            margin-bottom:14px;
+        }
+        .settings-header h3 {
+            margin:0;
+            font-size:18px;
+            font-weight:700;
+            color:var(--accent-dark);
+        }
+        .settings-header p {
+            margin:4px 0 0;
+            font-size:12px;
+            color:var(--muted);
+        }
+        .settings-close {
+            width:28px;
+            height:28px;
+            border-radius:999px;
+            border:none;
+            background:rgba(240,240,245,0.9);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            cursor:pointer;
+            font-size:14px;
+        }
+        .settings-section {
+            padding:10px 0 6px;
+            border-top:1px solid rgba(0,0,0,0.04);
+        }
+        .settings-section:first-of-type { border-top:none; }
+        .settings-section h4 {
+            margin:2px 0 8px;
+            font-size:13px;
+            font-weight:600;
+            color:var(--accent-dark);
+        }
+        .settings-label {
+            display:block;
+            font-size:11px;
+            font-weight:600;
+            color:var(--muted);
+            margin-bottom:6px;
+        }
+        .color-row {
+            display:flex;
+            align-items:center;
+            gap:10px;
+        }
+        .color-input {
+            width:42px;
+            height:26px;
+            border-radius:10px;
+            border:1px solid rgba(0,0,0,0.08);
+            padding:0;
+            background:white;
+        }
+        .color-preview-label {
+            font-size:11px;
+            color:var(--muted);
+        }
+        .toggle-row {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            padding:4px 0;
+        }
+        .toggle-title { font-size:13px; font-weight:500; color:var(--accent-dark); }
+        .toggle-sub { font-size:11px; color:var(--muted); }
+
+        .switch { position:relative; display:inline-block; width:44px; height:24px; }
+        .switch input { opacity:0; width:0; height:0; }
+        .slider {
+            position:absolute; cursor:pointer; inset:0;
+            background:#d1d5db; border-radius:999px;
+            transition:0.25s ease;
+        }
+        .slider:before {
+            position:absolute; content:""; height:20px; width:20px;
+            left:2px; top:2px; border-radius:999px;
+            background:white; box-shadow:0 1px 4px rgba(0,0,0,0.2);
+            transition:0.25s ease;
+        }
+        .switch input:checked + .slider { background:#34c759; }
+        .switch input:checked + .slider:before { transform:translateX(20px); }
+
+        .settings-footer {
+            display:flex;
+            justify-content:flex-end;
+            gap:8px;
+            padding-top:10px;
+            margin-top:4px;
+            border-top:1px solid rgba(0,0,0,0.04);
+        }
+        .btn-secondary,
+        .btn-primary {
+            border-radius:999px;
+            padding:7px 16px;
+            font-size:13px;
+            font-weight:500;
+            border:none;
+            cursor:pointer;
+        }
+        .btn-secondary { background:#f2f2f7; color:#111827; }
+        .btn-primary { background:#007aff; color:#fff; box-shadow:0 8px 18px rgba(0,122,255,0.35); }
+
+        /* Simple dark mode override
+           Dark gradient that smoothly fades into solid dark background
+           without visible bands on long pages. */
+        body.dark-mode {
+            --bg: #020617;
+            --accent-dark: #e5e7eb;
+            --muted: rgba(226,232,240,0.68);
+            --soft: rgba(2,6,23,0.96);
+            --glass-1: rgba(15,23,42,0.72);
+            --glass-2: rgba(2,6,23,0.44);
+            color:#e5e7eb;
+            background:linear-gradient(
+                180deg,
+                rgba(15,23,42,0.96) 0,
+                rgba(15,23,42,0.96) 360px,
+                #020617 840px,
+                #020617 100%
+            );
+        }
+        body.dark-mode .frame { color:#e5e7eb; }
+        body.dark-mode .card { background:linear-gradient(180deg, rgba(30,41,59,0.88), rgba(15,23,42,0.9)); border-color:rgba(148,163,184,0.5); }
+        body.dark-mode .pill { background:linear-gradient(90deg, rgba(15,23,42,0.9), rgba(30,64,175,0.75)); border-color:rgba(148,163,184,0.5); }
+        body.dark-mode .section-title { color:#e5e7eb; }
+
+        /* Dark mode: settings modal */
+        body.dark-mode .settings-overlay { background: rgba(0,0,0,0.55); }
+        body.dark-mode .settings-card {
+            background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(2,6,23,0.92));
+            border-color: rgba(148,163,184,0.24);
+            box-shadow: 0 28px 90px rgba(0,0,0,0.55);
+        }
+        body.dark-mode .settings-close {
+            background: rgba(148,163,184,0.14);
+            color: #e5e7eb;
+        }
+        body.dark-mode .settings-section { border-top-color: rgba(148,163,184,0.14); }
+        body.dark-mode .settings-footer { border-top-color: rgba(148,163,184,0.14); }
+        body.dark-mode .color-input {
+            background: rgba(15,23,42,0.9);
+            border-color: rgba(148,163,184,0.24);
+        }
+        body.dark-mode .btn-secondary { background: rgba(30,41,59,0.72); color:#e5e7eb; }
+        body.dark-mode .btn-primary { box-shadow: 0 10px 26px rgba(37,99,235,0.6); }
+
+        /* Dark mode: profile dropdown */
+        body.dark-mode .profile-dropdown {
+            background: rgba(15,23,42,0.92);
+            border: 1px solid rgba(148,163,184,0.22);
+            box-shadow: 0 18px 50px rgba(0,0,0,0.55);
+        }
+        body.dark-mode .dropdown-header { border-bottom-color: rgba(148,163,184,0.16); }
+        body.dark-mode .profile-dropdown li a { color: rgba(226,232,240,0.92); }
+        body.dark-mode .profile-dropdown .arrow { color: rgba(226,232,240,0.62); }
+        body.dark-mode .profile-dropdown li a:hover { background: rgba(148,163,184,0.12); }
+
+        /* Dark mode: clipboard capsule panel */
+        body.dark-mode .home-clipboard-panel {
+            background: linear-gradient(200deg, rgba(15,23,42,0.74), rgba(2,6,23,0.64));
+            border-color: rgba(148,163,184,0.22);
+            box-shadow: 0 44px 90px rgba(0,0,0,0.55);
+        }
+        body.dark-mode .home-clipboard-panel::before {
+            background: linear-gradient(200deg, rgba(148,163,184,0.18), rgba(2,6,23,0.06));
+        }
+        body.dark-mode .home-clipboard-item {
+            background: rgba(30,41,59,0.48);
+            border-color: rgba(148,163,184,0.18);
+            box-shadow: 0 18px 42px rgba(0,0,0,0.35);
+        }
+        body.dark-mode .home-clipboard-preview {
+            background: rgba(2,6,23,0.26);
+            border-color: rgba(148,163,184,0.22);
+            color: rgba(226,232,240,0.9);
+        }
+        body.dark-mode .home-clipboard-item-title,
+        body.dark-mode .home-clipboard-snippet { color: rgba(226,232,240,0.92); }
+        body.dark-mode .home-clipboard-item-details { color: rgba(226,232,240,0.62); }
+        body.dark-mode .home-clipboard.open .home-clipboard-panel::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.28); }
+
+        /* Dark mode: block builder popup + block library */
+        body.dark-mode .block-selector-modal {
+            background: rgba(0,0,0,0.62);
+        }
+        body.dark-mode .builder-panel {
+            background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(2,6,23,0.92));
+            border-color: rgba(148,163,184,0.24);
+            box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+        }
+        body.dark-mode .builder-title { color: rgba(226,232,240,0.96); }
+        body.dark-mode .builder-subtitle { color: rgba(226,232,240,0.66); }
+        body.dark-mode .builder-close {
+            background: rgba(148,163,184,0.14);
+            color: rgba(226,232,240,0.9);
+        }
+        body.dark-mode .builder-preview {
+            background: linear-gradient(180deg, rgba(30,41,59,0.60), rgba(15,23,42,0.30));
+            border-color: rgba(148,163,184,0.20);
+        }
+        body.dark-mode .builder-preview-title { color: rgba(226,232,240,0.92); }
+        body.dark-mode .builder-preview-hint { color: rgba(226,232,240,0.56); }
+        body.dark-mode .builder-preview-stage {
+            background: rgba(2,6,23,0.26);
+            border-color: rgba(148,163,184,0.18);
+        }
+        body.dark-mode .builder-preview-inner { background: rgba(2,6,23,0.20); }
+        body.dark-mode .builder-preview-inner::before {
+            background-image: radial-gradient(circle, rgba(148,163,184,0.22) 1px, transparent 1px);
+        }
+        body.dark-mode .builder-type-btn {
+            background: rgba(15,23,42,0.62);
+            border-color: rgba(148,163,184,0.22);
+            color: rgba(226,232,240,0.92);
+        }
+        body.dark-mode .builder-type-btn:hover { box-shadow: 0 10px 26px rgba(0,0,0,0.35); }
+        body.dark-mode .builder-field textarea {
+            background: rgba(15,23,42,0.72);
+            border-color: rgba(148,163,184,0.18);
+            color: rgba(226,232,240,0.92);
+        }
+        body.dark-mode .builder-field input,
+        body.dark-mode .builder-field select {
+            border-color: rgba(148,163,184,0.22);
+        }
+        body.dark-mode .builder-actions {
+            border-top-color: rgba(148,163,184,0.14);
+            background: linear-gradient(180deg, rgba(2,6,23,0), rgba(2,6,23,0.86) 35%, rgba(15,23,42,0.92));
+        }
+        body.dark-mode .builder-secondary {
+            background: rgba(30,41,59,0.72);
+            color: rgba(226,232,240,0.92);
+            border-color: rgba(148,163,184,0.18);
+        }
+
+        body.dark-mode .block-library-panel {
+            background: linear-gradient(180deg, rgba(15,23,42,0.88), rgba(2,6,23,0.78));
+            border-color: rgba(148,163,184,0.20);
+            box-shadow: 0 40px 100px rgba(0,0,0,0.55);
+        }
+        body.dark-mode .block-library-header-main h3 { color: rgba(226,232,240,0.92); }
+        body.dark-mode .block-library-header-main p { color: rgba(226,232,240,0.58); }
+        body.dark-mode .block-library-close {
+            border-color: rgba(148,163,184,0.24);
+            background: rgba(30,41,59,0.72);
+            color: rgba(226,232,240,0.9);
+            box-shadow: 0 10px 26px rgba(0,0,0,0.35);
+        }
     </style>
-    <script src="assets/auth.js" defer></script>
+    <!-- Supabase and auth.js are already included in the page head; avoid duplicates here -->
  </head>
  <body>
      <div class="frame">
          <div class="topbar">
-             <div class="icon-btn" title="Settings">⚙️</div>
+             <div class="icon-btn" id="settingsBtn" title="Settings">⚙️</div>
 
              <div class="center-pill">
                  <div class="home-clipboard" id="homeClipboard">
@@ -1260,52 +2026,36 @@
              </div>
 
              <div class="profile-container">
-                <img src="images/user.png" id="profileBtn" class="profile-icon">
+                     <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22128%22%20height%3D%22128%22%20viewBox%3D%220%200%20128%20128%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20x2%3D%221%22%20y1%3D%220%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23009fe6%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230b63c7%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2264%22%20r%3D%2264%22%20fill%3D%22url%28%23g%29%22%2F%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2250%22%20r%3D%2222%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.92%29%22%2F%3E%3Cpath%20d%3D%22M24%20118c9-20%2027-32%2040-32s31%2012%2040%2032%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.92%29%22%2F%3E%3C%2Fsvg%3E" id="profileBtn" class="profile-icon" alt="Profile">
 
                 <div class="profile-dropdown" id="profileDropdown">
 
                     <div class="dropdown-header">
-                        <img src="images/user.png" class="dropdown-avatar">
+                        <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22128%22%20height%3D%22128%22%20viewBox%3D%220%200%20128%20128%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20x2%3D%221%22%20y1%3D%220%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23009fe6%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230b63c7%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2264%22%20r%3D%2264%22%20fill%3D%22url%28%23g%29%22%2F%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2250%22%20r%3D%2222%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.92%29%22%2F%3E%3Cpath%20d%3D%22M24%20118c9-20%2027-32%2040-32s31%2012%2040%2032%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.92%29%22%2F%3E%3C%2Fsvg%3E" class="dropdown-avatar" alt="Avatar">
                         <h4>Your Name</h4>
                     </div>
 
                     <ul>
                         <li>
-                            <a href="edit-profile.html">
-                                <img src="images/profile.png" class="icon">
-                                Edit Profile
-                                <span class="arrow">▶</span>
-                            </a>
-                        </li>
-
-                        <li>
-                            <a href="connect-apps.html">
-                                <img src="images/setting.png" class="icon">
-                                Connect Apps
+                            <a href="account.html">
+                                <i class="fa-solid fa-user-pen icon" aria-hidden="true"></i>
+                                <span data-i18n="menu.editProfile">Редактирай профил</span>
                                 <span class="arrow">▶</span>
                             </a>
                         </li>
 
                         <li>
                             <a href="account.html">
-                                <img src="images/user.png" class="icon">
-                                Your Account
+                                <i class="fa-regular fa-user icon" aria-hidden="true"></i>
+                                <span data-i18n="menu.yourAccount">Твоят акаунт</span>
                                 <span class="arrow">▶</span>
                             </a>
                         </li>
 
                         <li>
-                            <a href="help.html">
-                                <img src="images/help.png" class="icon">
-                                Help
-                                <span class="arrow">▶</span>
-                            </a>
-                        </li>
-
-                        <li>
-                            <a href="log-in.html">
-                                <img src="images/logout.png" class="icon">
-                                Logout
+                            <a href="login.html">
+                                <i class="fa-solid fa-right-from-bracket icon" aria-hidden="true"></i>
+                                <span data-i18n="menu.logout">Изход</span>
                                 <span class="arrow">▶</span>
                             </a>
                         </li>
@@ -1316,7 +2066,7 @@
 
            <div class="cards-wrap">
                <div class="cards" id="recentCards">
-                 <div class="card add" role="button" aria-label="Добави нова колекция">
+                 <div class="card add" role="button" aria-label="Добави нова колекция" onclick="location.href='Flashcardcreate.html'">
                      <div class="card-content" style="text-align:center">
                          <div class="plus">＋</div>
                          <div class="label">Нова</div>
@@ -1348,9 +2098,14 @@
           <div class="custom-blocks-wrap">
               <div class="section-header">
                   <h3 class="section-title">Персонализирани блокове</h3>
-                  <button class="edit-btn" id="editBlocksBtn">
-                      <span>Редактиране</span>
-                  </button>
+                  <div class="section-actions">
+                      <button class="edit-btn" id="removeAllBlocksBtn" type="button" disabled>
+                          <span>Премахни всички</span>
+                      </button>
+                      <button class="edit-btn" id="editBlocksBtn" type="button">
+                          <span>Редактиране</span>
+                      </button>
+                  </div>
               </div>
               <div class="custom-blocks" id="customBlocks">
                   <div class="custom-block calendar-block" role="button" aria-label="Календар" data-block-id="calendar" data-default-block="true">
@@ -1438,18 +2193,79 @@
       <!-- Add Block Button -->
       <button class="add-block-btn" id="addBlockBtn">+</button>
 
+      <!-- Floating Block Library (Apple-style widget gallery) -->
+      <div class="block-library-overlay" id="blockLibrary">
+          <div class="block-library-panel" id="blockLibraryPanel" role="dialog" aria-modal="true" aria-labelledby="blockLibraryTitle">
+              <div class="block-library-header">
+                  <div class="block-library-header-main">
+                      <h3 id="blockLibraryTitle">Библиотека с блокове</h3>
+                      <p></p>
+                  </div>
+                  <button type="button" class="block-library-close" id="blockLibraryClose" aria-label="Затвори библиотеката">×</button>
+              </div>
+              <div class="block-library-grid" id="blockLibraryGrid"></div>
+          </div>
+      </div>
+
       <!-- Block Selector Modal -->
       <div class="block-selector-modal" id="blockBuilder">
           <div class="builder-panel" role="dialog" aria-modal="true" aria-labelledby="builderTitle">
               <button class="builder-close" type="button" id="builderCloseBtn" aria-label="Затвори">×</button>
               <h3 class="builder-title" id="builderTitle">Добави персонализиран блок</h3>
               <p class="builder-subtitle">Изберете тип и настройте съдържанието преди да го закачите на таблото.</p>
-              <div class="builder-type-grid">
-                  <button type="button" class="builder-type-btn active" data-builder-type="music">🎵 Музика</button>
-                  <button type="button" class="builder-type-btn" data-builder-type="weather">🌤️ Време</button>
-                  <button type="button" class="builder-type-btn" data-builder-type="checklist">✅ Чеклист</button>
-              </div>
-              <form id="blockBuilderForm">
+              <div class="builder-layout">
+                  <div class="builder-left">
+                      <div class="builder-preview" aria-label="Преглед на блока">
+                          <div class="builder-preview-header">
+                              <span class="builder-preview-title">Преглед</span>
+                              <span class="builder-preview-hint">Промените се прилагат след „Запази“</span>
+                          </div>
+                          <div class="builder-preview-stage">
+                              <div class="builder-preview-inner" id="builderLivePreviewInner"></div>
+                          </div>
+                      </div>
+                  </div>
+                  <div class="builder-right">
+                      <div class="builder-right-scroll">
+                          <div class="builder-type-grid">
+                              <button type="button" class="builder-type-btn active" data-builder-type="music">
+                                  <span class="builder-type-icon">🎵</span>
+                                  <span class="builder-type-main">Музика</span>
+                                  <span class="builder-type-sub">Spotify, Apple Music, YouTube</span>
+                              </button>
+                              <button type="button" class="builder-type-btn" data-builder-type="weather">
+                                  <span class="builder-type-icon">🌤️</span>
+                                  <span class="builder-type-main">Време</span>
+                                  <span class="builder-type-sub">Автоматична локация и прогноза</span>
+                              </button>
+                              <button type="button" class="builder-type-btn" data-builder-type="checklist">
+                                  <span class="builder-type-icon">✅</span>
+                                  <span class="builder-type-main">Чеклист</span>
+                                  <span class="builder-type-sub">AI идеи за задачи</span>
+                              </button>
+                              <button type="button" class="builder-type-btn" data-builder-type="calendar">
+                                  <span class="builder-type-icon">📅</span>
+                                  <span class="builder-type-main">Календар</span>
+                                  <span class="builder-type-sub">Google Calendar връзка</span>
+                              </button>
+                              <button type="button" class="builder-type-btn" data-builder-type="reminder">
+                                  <span class="builder-type-icon">📝</span>
+                                  <span class="builder-type-main">Напомняния</span>
+                                  <span class="builder-type-sub">Малки бързи бележки</span>
+                              </button>
+                              <button type="button" class="builder-type-btn" data-builder-type="quote">
+                                  <span class="builder-type-icon">💭</span>
+                                  <span class="builder-type-main">Мотивация</span>
+                                  <span class="builder-type-sub">Цитати и афирмации</span>
+                              </button>
+                              <button type="button" class="builder-type-btn" data-builder-type="link">
+                                  <span class="builder-type-icon">🔗</span>
+                                  <span class="builder-type-main">Бърз линк</span>
+                                  <span class="builder-type-sub">Любим сайт или ресурс</span>
+                              </button>
+                          </div>
+                          <form id="blockBuilderForm">
+                              <div class="builder-form-fields">
                   <div class="builder-field" data-builder-shared>
                       <label for="blockColor">Цвят на блока</label>
                       <div class="builder-color-row">
@@ -1504,6 +2320,13 @@
                           <label for="checklistTitle">Заглавие</label>
                           <input type="text" id="checklistTitle" name="checklistTitle" value="Чеклист" required>
                       </div>
+                      <div class="builder-field checklist-ai-row">
+                          <span class="settings-label">AI помощ за задачи</span>
+                          <label class="switch">
+                              <input type="checkbox" id="checklistAiToggle" checked>
+                              <span class="slider"></span>
+                          </label>
+                      </div>
                       <div class="builder-field">
                           <label>Елементи</label>
                           <div class="builder-checklist-items" id="builderChecklistItems"></div>
@@ -1511,56 +2334,425 @@
                       </div>
                   </div>
 
-                  <div class="builder-actions">
-                      <button type="button" class="builder-secondary" id="builderCancelBtn">Отказ</button>
-                      <button type="submit" class="builder-primary">Добави блок</button>
+                  <div class="builder-section" data-builder-section="calendar" hidden>
+                      <div class="builder-field">
+                          <label for="calendarTitle">Заглавие</label>
+                          <input type="text" id="calendarTitle" name="calendarTitle" value="Календар" required>
+                      </div>
+                      <div class="builder-field">
+                          <label for="calendarMode">Режим</label>
+                          <select id="calendarMode" name="calendarMode">
+                              <option value="link">Отваря Google Calendar</option>
+                              <option value="embed">Вграден изглед (публичен линк)</option>
+                          </select>
+                      </div>
+                      <div class="builder-field">
+                          <label for="calendarUrl">Google Calendar линк (по избор)</label>
+                          <input type="url" id="calendarUrl" name="calendarUrl" placeholder="https://calendar.google.com/calendar/embed?...">
+                      </div>
                   </div>
-              </form>
+
+                              </div>
+                          </form>
+                      </div>
+
+                      <div class="builder-actions">
+                          <button type="button" class="builder-secondary" id="builderCancelBtn">Отказ</button>
+                          <button type="submit" form="blockBuilderForm" class="builder-primary" id="builderSaveBtn">Запази</button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      <!-- Settings Modal -->
+      <div id="settingsModal" class="settings-overlay hidden">
+          <div class="settings-card">
+              <div class="settings-header">
+                  <div>
+                      <h3>Настройки</h3>
+                      <p>Персонализирай изгледа и звука на StudySpace.</p>
+                  </div>
+                  <button type="button" class="settings-close" id="settingsCloseBtn">✕</button>
+              </div>
+
+              <div class="settings-section">
+                  <h4>Цветове</h4>
+                  <label class="settings-label" for="accentColor">Основен цвят (градиент &amp; акцент)</label>
+                  <div class="color-row">
+                      <input type="color" id="accentColor" class="color-input">
+                      <span class="color-preview-label">Избери цвят за горния градиент и акцентите.</span>
+                  </div>
+              </div>
+
+              <div class="settings-section">
+                  <h4>Режим</h4>
+                  <div class="toggle-row">
+                      <div>
+                          <div class="toggle-title">Тъмен режим</div>
+                          <div class="toggle-sub">По-мек контраст за вечерно учене.</div>
+                      </div>
+                      <label class="switch">
+                          <input type="checkbox" id="darkModeToggle">
+                          <span class="slider"></span>
+                      </label>
+                  </div>
+              </div>
+
+              <div class="settings-section">
+                  <h4>Звук</h4>
+                  <div class="toggle-row">
+                      <div>
+                          <div class="toggle-title">Звуци от интерфейса</div>
+                          <div class="toggle-sub">Кликове и основни звуци.</div>
+                      </div>
+                      <label class="switch">
+                          <input type="checkbox" id="soundToggle">
+                          <span class="slider"></span>
+                      </label>
+                  </div>
+                  <div class="toggle-row">
+                      <div>
+                          <div class="toggle-title">SFX ефекти</div>
+                          <div class="toggle-sub">По-анимирани звукови ефекти.</div>
+                      </div>
+                      <label class="switch">
+                          <input type="checkbox" id="sfxToggle">
+                          <span class="slider"></span>
+                      </label>
+                  </div>
+              </div>
+
+              <div class="settings-footer">
+                  <button type="button" class="btn-secondary" id="settingsCancelBtn">Отказ</button>
+                  <button type="button" class="btn-primary" id="settingsSaveBtn">Запази</button>
+              </div>
           </div>
       </div>
 
       <script>
-        // Account Dropdown Toggle
-        const profileBtn = document.getElementById("profileBtn");
-        const profileDropdown = document.getElementById("profileDropdown");
-    
-        profileBtn.addEventListener("click", () => {
-            profileDropdown.classList.toggle("show");
-        });
-    
-        // Close dropdown on outside click
-        document.addEventListener("click", (e) => {
-            if (!profileBtn.contains(e.target) && !profileDropdown.contains(e.target)) {
-                profileDropdown.classList.remove("show");
-            }
-        });
+        (function(){
+            const profileBtn = document.getElementById('profileBtn');
+            const profileDropdown = document.getElementById('profileDropdown');
+            if (!profileBtn || !profileDropdown) return;
 
-          
-        // simple date/time filling
+            function setOpen(open){
+                profileDropdown.classList.toggle('show', !!open);
+                document.body.classList.toggle('dropdown-open', !!open);
+            }
+
+            function isOpen(){
+                return profileDropdown.classList.contains('show');
+            }
+
+            // Toggle on avatar click
+            profileBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setOpen(!isOpen());
+            });
+
+            // Keep clicks inside dropdown from closing it (and from triggering underlying UI)
+            profileDropdown.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+
+            // Close on outside click
+            document.addEventListener('click', () => {
+                setOpen(false);
+            });
+
+            // Close on Escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') setOpen(false);
+            });
+        })();
+
+        (function(){
+            const LANG_KEY = 'studyspace_language';
+            const FALLBACK = 'bg';
+            function normalizeLang(v){
+                const x = String(v || '').toLowerCase();
+                if(x === 'en') return 'en';
+                return 'bg';
+            }
+            function getLang(){
+                try{ return normalizeLang(localStorage.getItem(LANG_KEY) || FALLBACK); }catch(e){ return FALLBACK; }
+            }
+            function localeForLang(lang){
+                return (lang === 'en') ? 'en-GB' : 'bg-BG';
+            }
+
+            const DICT = {
+                bg: {
+                    'menu.editProfile': 'Редактирай профил',
+                    'menu.yourAccount': 'Твоят акаунт',
+                    'menu.logout': 'Изход'
+                },
+                en: {
+                    'menu.editProfile': 'Edit profile',
+                    'menu.yourAccount': 'Your account',
+                    'menu.logout': 'Logout'
+                }
+            };
+
+            function applyI18n(){
+                const lang = getLang();
+                document.documentElement.setAttribute('lang', lang);
+                const t = DICT[lang] || DICT[FALLBACK] || {};
+                document.querySelectorAll('[data-i18n]').forEach(el => {
+                    const key = el.getAttribute('data-i18n');
+                    if(key && t[key]) el.textContent = t[key];
+                });
+            }
+
+            window.studyspaceI18n = window.studyspaceI18n || {};
+            window.studyspaceI18n.getLang = getLang;
+            window.studyspaceI18n.setLang = (lang) => {
+                const norm = normalizeLang(lang);
+                try{ localStorage.setItem(LANG_KEY, norm); }catch(e){}
+                applyI18n();
+            };
+            window.studyspaceI18n.localeForLang = localeForLang;
+            window.studyspaceI18n.apply = applyI18n;
+            applyI18n();
+
+            // Optional: sync language from profile if user is logged in
+            setTimeout(async () => {
+                try{
+                    const sb = window.supabaseClient;
+                    if(!sb || !sb.auth || !sb.from) return;
+                    const { data: { user } } = await sb.auth.getUser();
+                    if(!user) return;
+                    const { data } = await sb.from('profiles').select('language').eq('id', user.id).single();
+                    if(data && data.language){
+                        window.studyspaceI18n.setLang(data.language);
+                    }
+                }catch(e){
+                    // ignore
+                }
+            }, 0);
+        })();
+
         function updateDateTime(){
-            const d=new Date();
-            const opts={day:'2-digit',month:'short',year:'numeric'};
-            document.getElementById('date').textContent = d.toLocaleDateString('bg-BG',opts);
-            document.getElementById('time').textContent = d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-            
-            // Update calendar day
-            document.getElementById('calendar-day').textContent = d.getDate().toString().padStart(2, '0');
+            const d = new Date();
+            const dateEl = document.getElementById('date');
+            const timeEl = document.getElementById('time');
+            const lang = (window.studyspaceI18n && window.studyspaceI18n.getLang) ? window.studyspaceI18n.getLang() : 'bg';
+            const locale = (window.studyspaceI18n && window.studyspaceI18n.localeForLang) ? window.studyspaceI18n.localeForLang(lang) : 'bg-BG';
+            if(dateEl) dateEl.textContent = d.toLocaleDateString(locale);
+            if(timeEl) timeEl.textContent = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
         }
         updateDateTime();
-        setInterval(updateDateTime,60000);
+        setInterval(updateDateTime, 60000);
+
+        // SETTINGS: state + modal logic
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+        const settingsCancelBtn = document.getElementById('settingsCancelBtn');
+        const settingsSaveBtn = document.getElementById('settingsSaveBtn');
+        const accentColorInput = document.getElementById('accentColor');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const soundToggle = document.getElementById('soundToggle');
+        const sfxToggle = document.getElementById('sfxToggle');
+
+        const DEFAULT_SETTINGS = {
+            accentColor: '#2f6bff',
+            darkMode: false,
+            sound: true,
+            sfx: true
+        };
+
+        // savedSettings = последно запазени (локално/облак)
+        // currentSettings = това, което редактираме в модала (за live preview)
+        let savedSettings = { ...DEFAULT_SETTINGS };
+        let currentSettings = { ...DEFAULT_SETTINGS };
+
+        function applySettingsToUI() {
+            if (accentColorInput) accentColorInput.value = currentSettings.accentColor;
+            if (darkModeToggle) darkModeToggle.checked = currentSettings.darkMode;
+            if (soundToggle) soundToggle.checked = currentSettings.sound;
+            if (sfxToggle) sfxToggle.checked = currentSettings.sfx;
+        }
+
+        function hexToRgbaStart(hex) {
+            if (!hex || hex[0] !== '#' || (hex.length !== 7 && hex.length !== 4)) return 'rgba(32, 102, 255, 0.72)';
+            let r,g,b;
+            if (hex.length === 7) {
+                r = parseInt(hex.slice(1,3),16);
+                g = parseInt(hex.slice(3,5),16);
+                b = parseInt(hex.slice(5,7),16);
+            } else {
+                r = parseInt(hex[1] + hex[1],16);
+                g = parseInt(hex[2] + hex[2],16);
+                b = parseInt(hex[3] + hex[3],16);
+            }
+            return `rgba(${r}, ${g}, ${b}, 0.72)`;
+        }
+
+        function applySettingsToTheme() {
+            const root = document.documentElement;
+            const accent = currentSettings.accentColor || DEFAULT_SETTINGS.accentColor;
+            root.style.setProperty('--accent', accent);
+            root.style.setProperty('--accent-2', accent);
+            root.style.setProperty('--grad-start', hexToRgbaStart(accent));
+            document.body.classList.toggle('dark-mode', !!currentSettings.darkMode);
+
+            // Expose for other scripts that may use sound/sfx
+            window.studyspaceSettings = {
+                soundEnabled: !!currentSettings.sound,
+                sfxEnabled: !!currentSettings.sfx
+            };
+        }
+
+        function loadSettingsFromLocal() {
+            try {
+                const raw = localStorage.getItem('studyspace_settings');
+                if (!raw) return;
+                const parsed = JSON.parse(raw);
+                savedSettings = { ...savedSettings, ...parsed };
+            } catch (e) {
+                console.warn('settings local load failed', e);
+            }
+        }
+
+        function saveSettingsToLocal() {
+            try {
+                localStorage.setItem('studyspace_settings', JSON.stringify(currentSettings));
+            } catch (e) {
+                console.warn('settings local save failed', e);
+            }
+        }
+
+        async function loadSettingsFromCloud() {
+            try {
+                const sb = window.supabaseClient;
+                if (!sb) return;
+                const { data: { user } } = await sb.auth.getUser();
+                if (!user) return;
+                const { data, error } = await sb
+                    .from('user_settings')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+                if (error && error.code !== 'PGRST116') { console.warn('user_settings select error', error); return; }
+                if (data) {
+                    savedSettings.accentColor = data.accent_color || savedSettings.accentColor;
+                    savedSettings.darkMode = !!data.dark_mode;
+                    savedSettings.sound = data.sound_enabled ?? savedSettings.sound;
+                    savedSettings.sfx = data.sfx_enabled ?? savedSettings.sfx;
+                }
+            } catch (e) {
+                console.warn('cloud settings load failed', e);
+            }
+        }
+
+        async function saveSettingsToCloud() {
+            try {
+                const sb = window.supabaseClient;
+                if (!sb) return;
+                const { data: { user } } = await sb.auth.getUser();
+                if (!user) return;
+                const payload = {
+                    user_id: user.id,
+                    accent_color: savedSettings.accentColor,
+                    dark_mode: savedSettings.darkMode,
+                    sound_enabled: savedSettings.sound,
+                    sfx_enabled: savedSettings.sfx,
+                    updated_at: new Date().toISOString()
+                };
+                await sb.from('user_settings').upsert(payload, { onConflict: 'user_id' });
+            } catch (e) {
+                console.warn('cloud settings save failed', e);
+            }
+        }
+
+        function openSettingsModal() {
+            // започваме от последно запазените настройки
+            currentSettings = { ...savedSettings };
+            applySettingsToUI();
+            applySettingsToTheme();
+            settingsModal.classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            // връщаме изгледа към запазените стойности
+            currentSettings = { ...savedSettings };
+            applySettingsToTheme();
+            settingsModal.classList.add('hidden');
+        }
+
+        if (settingsBtn && settingsModal) {
+            settingsBtn.addEventListener('click', openSettingsModal);
+        }
+        if (settingsCloseBtn) settingsCloseBtn.addEventListener('click', closeSettingsModal);
+        if (settingsCancelBtn) settingsCancelBtn.addEventListener('click', closeSettingsModal);
+        if (settingsModal) {
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) closeSettingsModal();
+            });
+        }
+
+        if (settingsSaveBtn) {
+            settingsSaveBtn.addEventListener('click', async () => {
+                // Commit current -> saved and persist
+                savedSettings = { ...currentSettings };
+                applySettingsToTheme();
+                saveSettingsToLocal();
+                await saveSettingsToCloud();
+                closeSettingsModal();
+            });
+        }
+
+        // Live preview while changing controls
+        if (accentColorInput) {
+            accentColorInput.addEventListener('input', () => {
+                currentSettings.accentColor = accentColorInput.value || currentSettings.accentColor;
+                applySettingsToTheme();
+            });
+        }
+        if (darkModeToggle) {
+            darkModeToggle.addEventListener('change', () => {
+                currentSettings.darkMode = !!darkModeToggle.checked;
+                applySettingsToTheme();
+            });
+        }
+        if (soundToggle) {
+            soundToggle.addEventListener('change', () => {
+                currentSettings.sound = !!soundToggle.checked;
+                applySettingsToTheme();
+            });
+        }
+        if (sfxToggle) {
+            sfxToggle.addEventListener('change', () => {
+                currentSettings.sfx = !!sfxToggle.checked;
+                applySettingsToTheme();
+            });
+        }
+
+        // Initial load of settings
+        (async () => {
+            loadSettingsFromLocal();
+            await loadSettingsFromCloud();
+            currentSettings = { ...savedSettings };
+            applySettingsToTheme();
+        })();
+
+    // Край на основния скрипт блок
     </script>
 
     <script>
-        (function(){
+        // Стартираме Clipboard логиката в нов, чист блок
+        (async function(){
             const clipboard = document.getElementById('homeClipboard');
             const capsule = document.getElementById('homeClipboardCapsule');
             const panel = document.getElementById('homeClipboardPanel');
             const list = document.getElementById('homeClipboardList');
             const countEl = document.getElementById('homeClipboardCount');
             const emptyEl = document.getElementById('homeClipboardEmpty');
-            if(!clipboard || !capsule || !panel || !list){
-                return;
-            }
+            
+            if(!clipboard || !capsule || !panel || !list) return;
 
             const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             const clipboardElementMap = new Map();
@@ -1576,6 +2768,105 @@
             let clipboardOpen = false;
             let dragDepth = 0;
             let dragGhostEl = null;
+
+            const STUDY_CLIPBOARD_DB_NAME = 'studyspace_clipboard_db_v1';
+            const STUDY_CLIPBOARD_STORE = 'files';
+
+            function openStudyClipboardDb(){
+                if(!('indexedDB' in window)){
+                    return Promise.reject(new Error('IndexedDB unavailable'));
+                }
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(STUDY_CLIPBOARD_DB_NAME, 1);
+                    request.onupgradeneeded = () => {
+                        const db = request.result;
+                        if(!db.objectStoreNames.contains(STUDY_CLIPBOARD_STORE)){
+                            db.createObjectStore(STUDY_CLIPBOARD_STORE, { keyPath: 'id' });
+                        }
+                    };
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error || new Error('IndexedDB open failed'));
+                });
+            }
+
+            async function persistClipboardItem(item){
+                if(!item || !item.id || !item.file) return;
+                try{
+                    const db = await openStudyClipboardDb();
+                    await new Promise((resolve, reject) => {
+                        const tx = db.transaction(STUDY_CLIPBOARD_STORE, 'readwrite');
+                        tx.oncomplete = () => resolve();
+                        tx.onerror = () => reject(tx.error || new Error('IndexedDB transaction failed'));
+                        const store = tx.objectStore(STUDY_CLIPBOARD_STORE);
+                        store.put({
+                            id: item.id,
+                            name: item.name,
+                            size: item.size,
+                            type: item.type || '',
+                            lastModified: item.file.lastModified || Date.now(),
+                            createdAt: item.createdAt || Date.now(),
+                            blob: item.file
+                        });
+                    });
+                } catch(err){
+                    // Ignore persistence errors (private mode / blocked / quota)
+                }
+            }
+
+            async function loadPersistedClipboardItems(){
+                try{
+                    const db = await openStudyClipboardDb();
+                    const records = await new Promise((resolve, reject) => {
+                        const tx = db.transaction(STUDY_CLIPBOARD_STORE, 'readonly');
+                        const store = tx.objectStore(STUDY_CLIPBOARD_STORE);
+                        const request = store.getAll();
+                        request.onsuccess = () => resolve(request.result || []);
+                        request.onerror = () => reject(request.error || new Error('IndexedDB getAll failed'));
+                    });
+                    return (records || []).map(rec => {
+                        const blob = rec && rec.blob;
+                        const fallbackName = (rec && rec.name) || (blob && blob.name) || 'file';
+                        const fallbackType = (rec && rec.type) || (blob && blob.type) || '';
+                        const fallbackLastModified = (rec && rec.lastModified) || (blob && blob.lastModified) || Date.now();
+                        const file = new File([blob], fallbackName, { type: fallbackType, lastModified: fallbackLastModified });
+                        const mime = rec && rec.type ? rec.type : (file.type || '');
+                        return {
+                            id: rec.id,
+                            name: rec.name || file.name,
+                            size: rec.size || file.size,
+                            type: mime,
+                            displayType: mime || 'Файл',
+                            file,
+                            previewUrl: null,
+                            previewKind: null,
+                            previewIcon: null,
+                            snippet: '',
+                            previewPrepared: false,
+                            createdAt: rec.createdAt || 0
+                        };
+                    }).filter(Boolean);
+                } catch(err){
+                    return [];
+                }
+            }
+
+            async function syncClipboardFromDb(){
+                try{
+                    const persisted = await loadPersistedClipboardItems();
+                    if(Array.isArray(persisted) && persisted.length > 0){
+                        const existingById = new Map(clipboardItems.map(item => [item.id, item]));
+                        persisted.forEach(item => {
+                            if(item && item.id && !existingById.has(item.id)){
+                                clipboardItems.push(item);
+                            }
+                        });
+                        clipboardItems.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+                    }
+                } catch(err){
+                    // Ignore sync errors
+                }
+                updateClipboardUI();
+            }
 
             function formatBytes(bytes){
                 if(typeof bytes !== 'number' || Number.isNaN(bytes)) return '0 B';
@@ -1736,6 +3027,7 @@
                 if(event.dataTransfer){
                     event.dataTransfer.effectAllowed = 'copy';
                     event.dataTransfer.setData('text/plain', item.name);
+                    event.dataTransfer.setData('application/x-studyspace-clipboard-id', item.id);
                     try{
                         event.dataTransfer.setData('application/x-study-clipboard', JSON.stringify({ name: item.name, size: item.size, type: item.displayType || 'Файл', mime: item.type || '' }));
                     } catch(err){
@@ -1841,11 +3133,12 @@
                 }
             }
 
-            function captureClipboardFiles(files){
+            async function captureClipboardFiles(files){
                 let captured = false;
+                const tasks = [];
                 Array.from(files || []).forEach(file => {
                     const mime = file.type || '';
-                    clipboardItems.push({
+                    const item = {
                         id: `${file.name}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
                         name: file.name,
                         size: file.size,
@@ -1856,10 +3149,16 @@
                         previewKind: null,
                         previewIcon: null,
                         snippet: '',
-                        previewPrepared: false
-                    });
+                        previewPrepared: false,
+                        createdAt: Date.now()
+                    };
+                    clipboardItems.push(item);
+                    tasks.push(persistClipboardItem(item));
                     captured = true;
                 });
+                if(tasks.length){
+                    await Promise.allSettled(tasks);
+                }
                 if(captured){
                     updateClipboardUI();
                 }
@@ -1902,13 +3201,13 @@
                 }
             });
 
-            clipboard.addEventListener('drop', (event) => {
+            clipboard.addEventListener('drop', async (event) => {
                 if(!isFileDrag(event)) return;
                 event.preventDefault();
                 dragDepth = 0;
                 clipboard.classList.remove('drag-ready');
                 const files = event.dataTransfer ? event.dataTransfer.files : null;
-                if(captureClipboardFiles(files)){
+                if(await captureClipboardFiles(files)){
                     if(!reducedMotion){
                         clipboard.classList.remove('captured');
                         void clipboard.offsetWidth;
@@ -1919,7 +3218,8 @@
                 }
             });
 
-            capsule.addEventListener('dblclick', () => {
+            capsule.addEventListener('dblclick', async () => {
+                await syncClipboardFromDb();
                 setClipboardOpen(!clipboardOpen);
             });
 
@@ -1948,9 +3248,10 @@
                 }
             });
 
-            capsule.addEventListener('keydown', (event) => {
+            capsule.addEventListener('keydown', async (event) => {
                 if(event.key === 'Enter' || event.key === ' '){
                     event.preventDefault();
+                    await syncClipboardFromDb();
                     setClipboardOpen(!clipboardOpen);
                 } else if(event.key === 'Escape' && clipboardOpen){
                     setClipboardOpen(false);
@@ -1976,7 +3277,7 @@
                 }
             });
 
-            updateClipboardUI();
+            await syncClipboardFromDb();
             setClipboardOpen(false);
         })();
     </script>
@@ -2000,25 +3301,322 @@
             }
             
             let gridSize = getGridSize(); // Initialize grid size
+            const MAX_CONTAINER_HEIGHT = 2400; // safety cap for layout height
 
             const editBtn = document.getElementById('editBlocksBtn');
+            const removeAllBtn = document.getElementById('removeAllBlocksBtn');
             const customBlocks = document.getElementById('customBlocks');
             const addBlockBtn = document.getElementById('addBlockBtn');
             const blockBuilderModal = document.getElementById('blockBuilder');
+            const blockLibraryOverlay = document.getElementById('blockLibrary');
+            const blockLibraryPanel = document.getElementById('blockLibraryPanel');
+            const blockLibraryGrid = document.getElementById('blockLibraryGrid');
+            const blockLibraryCloseBtn = document.getElementById('blockLibraryClose');
             const builderForm = document.getElementById('blockBuilderForm');
+            const builderTitleEl = document.getElementById('builderTitle');
+            const builderSubtitleEl = blockBuilderModal ? blockBuilderModal.querySelector('.builder-subtitle') : null;
+            const builderPreviewInner = document.getElementById('builderLivePreviewInner');
+            const builderPreviewHintEl = blockBuilderModal ? blockBuilderModal.querySelector('.builder-preview-hint') : null;
+            const builderPreviewStageEl = blockBuilderModal ? blockBuilderModal.querySelector('.builder-preview-stage') : null;
             const builderTypeButtons = blockBuilderModal ? blockBuilderModal.querySelectorAll('.builder-type-btn') : [];
             const builderSections = blockBuilderModal ? blockBuilderModal.querySelectorAll('.builder-section') : [];
             const builderCancelBtn = document.getElementById('builderCancelBtn');
             const builderCloseBtn = document.getElementById('builderCloseBtn');
+            const builderSaveBtn = document.getElementById('builderSaveBtn');
             const builderChecklistItems = document.getElementById('builderChecklistItems');
             const builderAddChecklistItemBtn = document.getElementById('builderAddChecklistItem');
             const builderColorInput = document.getElementById('blockColor');
             const builderColorValue = document.getElementById('builderColorValue');
+            const checklistTitleInput = document.getElementById('checklistTitle');
+            const checklistAiToggle = document.getElementById('checklistAiToggle');
             let activeBuilderType = 'music';
+            let builderEditingBlock = null;
+            let builderEditingBlockId = null;
+            let builderLockedType = null;
+            let builderPreviewRaf = null;
+            const builderDefaultTitle = builderTitleEl ? builderTitleEl.textContent : '';
+            const builderDefaultSubtitle = builderSubtitleEl ? builderSubtitleEl.textContent : '';
+            const builderDefaultPreviewHint = builderPreviewHintEl ? builderPreviewHintEl.textContent : '';
+            const builderReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            let builderPraglassWired = false;
+            let builderPreviewState = {
+                left: null,
+                top: null,
+                width: 360,
+                height: 220
+            };
+            let builderPreviewDrag = null;
+            let builderPreviewResize = null;
             let blocks = document.querySelectorAll('.custom-block');
             const CUSTOM_BLOCKS_STORAGE_KEY = 'customBlocksData';
             const REMOVED_DEFAULT_BLOCKS_KEY = 'removedDefaultBlocks';
             const DEFAULT_BLOCK_COLOR = '#4d7cff';
+            const AI_WORKER_ENDPOINT = window.WORKER || window.STUDYSPACE_AI_ENDPOINT || window.STUDYSPACE_AI_WORKER || null;
+            let checklistAIEnabled = checklistAiToggle ? checklistAiToggle.checked : false;
+            window.checklistAIEnabled = checklistAIEnabled;
+            let checklistAIDebounce = null;
+            let libraryExpanded = false;
+            let libraryDragType = null;
+            let libraryWasExpandedOnDragStart = false;
+            let libraryHiddenForDrag = false;
+            let libraryDragConfig = null;
+
+            const LONG_PRESS_DELAY = 550;
+            const LONG_PRESS_MOVE_TOLERANCE = 6;
+            let longPressTimer = null;
+            let longPressTarget = null;
+            let longPressStartPos = { x: 0, y: 0 };
+
+            const LIBRARY_BLOCK_TEMPLATES = [
+                { type: 'calendar', title: 'Calendar Block', chip: 'Събития', lines: ['medium', 'short', 'tiny'] },
+                { type: 'music', title: 'Music Block', chip: 'Spotify / Apple', lines: ['medium', 'medium', 'short'] },
+                { type: 'link', title: 'Useful links', chip: 'Любими сайтове', lines: ['medium', 'short'] },
+                { type: 'weather', title: 'Weather', chip: 'Текуща локация', lines: ['medium', 'tiny'] },
+                { type: 'checklist', title: 'Checklist', chip: 'Задачи', lines: ['medium', 'medium', 'short'] },
+                { type: 'reminder', title: 'Notes', chip: 'Бързи бележки', lines: ['medium', 'short', 'tiny'] }
+            ];
+
+            const LIBRARY_COLORS = [
+                { base: '#0ea5e9', soft: '#38bdf8' },
+                { base: '#6366f1', soft: '#4f46e5' },
+                { base: '#a855f7', soft: '#ec4899' },
+                { base: '#22c55e', soft: '#16a34a' },
+                { base: '#f97316', soft: '#fb923c' },
+                { base: '#facc15', soft: '#fbbf24' }
+            ];
+
+            function setLibraryExpanded(next) {
+                libraryExpanded = !!next;
+                if (!blockLibraryOverlay) return;
+                blockLibraryOverlay.classList.toggle('expanded', libraryExpanded);
+            }
+
+            function scheduleBuilderPreviewUpdate() {
+                if (!builderPreviewInner) return;
+                if (builderPreviewRaf) {
+                    cancelAnimationFrame(builderPreviewRaf);
+                }
+                builderPreviewRaf = requestAnimationFrame(() => {
+                    builderPreviewRaf = null;
+                    renderBuilderLivePreview();
+                });
+            }
+
+            function ensureBuilderPraglassWired() {
+                if (builderPraglassWired) return;
+                if (!builderPreviewStageEl || !builderPreviewInner) return;
+                builderPraglassWired = true;
+
+                const getPreviewBlock = () => builderPreviewInner.querySelector('.builder-preview-block');
+                const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+                const getCanvasMargin = () => {
+                    try {
+                        const raw = getComputedStyle(builderPreviewInner).getPropertyValue('--builder-preview-margin').trim();
+                        const px = parseFloat(raw);
+                        return Number.isFinite(px) ? px : 14;
+                    } catch (err) {
+                        return 14;
+                    }
+                };
+
+                const applyState = () => {
+                    const el = getPreviewBlock();
+                    if (!el) return;
+                    const rect = builderPreviewInner.getBoundingClientRect();
+                    const margin = getCanvasMargin();
+
+                    const minW = 240;
+                    const minH = 160;
+                    const maxWByCanvas = Math.max(minW, Math.floor(rect.width - (margin * 2)));
+                    const maxHByCanvas = Math.max(minH, Math.floor(rect.height - (margin * 2)));
+
+                    builderPreviewState.width = clamp(builderPreviewState.width || (el.offsetWidth || 360), minW, maxWByCanvas);
+                    builderPreviewState.height = clamp(builderPreviewState.height || (el.offsetHeight || 220), minH, maxHByCanvas);
+
+                    const maxLeft = Math.max(margin, rect.width - margin - builderPreviewState.width);
+                    const maxTop = Math.max(margin, rect.height - margin - builderPreviewState.height);
+
+                    if (builderPreviewState.left == null || builderPreviewState.top == null) {
+                        // Center by default.
+                        builderPreviewState.left = Math.round((margin + maxLeft) / 2);
+                        builderPreviewState.top = Math.round((margin + maxTop) / 2);
+                    }
+
+                    builderPreviewState.left = clamp(builderPreviewState.left, margin, maxLeft);
+                    builderPreviewState.top = clamp(builderPreviewState.top, margin, maxTop);
+
+                    el.style.left = builderPreviewState.left + 'px';
+                    el.style.top = builderPreviewState.top + 'px';
+                    if (builderPreviewState.width) el.style.width = builderPreviewState.width + 'px';
+                    if (builderPreviewState.height) el.style.height = builderPreviewState.height + 'px';
+                };
+
+                const reset = () => {
+                    const el = getPreviewBlock();
+                    if (!el) return;
+                    el.style.setProperty('--rx', '0deg');
+                    el.style.setProperty('--ry', '0deg');
+                    applyState();
+                };
+
+                const onMove = (event) => {
+                    if (builderReducedMotion) return;
+                    const el = getPreviewBlock();
+                    if (!el) return;
+                    const rect = builderPreviewStageEl.getBoundingClientRect();
+                    const x = rect.width ? (event.clientX - rect.left) / rect.width : 0.5;
+                    const y = rect.height ? (event.clientY - rect.top) / rect.height : 0.5;
+                    const cx = Math.max(0, Math.min(1, x));
+                    const cy = Math.max(0, Math.min(1, y));
+
+                    // Stronger tilt (tilt-only, no gloss).
+                    const ry = (cx - 0.5) * 24;  // deg
+                    const rx = (0.5 - cy) * 18;  // deg
+
+                    el.style.setProperty('--rx', rx.toFixed(2) + 'deg');
+                    el.style.setProperty('--ry', ry.toFixed(2) + 'deg');
+                };
+
+                // Drag + resize within the preview canvas.
+                const onPointerDownBlock = (event) => {
+                    const el = getPreviewBlock();
+                    if (!el) return;
+                    const handle = event.target && event.target.closest ? event.target.closest('.builder-preview-resize-handle') : null;
+                    if (handle) return; // handled by resize handler
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const blockRect = el.getBoundingClientRect();
+                    const canvasRect = builderPreviewInner.getBoundingClientRect();
+                    const startX = event.clientX;
+                    const startY = event.clientY;
+                    const startLeft = blockRect.left - canvasRect.left;
+                    const startTop = blockRect.top - canvasRect.top;
+
+                    builderPreviewDrag = { pointerId: event.pointerId, startX, startY, startLeft, startTop };
+                    try { el.setPointerCapture(event.pointerId); } catch (err) {}
+                };
+
+                const onPointerDownResize = (event) => {
+                    const el = getPreviewBlock();
+                    if (!el) return;
+                    const handle = event.target && event.target.closest ? event.target.closest('.builder-preview-resize-handle') : null;
+                    if (!handle) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const startX = event.clientX;
+                    const startY = event.clientY;
+                    const startW = el.offsetWidth || builderPreviewState.width;
+                    const startH = el.offsetHeight || builderPreviewState.height;
+                    builderPreviewResize = { pointerId: event.pointerId, startX, startY, startW, startH };
+                    try { handle.setPointerCapture(event.pointerId); } catch (err) {}
+                };
+
+                const onPointerMoveGlobal = (event) => {
+                    const el = getPreviewBlock();
+                    if (!el) return;
+                    const canvasRect = builderPreviewInner.getBoundingClientRect();
+                    const margin = getCanvasMargin();
+
+                    if (builderPreviewDrag && builderPreviewDrag.pointerId === event.pointerId) {
+                        const dx = event.clientX - builderPreviewDrag.startX;
+                        const dy = event.clientY - builderPreviewDrag.startY;
+                        builderPreviewState.left = Math.round(builderPreviewDrag.startLeft + dx);
+                        builderPreviewState.top = Math.round(builderPreviewDrag.startTop + dy);
+                        applyState();
+                    }
+
+                    if (builderPreviewResize && builderPreviewResize.pointerId === event.pointerId) {
+                        const dx = event.clientX - builderPreviewResize.startX;
+                        const dy = event.clientY - builderPreviewResize.startY;
+                        const nextW = Math.round(builderPreviewResize.startW + dx);
+                        const nextH = Math.round(builderPreviewResize.startH + dy);
+
+                        const minW = 240;
+                        const minH = 160;
+
+                        const currentLeft = (builderPreviewState.left != null)
+                            ? builderPreviewState.left
+                            : Math.round(el.getBoundingClientRect().left - canvasRect.left);
+                        const currentTop = (builderPreviewState.top != null)
+                            ? builderPreviewState.top
+                            : Math.round(el.getBoundingClientRect().top - canvasRect.top);
+
+                        const maxW = Math.max(minW, Math.floor(canvasRect.width - margin - currentLeft));
+                        const maxH = Math.max(minH, Math.floor(canvasRect.height - margin - currentTop));
+
+                        // Also never exceed canvas minus both margins.
+                        const maxWByCanvas = Math.max(minW, Math.floor(canvasRect.width - (margin * 2)));
+                        const maxHByCanvas = Math.max(minH, Math.floor(canvasRect.height - (margin * 2)));
+
+                        builderPreviewState.width = clamp(nextW, minW, Math.min(maxW, maxWByCanvas));
+                        builderPreviewState.height = clamp(nextH, minH, Math.min(maxH, maxHByCanvas));
+                        applyState();
+                    }
+                };
+
+                const onPointerUpGlobal = (event) => {
+                    if (builderPreviewDrag && builderPreviewDrag.pointerId === event.pointerId) {
+                        builderPreviewDrag = null;
+                    }
+                    if (builderPreviewResize && builderPreviewResize.pointerId === event.pointerId) {
+                        builderPreviewResize = null;
+                    }
+                };
+
+                builderPreviewStageEl.addEventListener('pointermove', onMove);
+                builderPreviewStageEl.addEventListener('pointerleave', reset);
+                builderPreviewStageEl.addEventListener('pointercancel', reset);
+                builderPreviewStageEl.addEventListener('pointerdown', (e) => {
+                    // capture pointer so movement continues while pressed
+                    try { builderPreviewStageEl.setPointerCapture(e.pointerId); } catch (err) {}
+                    onMove(e);
+                });
+
+                // Wire drag/resize events on the preview canvas.
+                builderPreviewInner.addEventListener('pointerdown', (e) => {
+                    // If user clicks on the block or its resize handle.
+                    const el = getPreviewBlock();
+                    if (!el) return;
+                    if (e.target && e.target.closest && e.target.closest('.builder-preview-resize-handle')) {
+                        onPointerDownResize(e);
+                        return;
+                    }
+                    if (e.target && e.target.closest && e.target.closest('.builder-preview-block')) {
+                        onPointerDownBlock(e);
+                    }
+                });
+
+                window.addEventListener('pointermove', onPointerMoveGlobal);
+                window.addEventListener('pointerup', onPointerUpGlobal);
+                window.addEventListener('pointercancel', onPointerUpGlobal);
+
+                reset();
+            }
+
+            function renderBuilderLivePreview() {
+                if (!builderPreviewInner) return;
+                const type = builderLockedType || activeBuilderType;
+                const config = collectBuilderConfig(type);
+                builderPreviewInner.innerHTML = '';
+
+                const previewBlock = document.createElement('div');
+                previewBlock.className = 'custom-block builder-preview-block praglass';
+
+                const resizeHandle = document.createElement('div');
+                resizeHandle.className = 'builder-preview-resize-handle';
+                previewBlock.appendChild(resizeHandle);
+
+                const content = createBlockContent(type, config);
+                previewBlock.appendChild(content);
+
+                applyBlockColor(previewBlock, config.color || DEFAULT_BLOCK_COLOR);
+                builderPreviewInner.appendChild(previewBlock);
+
+                ensureBuilderPraglassWired();
+            }
 
             function isDefaultBlock(block) {
                 return block && block.getAttribute('data-default-block') === 'true';
@@ -2096,6 +3694,10 @@
                 block.style.setProperty('--block-border', border);
                 block.style.setProperty('--block-shadow', shadow);
                 block.dataset.blockColor = normalized;
+
+                // Never sync preview-only blocks.
+                if (block.classList && block.classList.contains('builder-preview-block')) return;
+                if (typeof syncBlockToCloud === 'function') { syncBlockToCloud(block); }
             }
 
             function getCustomBlocksData() {
@@ -2193,6 +3795,7 @@
                         field.disabled = !isActive;
                     });
                 });
+                scheduleBuilderPreviewUpdate();
             }
 
             function resetBuilderFormFields(defaultType = 'music') {
@@ -2209,10 +3812,97 @@
                 setActiveBuilderType(defaultType);
             }
 
-            function openBlockBuilder(defaultType = 'music') {
+            function applyConfigToBuilder(type, config = {}) {
+                if (!builderForm) return;
+                const color = config.color || DEFAULT_BLOCK_COLOR;
+                if (builderColorInput) {
+                    builderColorInput.value = color;
+                    updateBuilderColorValue(color);
+                }
+                switch (type) {
+                    case 'music':
+                        if (builderForm.musicTitle) builderForm.musicTitle.value = config.title || 'Музика';
+                        if (builderForm.musicPlatform) builderForm.musicPlatform.value = config.platform || 'spotify';
+                        if (builderForm.musicUrl) builderForm.musicUrl.value = config.url || '';
+                        if (builderForm.musicNote) builderForm.musicNote.value = config.note || '';
+                        break;
+                    case 'weather':
+                        if (builderForm.weatherTitle) builderForm.weatherTitle.value = config.title || 'Време';
+                        if (builderForm.weatherLocation) builderForm.weatherLocation.value = config.location || '';
+                        if (builderForm.weatherUnits) builderForm.weatherUnits.value = config.units || 'metric';
+                        break;
+                    case 'checklist': {
+                        if (builderForm.checklistTitle) builderForm.checklistTitle.value = config.title || 'Чеклист';
+                        if (builderChecklistItems) {
+                            builderChecklistItems.innerHTML = '';
+                            const items = (config.items && config.items.length) ? config.items : ['Нова задача'];
+                            items.forEach(text => addBuilderChecklistItem(text));
+                        }
+                        break;
+                    }
+                    case 'calendar':
+                        if (builderForm.calendarTitle) builderForm.calendarTitle.value = config.title || 'Календар';
+                        if (builderForm.calendarMode) builderForm.calendarMode.value = config.mode || 'link';
+                        if (builderForm.calendarUrl) builderForm.calendarUrl.value = config.url || '';
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            function setBuilderTypeLock(type) {
+                builderLockedType = type || null;
+                builderTypeButtons.forEach(btn => {
+                    const btnType = btn.getAttribute('data-builder-type');
+                    btn.disabled = Boolean(builderLockedType && btnType !== builderLockedType);
+                });
+            }
+
+            function clearBuilderEditingTarget() {
+                builderEditingBlock = null;
+                builderEditingBlockId = null;
+                setBuilderTypeLock(null);
+                if (builderTitleEl && builderDefaultTitle) {
+                    builderTitleEl.textContent = builderDefaultTitle;
+                }
+                if (builderSubtitleEl && builderDefaultSubtitle) {
+                    builderSubtitleEl.textContent = builderDefaultSubtitle;
+                }
+                if (builderPreviewHintEl && builderDefaultPreviewHint) {
+                    builderPreviewHintEl.textContent = builderDefaultPreviewHint;
+                }
+                if (builderSaveBtn) builderSaveBtn.textContent = 'Запази';
+            }
+
+            function openBlockBuilder(defaultType = 'music', existingConfig, targetBlock) {
                 if (!blockBuilderModal) return;
+                if (targetBlock) {
+                    builderEditingBlock = targetBlock;
+                    builderEditingBlockId = targetBlock.getAttribute('data-block-id') || null;
+                    // Allow changing the block type from the settings UI.
+                    setBuilderTypeLock(null);
+                    if (builderTitleEl) {
+                        builderTitleEl.textContent = 'Редактирай блок';
+                    }
+                    if (builderSubtitleEl) {
+                        builderSubtitleEl.textContent = 'Промените се виждат само тук до „Запази“. ';
+                    }
+                    if (builderPreviewHintEl) {
+                        builderPreviewHintEl.textContent = 'Промените се прилагат след „Запази“';
+                    }
+                    if (builderSaveBtn) builderSaveBtn.textContent = 'Запази';
+                } else {
+                    clearBuilderEditingTarget();
+                    if (builderPreviewHintEl) {
+                        builderPreviewHintEl.textContent = 'Промените се прилагат след „Запази“';
+                    }
+                }
                 resetBuilderFormFields(defaultType);
+                if (existingConfig) {
+                    applyConfigToBuilder(defaultType, existingConfig);
+                }
                 blockBuilderModal.classList.add('show');
+                scheduleBuilderPreviewUpdate();
                 requestAnimationFrame(() => {
                     const focusTarget = blockBuilderModal.querySelector(`[data-builder-section="${activeBuilderType}"] input, [data-builder-section="${activeBuilderType}"] select`);
                     if (focusTarget) {
@@ -2224,6 +3914,194 @@
             function closeBlockBuilder() {
                 if (!blockBuilderModal) return;
                 blockBuilderModal.classList.remove('show');
+                clearBuilderEditingTarget();
+            }
+
+            function applyConfigToExistingBlock(block, type, config) {
+                if (!block) return;
+                const normalizedConfig = config && typeof config === 'object' ? { ...(config || {}) } : {};
+                const normalizedColor = normalizeColorValue(normalizedConfig.color || DEFAULT_BLOCK_COLOR);
+                normalizedConfig.color = normalizedColor;
+
+                // Replace block content while keeping the delete button element.
+                const deleteBtn = block.querySelector('.delete-btn');
+                Array.from(block.children).forEach(child => {
+                    if (child !== deleteBtn) child.remove();
+                });
+
+                const content = createBlockContent(type, normalizedConfig);
+                block.appendChild(content);
+
+                block.dataset.blockType = type;
+                try {
+                    block.dataset.blockConfig = JSON.stringify(normalizedConfig);
+                } catch (err) {
+                    delete block.dataset.blockConfig;
+                }
+
+                applyBlockColor(block, normalizedColor);
+                saveBlockDimensions(block);
+                updateContainerHeight();
+
+                // Rewire type-specific internals against the new DOM.
+                setupBlockFunctionality(block, type, normalizedConfig);
+
+                // Persist only for non-default blocks (default blocks are static).
+                if (!isDefaultBlock(block)) {
+                    const blockId = block.getAttribute('data-block-id');
+                    if (blockId) {
+                        persistCustomBlockData(blockId, type, normalizedConfig);
+                    }
+                }
+            }
+
+            function getDefaultBlockConfig(type) {
+                const color = DEFAULT_BLOCK_COLOR;
+                switch (type) {
+                    case 'music':
+                        return { title: 'Музика', platform: 'spotify', url: '', note: '', color };
+                    case 'weather':
+                        return { title: 'Време', location: 'София, България', units: 'metric', color };
+                    case 'checklist':
+                        return { title: 'Чеклист', items: ['Задача 1', 'Задача 2'], color };
+                    case 'calendar':
+                        return { title: 'Календар', mode: 'link', url: '', color };
+                    case 'reminder':
+                        return { title: 'Напомняния', color };
+                    case 'quote':
+                        return { title: 'Мотивация', color };
+                    case 'link':
+                        return { title: 'Бърз линк', color };
+                    default:
+                        return { color };
+                }
+            }
+
+            function populateBlockLibrary() {
+                if (!blockLibraryGrid) return;
+                blockLibraryGrid.innerHTML = '';
+
+                // Duplicate templates so the gallery feels "full" and varied
+                const templatesPool = [...LIBRARY_BLOCK_TEMPLATES, ...LIBRARY_BLOCK_TEMPLATES];
+                const shuffledTemplates = templatesPool.sort(() => Math.random() - 0.5);
+
+                shuffledTemplates.forEach((tpl, index) => {
+                    const colorPair = LIBRARY_COLORS[index % LIBRARY_COLORS.length];
+                    const blockEl = document.createElement('div');
+                    const targetType = tpl.type || 'music';
+                    const baseConfig = getDefaultBlockConfig(targetType);
+                    const previewConfig = {
+                        ...baseConfig,
+                        color: colorPair ? colorPair.base : baseConfig.color
+                    };
+                    let extraSizeClass = '';
+                    if (Math.random() < 0.5) {
+                        extraSizeClass = ' tall';
+                    }
+                    blockEl.className = 'library-block' + extraSizeClass;
+                    blockEl.dataset.blockType = targetType;
+                    blockEl.setAttribute('role', 'button');
+                    blockEl.setAttribute('tabindex', '0');
+                    blockEl.setAttribute('draggable', 'true');
+                    if (colorPair) {
+                        blockEl.style.setProperty('--lib-color', colorPair.base);
+                        blockEl.style.setProperty('--lib-color-soft', colorPair.soft);
+                    }
+                    // Store the exact config so dropped blocks match 1:1
+                    try {
+                        blockEl.dataset.blockConfig = JSON.stringify(previewConfig);
+                    } catch (err) {}
+
+                    // Use the real block content as a miniature preview so
+                    // the widget looks the same as the one placed later.
+                    const previewShell = document.createElement('div');
+                    previewShell.className = 'library-block-inner';
+                    const previewContent = createBlockContent(targetType, previewConfig);
+                    previewContent.classList.add('library-preview-content');
+                    previewShell.appendChild(previewContent);
+                    blockEl.appendChild(previewShell);
+
+                    const spawnBlockOnHomepage = () => {
+                        if (!customBlocks || !editMode) return;
+                        let config = previewConfig;
+                        try {
+                            if (blockEl.dataset.blockConfig) {
+                                config = JSON.parse(blockEl.dataset.blockConfig);
+                            }
+                        } catch (err) {}
+                        createNewBlock(targetType, config);
+                    };
+
+                    // Click or keyboard activation from the library creates a
+                    // block directly on the homepage without opening any
+                    // additional popups. Customisation happens later when the
+                    // user clicks the placed block.
+                    blockEl.addEventListener('click', (event) => {
+                        // If this click immediately follows a drag, ignore it
+                        // so we don't spawn a second block.
+                        if (blockEl._wasDraggedRecently) return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        spawnBlockOnHomepage();
+                    });
+                    blockEl.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            spawnBlockOnHomepage();
+                        }
+                    });
+
+                    blockEl.addEventListener('dragstart', (event) => {
+                        if (!editMode) return;
+                        blockEl._wasDraggedRecently = true;
+                        setTimeout(() => { blockEl._wasDraggedRecently = false; }, 400);
+
+                        libraryDragType = targetType;
+                        libraryDragConfig = previewConfig;
+                        // Shrink to compact shelf while dragging so more of
+                        // the homepage stays visible.
+                        setLibraryExpanded(false);
+                        if (blockLibraryOverlay) {
+                            blockLibraryOverlay.classList.add('dragging-out');
+                        }
+                        if (customBlocks) {
+                            customBlocks.classList.add('show-grid');
+                        }
+                        if (event.dataTransfer) {
+                            event.dataTransfer.effectAllowed = 'copy';
+                            event.dataTransfer.setData('text/plain', 'block:' + libraryDragType);
+                        }
+                    });
+
+                    blockEl.addEventListener('dragend', () => {
+                        libraryDragType = null;
+                        libraryDragConfig = null;
+                        if (blockLibraryOverlay) {
+                            blockLibraryOverlay.classList.remove('dragging-out');
+                        }
+                        if (customBlocks) {
+                            customBlocks.classList.remove('show-grid');
+                        }
+                    });
+
+                    blockLibraryGrid.appendChild(blockEl);
+                });
+            }
+
+            function openBlockLibrary() {
+                if (!blockLibraryOverlay || !editMode) return;
+                populateBlockLibrary();
+                // Start in compact "shelf" mode along the bottom edge so
+                // the homepage remains mostly visible. The user can expand
+                // to a larger window when needed.
+                setLibraryExpanded(false);
+                blockLibraryOverlay.classList.add('show');
+            }
+
+            function closeBlockLibrary() {
+                if (!blockLibraryOverlay) return;
+                setLibraryExpanded(false);
+                blockLibraryOverlay.classList.remove('show');
             }
 
             function collectBuilderConfig(type) {
@@ -2251,6 +4129,24 @@
                         }
                         return { title, items, color };
                     }
+                    case 'calendar': {
+                        const title = builderForm.calendarTitle.value.trim() || 'Календар';
+                        const mode = builderForm.calendarMode.value || 'link';
+                        const url = builderForm.calendarUrl.value.trim();
+                        return { title, mode, url, color };
+                    }
+                    case 'reminder': {
+                        const title = 'Напомняния';
+                        return { title, color };
+                    }
+                    case 'quote': {
+                        const title = 'Мотивация';
+                        return { title, color };
+                    }
+                    case 'link': {
+                        const title = 'Бърз линк';
+                        return { title, color };
+                    }
                     default:
                         return { color };
                 }
@@ -2259,13 +4155,14 @@
             if (addBlockBtn) {
                 addBlockBtn.addEventListener('click', () => {
                     if (!editMode) return;
-                    openBlockBuilder(activeBuilderType);
+                    openBlockLibrary();
                 });
             }
 
             builderTypeButtons.forEach(btn => {
                 btn.addEventListener('click', () => {
                     const type = btn.getAttribute('data-builder-type');
+                    if (builderLockedType && type !== builderLockedType) return;
                     setActiveBuilderType(type);
                 });
             });
@@ -2273,8 +4170,35 @@
             if (builderColorInput) {
                 builderColorInput.addEventListener('input', () => {
                     updateBuilderColorValue(builderColorInput.value || DEFAULT_BLOCK_COLOR);
+                    scheduleBuilderPreviewUpdate();
                 });
                 updateBuilderColorValue(builderColorInput.value || DEFAULT_BLOCK_COLOR);
+
+                // Apple-like малки цветни точки за бърз избор
+                const paletteColors = ['#4D7CFF', '#FF7C7C', '#FFB74D', '#34C759', '#A855F7', '#00C7BE'];
+                const row = builderColorInput.parentElement;
+                if (row) {
+                    const palette = document.createElement('div');
+                    palette.className = 'builder-color-palette';
+                    paletteColors.forEach(hex => {
+                        const dot = document.createElement('button');
+                        dot.type = 'button';
+                        dot.className = 'builder-color-dot';
+                        dot.style.background = hex;
+                        dot.addEventListener('click', () => {
+                            builderColorInput.value = hex;
+                            updateBuilderColorValue(hex);
+                            scheduleBuilderPreviewUpdate();
+                        });
+                        palette.appendChild(dot);
+                    });
+                    row.appendChild(palette);
+                }
+            }
+
+            if (builderForm) {
+                builderForm.addEventListener('input', scheduleBuilderPreviewUpdate);
+                builderForm.addEventListener('change', scheduleBuilderPreviewUpdate);
             }
 
             if (builderAddChecklistItemBtn) {
@@ -2303,6 +4227,30 @@
                         if (input) input.value = '';
                     }
                 });
+
+                // AI довършване за елементи от чеклиста
+                builderChecklistItems.addEventListener('input', (e) => {
+                    const input = e.target.closest('input[name="checklistItem"]');
+                    if (!input) return;
+                    if (typeof maybeScheduleChecklistAI === 'function') {
+                        maybeScheduleChecklistAI(input);
+                    }
+                });
+            }
+
+            if (checklistTitleInput) {
+                checklistTitleInput.addEventListener('input', () => {
+                    if (typeof maybeScheduleChecklistAI === 'function') {
+                        maybeScheduleChecklistAI(checklistTitleInput);
+                    }
+                });
+            }
+
+            if (checklistAiToggle) {
+                checklistAiToggle.addEventListener('change', () => {
+                    checklistAIEnabled = checklistAiToggle.checked;
+                    window.checklistAIEnabled = checklistAIEnabled;
+                });
             }
 
             if (builderCancelBtn) {
@@ -2325,15 +4273,26 @@
                 builderForm.addEventListener('submit', (e) => {
                     e.preventDefault();
                     if (!builderForm.reportValidity()) return;
-                    const config = collectBuilderConfig(activeBuilderType);
-                    createNewBlock(activeBuilderType, config);
+                    const targetType = builderLockedType || activeBuilderType;
+                    const config = collectBuilderConfig(targetType);
+
+                    if (builderEditingBlock) {
+                        applyConfigToExistingBlock(builderEditingBlock, targetType, config);
+                    } else {
+                        createNewBlock(targetType, config);
+                    }
                     closeBlockBuilder();
                 });
             }
 
             document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && blockBuilderModal && blockBuilderModal.classList.contains('show')) {
-                    closeBlockBuilder();
+                if (e.key === 'Escape') {
+                    if (blockBuilderModal && blockBuilderModal.classList.contains('show')) {
+                        closeBlockBuilder();
+                    }
+                    if (blockLibraryOverlay && blockLibraryOverlay.classList.contains('show')) {
+                        closeBlockLibrary();
+                    }
                 }
             });
 
@@ -2341,7 +4300,83 @@
                 setActiveBuilderType(activeBuilderType);
             }
 
+            if (blockLibraryOverlay) {
+                // Clicking on the dimmed area outside the panel closes it.
+                blockLibraryOverlay.addEventListener('click', (e) => {
+                    if (e.target === blockLibraryOverlay) {
+                        closeBlockLibrary();
+                    }
+                });
+            }
+
+            // Expanded mode disabled: keep only the compact shelf.
+
+            if (blockLibraryCloseBtn) {
+                blockLibraryCloseBtn.addEventListener('click', () => {
+                    closeBlockLibrary();
+                });
+            }
+
             restoreSavedCustomBlocks();
+            applyRemovedDefaultBlocks();
+            blocks = document.querySelectorAll('.custom-block');
+            updateContainerHeight();
+
+            // Allow dropping a widget almost anywhere on the homepage.
+            document.addEventListener('dragover', (event) => {
+                if (!libraryDragType) return;
+                event.preventDefault();
+                // Auto-scroll the page while dragging near viewport edges
+                const edge = 80;
+                if (event.clientY > window.innerHeight - edge) {
+                    window.scrollBy({ top: 24, behavior: 'smooth' });
+                } else if (event.clientY < edge) {
+                    window.scrollBy({ top: -24, behavior: 'smooth' });
+                }
+
+                // Show the edit grid only when dragging over the custom blocks area
+                if (customBlocks) {
+                    const rect = customBlocks.getBoundingClientRect();
+                    const overHomepage =
+                        event.clientX >= rect.left &&
+                        event.clientX <= rect.right &&
+                        event.clientY >= rect.top &&
+                        event.clientY <= rect.bottom;
+                    customBlocks.classList.toggle('show-grid', overHomepage);
+                }
+                if (event.dataTransfer) {
+                    event.dataTransfer.dropEffect = 'copy';
+                }
+            });
+
+            document.addEventListener('drop', (event) => {
+                if (!libraryDragType || !customBlocks) return;
+                event.preventDefault();
+                // Hide the grid once the drop is finished
+                customBlocks.classList.remove('show-grid');
+                if (blockLibraryOverlay) {
+                    blockLibraryOverlay.classList.remove('dragging-out');
+                }
+                const type = libraryDragType;
+                const dragConfig = libraryDragConfig;
+                libraryDragType = null;
+                libraryDragConfig = null;
+                const rect = customBlocks.getBoundingClientRect();
+                let dropLeft = event.clientX - rect.left - 140;
+                let dropTop = event.clientY - rect.top - 90;
+
+                // Clamp drop position so we never spawn blocks at absurd
+                // coordinates that would explode the layout height.
+                if (!Number.isFinite(dropLeft)) dropLeft = 0;
+                if (!Number.isFinite(dropTop)) dropTop = 0;
+                dropLeft = Math.max(0, Math.min(dropLeft, rect.width - 200));
+                dropTop = Math.max(0, Math.min(dropTop, MAX_CONTAINER_HEIGHT - 260));
+
+                const config = dragConfig || getDefaultBlockConfig(type);
+                createNewBlock(type, config, {
+                    position: { left: dropLeft, top: dropTop }
+                });
+            });
 
             // Create ResizeObserver for monitoring resize operations
             if (window.ResizeObserver) {
@@ -2437,8 +4472,10 @@
                 const blockTop = parseInt(block.style.top) || 0;
                 const blockBottom = blockTop + block.offsetHeight;
                 const currentMinHeight = parseFloat(getComputedStyle(customBlocks).minHeight) || 600;
-                if (blockBottom > currentMinHeight - 50) {
-                    customBlocks.style.minHeight = (blockBottom + 100) + 'px';
+                // Respect the global safety cap so resizes can't explode layout height
+                const targetHeight = Math.min(blockBottom + 100, MAX_CONTAINER_HEIGHT);
+                if (targetHeight > currentMinHeight) {
+                    customBlocks.style.minHeight = targetHeight + 'px';
                 }
             }
 
@@ -2907,17 +4944,19 @@
                 const containerRect = customBlocks.getBoundingClientRect();
                 const blockWidth = block.offsetWidth;
                 
-                // Only enforce horizontal limits - allow free vertical movement
+                // Only enforce horizontal limits - allow controlled vertical movement
                 const maxLeft = containerRect.width - blockWidth;
                 
                 left = Math.max(0, Math.min(left, maxLeft));
-                top = Math.max(0, top); // Only prevent going above container, no bottom limit
+                top = Math.max(0, Math.min(top, MAX_CONTAINER_HEIGHT - block.offsetHeight - 100));
                 
-                // Dynamically expand container height if needed
+                // Dynamically expand container height if needed, but never
+                // beyond the safety cap.
                 const blockBottom = top + block.offsetHeight;
                 const currentMinHeight = parseInt(getComputedStyle(customBlocks).minHeight) || 600;
-                if (blockBottom > currentMinHeight - 50) {
-                    customBlocks.style.minHeight = (blockBottom + 100) + 'px';
+                const targetHeight = Math.min(blockBottom + 100, MAX_CONTAINER_HEIGHT);
+                if (targetHeight > currentMinHeight) {
+                    customBlocks.style.minHeight = targetHeight + 'px';
                 }
                 
                 return { left, top };
@@ -2973,13 +5012,18 @@
             function updateContainerHeight() {
                 let maxBottom = 600; // minimum height
                 blocks.forEach(block => {
-                    const top = parseInt(block.style.top) || 0;
-                    const height = block.offsetHeight || 180;
-                    const bottom = top + height;
+                    let top = parseFloat(block.style.top);
+                    if (!Number.isFinite(top) || top < 0) top = 0;
+                    let height = block.offsetHeight || 180;
+                    if (!Number.isFinite(height) || height <= 0) height = 180;
+                    let bottom = top + height;
+                    if (!Number.isFinite(bottom)) bottom = 600;
                     if (bottom > maxBottom) {
                         maxBottom = bottom;
                     }
                 });
+                // Hard cap container height for stability
+                maxBottom = Math.min(maxBottom, MAX_CONTAINER_HEIGHT - 50);
                 customBlocks.style.minHeight = (maxBottom + 50) + 'px';
             }
 
@@ -2988,6 +5032,14 @@
                 editMode = !editMode;
                 toggleEditMode();
             });
+
+            if (removeAllBtn) {
+                removeAllBtn.disabled = true;
+                removeAllBtn.addEventListener('click', () => {
+                    if (!editMode) return;
+                    removeAllPlacedBlocks();
+                });
+            }
 
             function toggleEditMode() {
                 if (editMode) {
@@ -2999,6 +5051,9 @@
                     
                     editBtn.classList.add('active');
                     editBtn.innerHTML = '<span>Готово</span>';
+                    if (removeAllBtn) {
+                        removeAllBtn.disabled = false;
+                    }
                     customBlocks.classList.add('edit-mode');
                     if (addBlockBtn) {
                         addBlockBtn.classList.add('visible');
@@ -3028,9 +5083,15 @@
                             block.style.height = savedDimensions[blockId].height;
                         }
                     });
+
+                    // Open the widget library automatically when entering edit mode
+                    openBlockLibrary();
                 } else {
                     editBtn.classList.remove('active');
                     editBtn.innerHTML = '<span>Редактиране</span>';
+                    if (removeAllBtn) {
+                        removeAllBtn.disabled = true;
+                    }
                     
                     // Add exit animation class
                     customBlocks.classList.add('edit-mode-exit');
@@ -3038,6 +5099,7 @@
                         addBlockBtn.classList.remove('visible');
                     }
                     closeBlockBuilder();
+                    closeBlockLibrary();
                     
                     // Wait for animation and then clean up
                     setTimeout(() => {
@@ -3063,6 +5125,67 @@
                             }
                         });
                     }, 300);
+                }
+            }
+
+            async function removeAllPlacedBlocks() {
+                if (!customBlocks) return;
+
+                const blockEls = Array.from(customBlocks.querySelectorAll('.custom-block'));
+                if (!blockEls.length) return;
+
+                const removedDefault = new Set(getRemovedDefaultBlocks());
+                const customData = getCustomBlocksData();
+
+                let savedPositions = {};
+                let savedDimensions = {};
+                try {
+                    savedPositions = JSON.parse(localStorage.getItem('blockPositions') || '{}') || {};
+                } catch (err) {
+                    savedPositions = {};
+                }
+                try {
+                    savedDimensions = JSON.parse(localStorage.getItem('blockDimensions') || '{}') || {};
+                } catch (err) {
+                    savedDimensions = {};
+                }
+
+                blockEls.forEach(block => {
+                    const blockId = block.getAttribute('data-block-id');
+                    if (!blockId) return;
+
+                    if (isDefaultBlock(block)) {
+                        removedDefault.add(blockId);
+                    } else if (customData[blockId]) {
+                        delete customData[blockId];
+                    }
+
+                    if (savedPositions[blockId]) delete savedPositions[blockId];
+                    if (savedDimensions[blockId]) delete savedDimensions[blockId];
+                });
+
+                // Persist local state once.
+                localStorage.setItem(REMOVED_DEFAULT_BLOCKS_KEY, JSON.stringify(Array.from(removedDefault)));
+                localStorage.setItem(CUSTOM_BLOCKS_STORAGE_KEY, JSON.stringify(customData));
+                localStorage.setItem('blockPositions', JSON.stringify(savedPositions));
+                localStorage.setItem('blockDimensions', JSON.stringify(savedDimensions));
+
+                // Remove from DOM.
+                blockEls.forEach(block => block.remove());
+                blocks = document.querySelectorAll('.custom-block');
+                updateContainerHeight();
+
+                // Best-effort: remove from Supabase so blocks don't come back on refresh.
+                try {
+                    const sb = window.supabaseClient;
+                    if (sb) {
+                        const { data: { user } } = await sb.auth.getUser();
+                        if (user) {
+                            await sb.from('user_blocks').delete().eq('user_id', user.id);
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Remove-all cloud cleanup failed:', err);
                 }
             }
 
@@ -3148,6 +5271,10 @@
                 if (isResizeArea) return;
                 
                 e.preventDefault();
+
+                if (customBlocks) {
+                    customBlocks.classList.add('show-grid');
+                }
                 
                 draggedElement = block;
                 block.classList.add('dragging');
@@ -3183,6 +5310,14 @@
                 // Always apply position during drag (allow passing over other blocks)
                 draggedElement.style.left = newLeft + 'px';
                 draggedElement.style.top = newTop + 'px';
+
+                // Auto-scroll the page while dragging near viewport edges
+                const edge = 80;
+                if (e.clientY > window.innerHeight - edge) {
+                    window.scrollBy({ top: 24, behavior: 'smooth' });
+                } else if (e.clientY < edge) {
+                    window.scrollBy({ top: -24, behavior: 'smooth' });
+                }
                 
                 // Ultra-smooth collision checking - only check once and maintain state
                 if (!draggedElement.lastCollisionCheck || Date.now() - draggedElement.lastCollisionCheck > 50) {
@@ -3244,6 +5379,10 @@
                         saveBlockPosition(draggedElement);
                     }
                 }, 500); // Wait for potential animation to complete
+
+                if (customBlocks) {
+                    customBlocks.classList.remove('show-grid');
+                }
                 
                 document.removeEventListener('mousemove', handleMouseMove);
                 document.removeEventListener('mouseup', handleMouseUp);
@@ -3279,16 +5418,6 @@
                 // Legacy function - positions are now handled differently
                 // Keep for backward compatibility but functionality moved to loadBlockPositions
             }
-
-            applyRemovedDefaultBlocks();
-            blocks = document.querySelectorAll('.custom-block');
-
-            // Load saved dimensions and positions on page load
-            loadBlockDimensions();
-            loadBlockPositions();
-            
-            // Apply initial adaptive sizing
-            adaptBlockSizes();
 
             function createNewBlock(type, config = {}, options = {}) {
                 const blockConfig = config && typeof config === 'object' ? config : {};
@@ -3425,6 +5554,13 @@
                         const badgeLabel = platformLabels[platform] || 'Music';
                         const hasLink = Boolean(url);
                         const safeUrl = hasLink ? url : '#';
+                        const openLabel = hasLink
+                            ? (platform === 'spotify'
+                                ? 'Отвори в Spotify'
+                                : platform === 'apple'
+                                    ? 'Отвори в Apple Music'
+                                    : 'Отвори плейлист')
+                            : 'Добави линк от редактора';
 
                         content.innerHTML = `
                             <div class="block-header">
@@ -3443,7 +5579,7 @@
                                     <button class="music-btn" data-action="next">⏭️</button>
                                 </div>
                                 <a class="link-btn music-link${hasLink ? '' : ' disabled'}" href="${safeUrl}" ${hasLink ? 'target="_blank" rel="noopener"' : 'data-disabled="true" aria-disabled="true" tabindex="-1"'}>
-                                    ${hasLink ? 'Отвори плейлист' : 'Добави линк от редактора'}
+                                    ${openLabel}
                                 </a>
                             </div>
                         `;
@@ -3548,44 +5684,140 @@
                         `;
                         break;
                     }
+                    case 'calendar': {
+                        const title = config.title || 'Календар';
+                        const mode = config.mode || 'link';
+                        const url = (config.url || '').trim();
+                        const hasEmbed = mode === 'embed' && url && url.includes('calendar.google.com');
+                        content.innerHTML = `
+                            <div class="block-header">
+                                <div class="block-icon">📅</div>
+                                <h4>${title}</h4>
+                            </div>
+                            <div class="block-content">
+                                ${hasEmbed ? `
+                                    <div class="calendar-embed">
+                                        <iframe src="${url}" style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                                    </div>
+                                ` : `
+                                    <div class="calendar-preview">
+                                        <div class="calendar-date">
+                                            <span class="day" id="calendar-day">${String(new Date().getDate()).padStart(2,'0')}</span>
+                                            <span class="month">${new Date().toLocaleString('bg-BG',{ month:'short' })}</span>
+                                        </div>
+                                        <div class="calendar-events">
+                                            <div class="event">Свържи Google Calendar от блока</div>
+                                        </div>
+                                    </div>
+                                `}
+                            </div>
+                        `;
+                        break;
+                    }
                 }
 
                 return content;
             }
 
             function setupBlockFunctionality(block, type, config = {}) {
-                // Add click handlers and other functionality based on block type
-                const addBlockClickHandler = (block, handler) => {
+                // Base handlers should be attached only once per block.
+                if (!block._baseHandlersWired) {
+                    function openBlockCustomizer() {
+                        const existingType = block.dataset.blockType || type;
+                        let existingConfig = {};
+                        if (block.dataset.blockConfig) {
+                            try { existingConfig = JSON.parse(block.dataset.blockConfig); } catch (err) { existingConfig = {}; }
+                        }
+                        openBlockBuilder(existingType, existingConfig, block);
+                    }
+
+                    // Open the full customisation popup when the placed block is
+                    // clicked (outside of edit mode) or long‑pressed.
                     block.addEventListener('click', (e) => {
-                        if (!editMode && !isResizing && !e.target.closest('.delete-btn')) {
-                            handler(e);
+                        if (editMode || isResizing) return;
+                        if (e.target.closest('.delete-btn')) return;
+                        if (e.target.matches('input, textarea, select, button, a')) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openBlockCustomizer();
+                    });
+
+                    // --- Long‑press to edit (works even when not in edit mode) ---
+                    function clearLongPressState() {
+                        if (longPressTarget !== block) return;
+                        if (longPressTimer) {
+                            clearTimeout(longPressTimer);
+                            longPressTimer = null;
+                        }
+                        longPressTarget = null;
+                    }
+
+                    function scheduleLongPress(e) {
+                        if (editMode || isResizing) return; // only in normal mode
+                        if (e.button !== 0 && e.type === 'mousedown') return;
+                        if (e.target.closest('.delete-btn')) return;
+                        const clientX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+                        const clientY = e.clientY || (e.touches && e.touches[0].clientY) || 0;
+                        longPressTarget = block;
+                        longPressStartPos = { x: clientX, y: clientY };
+                        longPressTimer = setTimeout(() => {
+                            if (longPressTarget !== block) return;
+                            block.classList.add('long-press-morph');
+                            openBlockCustomizer();
+                            setTimeout(() => {
+                                block.classList.remove('long-press-morph');
+                            }, 400);
+                            clearLongPressState();
+                        }, LONG_PRESS_DELAY);
+                    }
+
+                    function maybeCancelLongPressOnMove(e) {
+                        if (longPressTarget !== block) return;
+                        const cx = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+                        const cy = e.clientY || (e.touches && e.touches[0].clientY) || 0;
+                        if (Math.abs(cx - longPressStartPos.x) > LONG_PRESS_MOVE_TOLERANCE ||
+                            Math.abs(cy - longPressStartPos.y) > LONG_PRESS_MOVE_TOLERANCE) {
+                            clearLongPressState();
+                        }
+                    }
+
+                    block.addEventListener('mousedown', scheduleLongPress);
+                    block.addEventListener('touchstart', scheduleLongPress, { passive: true });
+                    ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev => {
+                        block.addEventListener(ev, clearLongPressState);
+                    });
+                    block.addEventListener('mousemove', maybeCancelLongPressOnMove);
+                    block.addEventListener('touchmove', maybeCancelLongPressOnMove, { passive: true });
+
+                    // Add delete functionality (wire once per delete button)
+                    const deleteBtn = block.querySelector('.delete-btn');
+                    if (deleteBtn && !deleteBtn._wiredDelete) {
+                        deleteBtn._wiredDelete = true;
+                        deleteBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (editMode) {
+                                deleteBlock(block);
+                            }
+                        });
+                    }
+
+                    // Add hover effects
+                    block.addEventListener('mouseenter', () => {
+                        if (!editMode && !isResizing) {
+                            block.style.transform = 'translateY(-4px)';
+                            block.style.boxShadow = '0 20px 48px rgba(2,18,40,0.15)';
                         }
                     });
-                };
 
-                // Add delete functionality
-                const deleteBtn = block.querySelector('.delete-btn');
-                deleteBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (editMode) {
-                        deleteBlock(block);
-                    }
-                });
+                    block.addEventListener('mouseleave', () => {
+                        if (!editMode && !isResizing) {
+                            block.style.transform = 'translateY(0)';
+                            block.style.boxShadow = '0 12px 32px rgba(2,18,40,0.08)';
+                        }
+                    });
 
-                // Add hover effects
-                block.addEventListener('mouseenter', () => {
-                    if (!editMode && !isResizing) {
-                        block.style.transform = 'translateY(-4px)';
-                        block.style.boxShadow = '0 20px 48px rgba(2,18,40,0.15)';
-                    }
-                });
-                
-                block.addEventListener('mouseleave', () => {
-                    if (!editMode && !isResizing) {
-                        block.style.transform = 'translateY(0)';
-                        block.style.boxShadow = '0 12px 32px rgba(2,18,40,0.08)';
-                    }
-                });
+                    block._baseHandlersWired = true;
+                }
 
                 if (type === 'checklist') {
                     const progressWrap = block.querySelector('.checklist-progress');
@@ -3638,15 +5870,127 @@
                             if (!editMode) {
                                 return;
                             }
-                            openBlockBuilder('music');
+                            let existingConfig = {};
+                            if (block.dataset.blockConfig) {
+                                try { existingConfig = JSON.parse(block.dataset.blockConfig); } catch (err) { existingConfig = {}; }
+                            }
+                            openBlockBuilder('music', existingConfig, block);
                         });
                     }
                 }
 
-                if (type === 'weather' && config.location) {
+                if (type === 'weather') {
                     const normalizedUnits = (config.units === 'imperial' || config.units === 'f') ? 'imperial' : 'metric';
-                    block.dataset.weatherLocation = config.location;
+                    if (config.location) {
+                        block.dataset.weatherLocation = config.location;
+                    }
                     block.dataset.weatherUnits = normalizedUnits;
+                    if (typeof initWeatherBlock === 'function') {
+                        initWeatherBlock(block, config);
+                    }
+                }
+
+                if (type === 'calendar') {
+                    const url = (config.url || '').trim();
+                    const mode = config.mode || 'link';
+                    block.dataset.calendarUrl = url;
+                    block.dataset.calendarMode = mode;
+
+                    if (!block._calendarOpenHandler) {
+                        block._calendarOpenHandler = (e) => {
+                            if (editMode || isResizing) return;
+                            if (e.target.closest('.delete-btn')) return;
+                            // If the customizer opened, it will stop propagation.
+                            const currentUrl = (block.dataset.calendarUrl || '').trim();
+                            const currentMode = block.dataset.calendarMode || 'link';
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (currentUrl && currentMode === 'embed') {
+                                window.open(currentUrl, '_blank');
+                            } else {
+                                window.open('https://calendar.google.com', '_blank');
+                            }
+                        };
+                        block.addEventListener('click', block._calendarOpenHandler);
+                    }
+                }
+            }
+
+            // Weather helpers (auto локация и Open-Meteo без ключ)
+            const WEATHER_GEOCODE_API = 'https://geocoding-api.open-meteo.com/v1/search';
+            const WEATHER_FORECAST_API = 'https://api.open-meteo.com/v1/forecast';
+
+            async function initWeatherBlock(block, config = {}) {
+                const units = block.dataset.weatherUnits || 'metric';
+                const unitSymbol = units === 'imperial' ? '°F' : '°C';
+                const details = block.querySelector('.weather-details');
+                const tempEl = block.querySelector('.weather-temp');
+                const descEls = details ? details.querySelectorAll('.weather-desc') : null;
+                const summaryEl = descEls && descEls[0] ? descEls[0] : null;
+                const locationEl = descEls && descEls[1] ? descEls[1] : null;
+
+                const apply = (temp, description, label) => {
+                    if (tempEl) tempEl.textContent = `${Math.round(temp)}${unitSymbol}`;
+                    if (summaryEl) summaryEl.textContent = description;
+                    if (locationEl && label) locationEl.textContent = label;
+                };
+
+                const fallbackLabel = config.location || (locationEl ? locationEl.textContent : '');
+                if (!navigator.geolocation) {
+                    if (config.location) {
+                        await fetchWeatherByName(config.location, units, apply, fallbackLabel);
+                    }
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    await fetchWeatherByCoords(latitude, longitude, units, apply, 'Текуща локация');
+                }, async () => {
+                    if (config.location) {
+                        await fetchWeatherByName(config.location, units, apply, fallbackLabel);
+                    }
+                }, { enableHighAccuracy: false, timeout: 7000, maximumAge: 600000 });
+            }
+
+            async function fetchWeatherByCoords(lat, lon, units, apply, label) {
+                try {
+                    const url = new URL(WEATHER_FORECAST_API);
+                    url.searchParams.set('latitude', lat);
+                    url.searchParams.set('longitude', lon);
+                    url.searchParams.set('current_weather', 'true');
+                    url.searchParams.set('timezone', 'auto');
+                    if (units === 'imperial') {
+                        url.searchParams.set('temperature_unit', 'fahrenheit');
+                    }
+                    const res = await fetch(url.toString());
+                    const data = await res.json();
+                    if (!data || !data.current_weather) return;
+                    const temp = data.current_weather.temperature;
+                    apply(temp, 'Текущо време', label);
+                } catch (err) {
+                    console.warn('Weather fetch error (coords)', err);
+                }
+            }
+
+            async function fetchWeatherByName(name, units, apply, fallbackLabel) {
+                try {
+                    const url = new URL(WEATHER_GEOCODE_API);
+                    url.searchParams.set('name', name);
+                    url.searchParams.set('count', '1');
+                    url.searchParams.set('language', 'bg');
+                    url.searchParams.set('format', 'json');
+                    const res = await fetch(url.toString());
+                    const data = await res.json();
+                    if (!data || !data.results || !data.results.length) return;
+                    const place = data.results[0];
+                    const label = place.name + (place.country ? `, ${place.country}` : '');
+                    await fetchWeatherByCoords(place.latitude, place.longitude, units, apply, label);
+                } catch (err) {
+                    console.warn('Weather geocode error', err);
+                    if (fallbackLabel) {
+                        apply(22, 'Персонализирано време', fallbackLabel);
+                    }
                 }
             }
 
@@ -3883,11 +6227,59 @@
             if (!playBtn) return;
             if (playBtn.textContent === '▶️') {
                 playBtn.textContent = '⏸️';
-                // Here you would add actual music playing logic
+                // Тук можеш да вържеш реален плейбек (Spotify SDK / Apple Music и т.н.)
             } else {
                 playBtn.textContent = '▶️';
-                // Here you would add actual music pausing logic
+                // Пауза на плейбек
             }
+        }
+
+        // --- AI помощ за чеклист блоковете (реално време, ако има AI endpoint) ---
+        async function callChecklistAI(prompt) {
+            const endpoint = window.WORKER || window.STUDYSPACE_AI_ENDPOINT || window.STUDYSPACE_AI_WORKER;
+            if (!endpoint) return null;
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+                const data = await res.json().catch(() => null);
+                if (data && typeof data.answer === 'string') return data.answer.trim();
+                if (data && typeof data === 'string') return data.trim();
+            } catch (err) {
+                console.warn('Checklist AI error', err);
+            }
+            return null;
+        }
+
+        function maybeScheduleChecklistAI(inputEl) {
+            const aiEnabled = !!window.checklistAIEnabled;
+            const endpoint = window.WORKER || window.STUDYSPACE_AI_ENDPOINT || window.STUDYSPACE_AI_WORKER;
+            if (!inputEl || !aiEnabled || !endpoint) return;
+
+            const base = (inputEl.value || '').trim();
+            if (base.length < 6) return;
+
+            if (inputEl._aiTimer) {
+                clearTimeout(inputEl._aiTimer);
+            }
+
+            inputEl._aiTimer = setTimeout(async () => {
+                const latest = (inputEl.value || '').trim();
+                if (latest !== base) return; // потребителят е продължил да пише
+
+                const prompt = `Ти си интелигентен асистент за учебни чеклисти. Довърши това заглавие или задача на български по естествен начин. Върни само завършеното изречение, без обяснения. Текст: "${base}"`;
+                const suggestion = await callChecklistAI(prompt);
+                if (!suggestion) return;
+
+                let finalText = suggestion.trim();
+                if (finalText.toLowerCase().startsWith(base.toLowerCase())) {
+                    inputEl.value = finalText;
+                } else if (finalText.length > base.length && finalText.toLowerCase().includes(base.toLowerCase())) {
+                    inputEl.value = finalText;
+                }
+            }, 700);
         }
 
         function previousTrack() {
@@ -3942,123 +6334,352 @@
             }
         });
 
-        // Add click handler for "Нова +" button to redirect to Flashcardcreate.html
+        // Add click / drag handler for "Нова +" button to redirect to Flashcardcreate.html
         document.addEventListener('DOMContentLoaded', function() {
+            const IMPORT_KEY = 'studyspace_import_payload';
             const newCardButton = document.querySelector('.card.add');
+
+            function isFileDrag(event){
+                const dt = event.dataTransfer;
+                if(!dt) return false;
+                if(dt.types && Array.from(dt.types).includes('Files')) return true;
+                return dt.files && dt.files.length > 0;
+            }
+
+            async function handleImportDrop(fileList){
+                const files = Array.from(fileList || []);
+                if(!files.length) return;
+                const payload = [];
+                const readers = [];
+
+                files.forEach(file => {
+                    const item = { name:file.name, type:file.type, size:file.size, text:'' };
+                    payload.push(item);
+                    const lower = (file.type || '').toLowerCase();
+                    const isTextLike = lower.startsWith('text/') ||
+                        lower.includes('json') ||
+                        lower.includes('xml') ||
+                        lower.includes('markdown');
+                    if(isTextLike){
+                        readers.push(new Promise(resolve => {
+                            const r = new FileReader();
+                            r.onload = (e) => {
+                                try{
+                                    item.text = String(e.target.result || '').slice(0, 8000);
+                                } catch(_){}
+                                resolve();
+                            };
+                            r.onerror = () => resolve();
+                            r.readAsText(file);
+                        }));
+                    }
+                });
+
+                try { await Promise.all(readers); } catch(_){ }
+
+                try {
+                    sessionStorage.setItem(IMPORT_KEY, JSON.stringify(payload));
+                } catch(_){ }
+
+                window.location.href = 'Flashcardcreate.html?import=1';
+            }
+
             if (newCardButton) {
                 newCardButton.addEventListener('click', function(e) {
                     e.preventDefault();
                     window.location.href = 'Flashcardcreate.html';
                 });
+
+                let dragDepth = 0;
+
+                newCardButton.addEventListener('dragenter', (e) => {
+                    if(!isFileDrag(e)) return;
+                    e.preventDefault();
+                    dragDepth += 1;
+                    newCardButton.classList.add('drag-ready');
+                });
+
+                newCardButton.addEventListener('dragover', (e) => {
+                    if(!isFileDrag(e)) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'copy';
+                });
+
+                newCardButton.addEventListener('dragleave', (e) => {
+                    if(!isFileDrag(e)) return;
+                    e.preventDefault();
+                    dragDepth = Math.max(dragDepth - 1, 0);
+                    if(dragDepth === 0){
+                        newCardButton.classList.remove('drag-ready');
+                    }
+                });
+
+                newCardButton.addEventListener('drop', (e) => {
+                    if(!isFileDrag(e)) return;
+                    e.preventDefault();
+                    dragDepth = 0;
+                    newCardButton.classList.remove('drag-ready');
+                    const files = e.dataTransfer ? e.dataTransfer.files : null;
+                    handleImportDrop(files);
+                });
             }
 
             // Fetch and render recent flashcards for authenticated users
             const recentContainer = document.getElementById('recentCards');
+            window.normalizeLibraryUrl = window.normalizeLibraryUrl || function(url){
+                const u = String(url || '');
+                // Back-compat: older entries may point to the legacy file name
+                return u
+                    .replace(/Flashcardcreate%20\(3\)\.html/gi, 'Flashcardcreate.html')
+                    .replace(/Flashcardcreate\s*\(3\)\.html/gi, 'Flashcardcreate.html');
+            };
             function stripAndSnippet(html, limit = 110){
                 const text = (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
                 if(!text) return '';
                 return text.length <= limit ? text : text.slice(0, limit) + '…';
             }
-            async function renderRecentCards(){
-                if(!recentContainer || !window.ssApi) return;
-                try{
-                    const resp = await ssApi.getRecentFlashcards();
-                    if(!resp || !resp.ok) return;
-                    const cards = resp.cards || [];
-                    const addBtn = recentContainer.querySelector('.card.add');
-                    recentContainer.innerHTML = '';
-                    if(addBtn) recentContainer.appendChild(addBtn);
-                    if(cards.length === 0){
-                        const placeholder = document.createElement('div');
-                        placeholder.className = 'card';
-                        placeholder.innerHTML = '<div class="card-content" style="text-align:center"><div style="font-size:14px;font-weight:800">Няма последни карти</div><div class="label">Започнете с Нова</div></div>';
-                        recentContainer.appendChild(placeholder);
-                    } else {
-                        cards.forEach(c => {
-                            const item = document.createElement('div');
-                            item.className = 'card';
-                            item.dataset.id = c.id || '';
-                            const content = document.createElement('div');
-                            content.className = 'card-content';
-                            content.style.textAlign = 'center';
-                            const front = document.createElement('div');
-                            front.style.fontSize = '14px'; front.style.fontWeight = '800';
-                            front.textContent = stripAndSnippet(c.front || (c.metadata && c.metadata.front) || '');
-                            const label = document.createElement('div');
-                            label.className = 'label';
-                            label.textContent = c.tags || '';
-                            content.appendChild(front); content.appendChild(label);
-                            item.appendChild(content);
-                            item.addEventListener('click', () => { window.location.href = `Flashcardcreate.html?cardId=${encodeURIComponent(c.id)}`; });
-                            recentContainer.appendChild(item);
-                        });
-                        // If URL requested a highlightCard, apply visual highlight and remove after timeout
-                        try{
-                            const params = new URLSearchParams(location.search);
-                            const highlight = params.get('highlightCard');
-                            if(highlight){
-                                const hit = recentContainer.querySelector(`.card[data-id="${highlight}"]`);
-                                if(hit){
-                                    hit.classList.add('selected');
-                                    try{ hit.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){}
-                                    setTimeout(() => { hit.classList.remove('selected'); }, 3500);
-                                }
-                            }
-                        }catch(e){/* ignore */}
-                    }
-                }catch(err){
-                    console.warn('Failed to load recent flashcards', err);
+          // 1. ЗАРЕЖДАНЕ НА КАРТИ ОТ SUPABASE
+async function renderRecentCards() {
+    const container = document.getElementById('recentCards');
+    const sb = window.supabaseClient;
+    if (!container || !sb) return;
+
+    try {
+        // Get current user
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return;
+
+        // Fetch up to 2 last-used libraries from recent_libraries
+        const { data: recent, error: recentErr } = await sb
+            .from('recent_libraries')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('last_used', { ascending: false })
+            .limit(2);
+
+        if (recentErr) throw recentErr;
+
+        const addBtn = container.querySelector('.card.add');
+        container.innerHTML = '';
+        if (addBtn) container.appendChild(addBtn);
+
+        if (recent && recent.length > 0) {
+            recent.forEach((item) => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card';
+                const targetUrl = (window.normalizeLibraryUrl ? window.normalizeLibraryUrl(item.url) : (item.url || ''));
+                cardDiv.onclick = () => window.location.href = targetUrl;
+                cardDiv.innerHTML = `
+                    <div class="card-content" style="text-align:center">
+                        <div style="font-size:10px;opacity:0.6;margin-bottom:5px;">ПОСЛЕДНО ОТВАРЯНА</div>
+                        <div class="label" style="font-size:14px;font-weight:800;">${escapeHtml(item.name)}</div>
+                    </div>
+                `;
+                container.appendChild(cardDiv);
+            });
+        } else {
+            // no recent rows found: keep a couple of placeholders
+            for (let i = 0; i < 2; i++) {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'card';
+                placeholder.innerHTML = `<div class="card-content" style="text-align:center"><div style="font-size:14px;font-weight:800">Последно използвани</div><div class="label">карта</div></div>`;
+                container.appendChild(placeholder);
+            }
+        }
+    } catch (err) { console.warn('Cards load error:', err); }
+}
+
+// small helper to avoid unsafe HTML in deck names
+function escapeHtml(unsafe) {
+    return (unsafe || '').replace(/[&<>"']/g, function(m) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]; });
+}
+
+async function syncBlockToCloud(el) {
+    const sb = window.supabaseClient;
+    if (!sb || !el) return;
+    try {
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return;
+
+        const blockId = el.getAttribute('data-id') || el.id;
+        const blockData = {
+            user_id: user.id,
+            block_key: blockId,
+            type: el.getAttribute('data-type') || 'custom',
+            position: { 
+                x: parseFloat(el.getAttribute('data-x')) || 0, 
+                y: parseFloat(el.getAttribute('data-y')) || 0 
+            },
+            style: {
+                width: el.style.width,
+                height: el.style.height,
+                backgroundColor: el.style.backgroundColor || ''
+            }
+        };
+
+        // Записваме в базата данни
+        await sb.from('user_blocks').upsert(blockData, { onConflict: 'user_id, block_key' });
+    } catch (err) { console.warn('Sync failed:', err); }
+}
+
+// Функциите за запис при местене/оразмеряване
+function saveBlockPositions() { document.querySelectorAll('.block-item, .custom-block').forEach(syncBlockToCloud); }
+function saveBlockDimensions() { document.querySelectorAll('.block-item, .custom-block').forEach(syncBlockToCloud); }
+            
+// Заместваме старите локални функции
+function saveBlockPositions() { document.querySelectorAll('.block-item, .custom-block').forEach(syncBlockToCloud); }
+function saveBlockDimensions() { document.querySelectorAll('.block-item, .custom-block').forEach(syncBlockToCloud); }
+
+// 3. ЗАРЕЖДАНЕ НА ПЕРСОНАЛИЗАЦИЯТА ПРИ СТАРТ
+async function loadUserCustomization() {
+    const sb = window.supabaseClient;
+    if (!sb) return;
+    try {
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return;
+
+        const { data: blocks, error } = await sb
+            .from('user_blocks')
+            .select('*')
+            .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        if (blocks && blocks.length > 0) {
+            const container = document.querySelector('.custom-blocks');
+            if (container) container.innerHTML = ''; 
+
+            blocks.forEach(b => {
+                if (typeof createNewBlock === 'function') {
+                    createNewBlock(b.type || 'custom', b.style, {
+                        blockId: b.block_key,
+                        position: b.position,
+                        restoring: true
+                    });
+                }
+            });
+        }
+    } catch (err) { console.warn('Restore failed:', err); }
+}
+
+// Инициализация
+setTimeout(renderRecentCards, 800);
+setInterval(renderRecentCards, 60000);
+setTimeout(loadUserCustomization, 1200);
+
+}); // end DOMContentLoaded handler
+    
+    </script>
+                                  
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+<style>
+    /* Поправка на иконите и менюто */
+    .profile-dropdown ul li a {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding: 10px 20px !important;
+        color: #333 !important;
+        text-decoration: none !important;
+    }
+    .profile-dropdown ul li a i {
+        width: 20px;
+        text-align: center;
+        color: #4a90e2;
+        font-size: 16px;
+    }
+</style>
+
+<script>
+/**
+ * STUDYSPACE - SUPABASE INTEGRATION REPAIR
+ */
+(function() {
+    let checkInterval;
+    let attempts = 0;
+
+    async function startDynamicLoading() {
+        // Използваме споделения Supabase клиент от window.supabaseClient
+        const sb = window.supabaseClient;
+
+        if (!sb || typeof sb.from !== 'function') {
+            if (attempts < 20) {
+                attempts++;
+                return; // Продължаваме да чакаме
+            }
+            console.error("Инжекция: Supabase не бе намерен след 10 секунди.");
+            clearInterval(checkInterval);
+            return;
+        }
+
+        // Ако го намерим, спираме интервала и действаме
+        clearInterval(checkInterval);
+        console.log("Инжекция: Supabase е зареден успешно!");
+
+        try {
+            const { data: { user } } = await sb.auth.getUser();
+            if (!user) return;
+
+            // Зареждане на библиотеките
+            const { data: recent, error: recentErr } = await sb
+                .from('recent_libraries')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('last_used', { ascending: false })
+                .limit(2);
+
+            if (recentErr) throw recentErr;
+
+            const addBtn = container.querySelector('.card.add');
+            container.innerHTML = '';
+            if (addBtn) container.appendChild(addBtn);
+
+            if (recent && recent.length > 0) {
+                recent.forEach((item) => {
+                    const cardDiv = document.createElement('div');
+                    cardDiv.className = 'card';
+                    const targetUrl = (window.normalizeLibraryUrl ? window.normalizeLibraryUrl(item.url) : (item.url || ''));
+                    cardDiv.onclick = () => window.location.href = targetUrl;
+                    cardDiv.innerHTML = `
+                        <div class="card-content" style="text-align:center">
+                            <div style="font-size:10px;opacity:0.6;margin-bottom:5px;">ПОСЛЕДНО ОТВАРЯНА</div>
+                            <div class="label" style="font-size:14px;font-weight:800;">${escapeHtml(item.name)}</div>
+                        </div>
+                    `;
+                    container.appendChild(cardDiv);
+                });
+            } else {
+                // no recent rows found: keep a couple of placeholders
+                for (let i = 0; i < 2; i++) {
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'card';
+                    placeholder.innerHTML = `<div class="card-content" style="text-align:center"><div style="font-size:14px;font-weight:800">Последно използвани</div><div class="label">карта</div></div>`;
+                    container.appendChild(placeholder);
                 }
             }
-            // Attempt initial render and refresh every minute
-            setTimeout(renderRecentCards, 800);
-            setInterval(renderRecentCards, 60000);
-            // Load user customization (blocks, theme) when authenticated
-            async function loadUserCustomization(){
-                if(!window.ssApi) return;
-                const token = localStorage.getItem('ss_token');
-                if(!token) return; // not logged in
-                try{
-                    const resp = await ssApi.getBlocks();
-                    if(!resp || !resp.ok) return;
-                    const blocksFromServer = resp.blocks || [];
-                    // Apply global theme if present
-                    const themeBlock = blocksFromServer.find(b => b.block_key === 'global_theme');
-                    if(themeBlock && themeBlock.style){
-                        try{
-                            const style = themeBlock.style;
-                            Object.keys(style).forEach(k => {
-                                try{ document.documentElement.style.setProperty('--' + k, style[k]); }catch(e){}
-                            });
-                        }catch(e){ console.warn('apply theme failed', e); }
-                    }
-                    // Restore custom blocks (ignore global_theme)
-                    const customBlocksFromServer = blocksFromServer.filter(b => b.block_key && b.block_key !== 'global_theme');
-                    if(customBlocksFromServer.length){
-                        // Clear any previously restored server blocks to avoid duplicates
-                        // We'll rely on createNewBlock to place them respecting given positions
-                        for(const b of customBlocksFromServer){
-                            try{
-                                const cfg = Object.assign({}, b.style || {});
-                                const pos = b.position || {};
-                                // Use numeric id as stable block identifier when possible
-                                const blockId = b.id || b.block_key || ('block_' + Date.now());
-                                // createNewBlock(type, config, options)
-                                // Use block_key as type hint; fallback to 'custom'
-                                const type = b.block_key || 'custom';
-                                createNewBlock(type, cfg, { blockId: String(blockId), position: pos, restoring: true });
-                            }catch(e){ console.warn('restore block failed', e); }
-                        }
-                        blocks = document.querySelectorAll('.custom-block');
-                        // Re-apply block sizes/positions persistence helpers
-                        loadBlockDimensions();
-                        loadBlockPositions();
-                    }
-                }catch(err){ console.warn('Failed to load user customization', err); }
-            }
-            // Try to load customization after recent cards render
-            setTimeout(loadUserCustomization, 1200);
-        });
-    </script>
-</body>
-</html>
+        } catch (err) {
+            console.error("Грешка при комуникация със Supabase:", err.message);
+        }
+    }
+
+    // Проверяваме на всеки 500ms дали Supabase е зареден
+    checkInterval = setInterval(startDynamicLoading, 500);
+
+    // Глобална функция за запис (за твоите бутони долу)
+    window.logLib = async function(name, url) {
+        const sb = window.supabaseClient;
+        if (!sb) return;
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return;
+
+        await sb.from('recent_libraries').upsert({
+            user_id: user.id,
+            name: name,
+            url: url,
+            last_used: new Date().toISOString()
+        }, { onConflict: 'user_id, name' });
+    };
+})();
+</script>
