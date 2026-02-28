@@ -64,7 +64,7 @@
         }
 
         /* Top bar fully transparent so background shows through */
-        .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 8px;gap:var(--gap);background:transparent}
+        .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 8px;gap:var(--gap);background:transparent;position:relative;z-index:5000}
 
         /* transparent, light glassy icon buttons */
         .icon-btn{width:56px;height:56px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06));border:1px solid rgba(255,255,255,0.12);box-shadow:0 8px 20px rgba(4,30,60,0.12);position:relative;overflow:hidden;backdrop-filter:blur(6px)}
@@ -95,7 +95,7 @@
         .card.sheen-end::before{transform:skewX(-18deg) translateX(220%) !important;opacity:0 !important;transition:none !important}
 
         /* Cards area */
-        .cards-wrap{margin-top:calc(var(--gap) * 1.2);padding:18px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.4), rgba(240,250,255,0.18));border:1px solid rgba(255,255,255,0.6);display:flex;align-items:flex-start;box-shadow:0 8px 24px rgba(45,80,150,0.04)}
+        .cards-wrap{margin-top:calc(var(--gap) * 1.2);padding:18px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.4), rgba(240,250,255,0.18));border:1px solid rgba(255,255,255,0.6);display:flex;align-items:flex-start;box-shadow:0 8px 24px rgba(45,80,150,0.04);position:relative;z-index:1}
 
         /* Responsive flow: cards will wrap and scale to available width */
         .cards{display:flex;gap:var(--gap);width:100%;flex-wrap:wrap;align-items:flex-start}
@@ -1603,6 +1603,7 @@
         /* --- Profile Dropdown --- */
         .profile-container {
             position: relative;
+            z-index: 5001;
         }
 
         .profile-icon {
@@ -1630,13 +1631,15 @@
             visibility: hidden;
             transform: translateY(-10px);
             transition: all 0.22s ease;
-            z-index: 999;
+            z-index: 5002;
+            pointer-events: none;
         }
 
         .profile-dropdown.show {
             opacity: 1;
             visibility: visible;
             transform: translateY(0);
+            pointer-events: auto;
         }
 
         .dropdown-header {
@@ -2432,6 +2435,13 @@
         profileBtn.addEventListener("click", () => {
             profileDropdown.classList.toggle("show");
         });
+
+        // Don't let clicks inside the dropdown trigger underlying UI (e.g., cards)
+        if (profileDropdown) {
+            profileDropdown.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        }
     
         // Close dropdown on outside click
         document.addEventListener("click", (e) => {
