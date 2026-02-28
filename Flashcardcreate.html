@@ -12,6 +12,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <style>
         :root {
             --ios-blue: #007AFF;
@@ -359,7 +360,18 @@
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
 
         /* 3D FLIP */
-        .card-container { perspective: 2000px; width: min(700px, 90vw); height: 420px; position: relative; }
+        .card-container {
+            perspective: 2000px;
+            width: min(700px, 90vw);
+            height: 420px;
+            position: relative;
+            transform-origin: center;
+            transition: transform 0.22s var(--ease-apple);
+        }
+        .card-container.file-drag-over{ transform: scale(1.04); }
+        @media (prefers-reduced-motion: reduce){
+            .card-container{ transition:none; }
+        }
         .card-inner {
             position: relative; width: 100%; height: 100%;
             transition: transform 0.6s var(--ease-apple); transform-style: preserve-3d;
@@ -384,14 +396,216 @@
             100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 122, 255, 0); }
         }
 
+        /* Progress-fill button for import generation */
+        .import-progress-btn{
+            position:relative;
+            overflow:hidden;
+        }
+        .import-progress-btn .import-progress-fill{
+            position:absolute;
+            inset:0;
+            width:0%;
+            background:linear-gradient(90deg,var(--accent),var(--accent-2));
+            opacity:0.22;
+            pointer-events:none;
+            transition:width 0.4s cubic-bezier(.25,1,.5,1);
+            z-index:0;
+        }
+        .import-progress-btn > *{
+            position:relative;
+            z-index:1;
+        }
+
         /* Dark mode variant similar to homepage */
         body.dark-mode {
+            --accent-dark: #e5e7eb;
+            --capsule-text-color: #e5e7eb;
+            --capsule-muted-color: rgba(226,232,240,0.72);
             color: #e5e7eb;
             background:
                 linear-gradient(180deg, rgba(15,23,42,0.96), rgba(15,23,42,0.92));
         }
         body.dark-mode nav { background: rgba(15,23,42,0.88); border-color: rgba(148,163,184,0.4); }
         body.dark-mode .ios-card { background: rgba(15,23,42,0.9); border-color: rgba(148,163,184,0.35); box-shadow: 0 18px 40px rgba(0,0,0,0.5); }
+
+        /* Dark mode: make hard-coded light text/colors readable */
+        body.dark-mode .skyline-logo { color: rgba(226,232,240,0.92); }
+        body.dark-mode #view-library h1 { color: rgba(226,232,240,0.96) !important; }
+
+        /* Dark mode: Tailwind utility overrides (scoped) */
+        body.dark-mode .text-gray-900 { color: rgba(226,232,240,0.96) !important; }
+        body.dark-mode .text-gray-800 { color: rgba(226,232,240,0.92) !important; }
+        body.dark-mode .text-gray-700 { color: rgba(226,232,240,0.86) !important; }
+        body.dark-mode .text-gray-600 { color: rgba(226,232,240,0.74) !important; }
+        body.dark-mode .text-gray-500 { color: rgba(226,232,240,0.64) !important; }
+        body.dark-mode .text-gray-400 { color: rgba(226,232,240,0.54) !important; }
+        body.dark-mode .text-black { color: rgba(226,232,240,0.92) !important; }
+
+        body.dark-mode .bg-white { background-color: rgba(15,23,42,0.86) !important; }
+        body.dark-mode .bg-gray-50 { background-color: rgba(15,23,42,0.62) !important; }
+        body.dark-mode .bg-gray-100 { background-color: rgba(30,41,59,0.66) !important; }
+        body.dark-mode .bg-gray-200 { background-color: rgba(148,163,184,0.18) !important; }
+        body.dark-mode .border-gray-100 { border-color: rgba(148,163,184,0.18) !important; }
+        body.dark-mode .border-gray-200 { border-color: rgba(148,163,184,0.22) !important; }
+
+        /* Dark mode: flip-card surfaces */
+        body.dark-mode .face {
+            background: rgba(15,23,42,0.90);
+            border-color: rgba(148,163,184,0.22);
+            box-shadow: 0 26px 60px -18px rgba(0,0,0,0.55);
+        }
+        body.dark-mode .back { background: rgba(2,6,23,0.88); }
+
+        /* Dark mode: modals (settings/rename/import) */
+        body.dark-mode #modal-settings { background-color: rgba(0,0,0,0.55) !important; }
+        body.dark-mode #modal-settings > div,
+        body.dark-mode #rename-modal > div {
+            background: rgba(15,23,42,0.90) !important;
+            border-color: rgba(148,163,184,0.22) !important;
+        }
+
+        body.dark-mode #import-modal{
+            background-color: rgba(0,0,0,0.62) !important;
+        }
+        body.dark-mode #import-modal > div{
+            background: rgba(15,23,42,0.92) !important;
+            border-color: rgba(148,163,184,0.22) !important;
+            box-shadow: 0 30px 90px rgba(0,0,0,0.62) !important;
+        }
+
+        body.dark-mode #delete-modal{
+            background-color: rgba(0,0,0,0.62) !important;
+        }
+        body.dark-mode #delete-modal > div{
+            background: rgba(15,23,42,0.92) !important;
+            border-color: rgba(148,163,184,0.22) !important;
+            box-shadow: 0 30px 90px rgba(0,0,0,0.62) !important;
+        }
+
+        /* Dark mode: import modal segmented toggle */
+        body.dark-mode #import-modal #import-toggle-bg{
+            background: rgba(226,232,240,0.10) !important;
+            box-shadow: none !important;
+        }
+
+        /* Dark mode: import modal secondary surfaces */
+        body.dark-mode #import-modal textarea,
+        body.dark-mode #import-modal select{
+            background-color: rgba(2,6,23,0.34) !important;
+            border-color: rgba(148,163,184,0.22) !important;
+            color: rgba(226,232,240,0.90) !important;
+        }
+        body.dark-mode #import-modal textarea::placeholder{
+            color: rgba(226,232,240,0.48) !important;
+        }
+
+        body.dark-mode #import-modal button.bg-white{
+            background-color: rgba(30,41,59,0.58) !important;
+            border-color: rgba(148,163,184,0.22) !important;
+        }
+        body.dark-mode #import-modal button.bg-white:hover{
+            background-color: rgba(30,41,59,0.72) !important;
+        }
+
+        /* Dark mode: range slider readability */
+        body.dark-mode #import-cards-slider{
+            accent-color: var(--accent);
+        }
+        body.dark-mode #import-cards-slider::-webkit-slider-runnable-track{
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(148,163,184,0.22);
+        }
+        body.dark-mode #import-cards-slider::-webkit-slider-thumb{
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            background: rgba(226,232,240,0.92);
+            border: 2px solid var(--accent);
+            box-shadow: 0 10px 26px rgba(0,0,0,0.45);
+            margin-top: -6px;
+        }
+        body.dark-mode #import-cards-slider::-moz-range-track{
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(148,163,184,0.22);
+        }
+        body.dark-mode #import-cards-slider::-moz-range-thumb{
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            background: rgba(226,232,240,0.92);
+            border: 2px solid var(--accent);
+            box-shadow: 0 10px 26px rgba(0,0,0,0.45);
+        }
+
+        /* Plan editor (paper UI) */
+        #plan-editor-overlay{
+            background-color: rgba(0,0,0,0.40);
+        }
+        #plan-paper{
+            background: rgba(255,255,255,0.96);
+            border: 1px solid rgba(15,23,42,0.10);
+            box-shadow: 0 40px 120px rgba(0,0,0,0.18);
+            border-radius: 28px;
+        }
+        #plan-editor-frame{
+            max-height: 86vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #plan-editor-toolbar{
+            background: rgba(255,255,255,0.92);
+            border: 1px solid rgba(15,23,42,0.10);
+            border-radius: 22px;
+        }
+        #plan-paper{
+            flex: 1;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        #plan-editor-content{
+            outline: none;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        #plan-editor-content:empty:before{
+            content: attr(data-placeholder);
+            color: rgba(15,23,42,0.42);
+        }
+
+        body.dark-mode #plan-editor-overlay{
+            background-color: rgba(0,0,0,0.62);
+        }
+        body.dark-mode #plan-paper{
+            background: rgba(255,255,255,0.92);
+            border-color: rgba(148,163,184,0.22);
+            box-shadow: 0 46px 140px rgba(0,0,0,0.55);
+        }
+        body.dark-mode #plan-editor-toolbar{
+            background: rgba(15,23,42,0.72);
+            border-color: rgba(148,163,184,0.22);
+        }
+
+        /* Dark mode: keep paper text dark on white sheet + style toolbar buttons */
+        body.dark-mode #plan-paper #plan-editor-content{
+            color: rgba(15,23,42,0.92) !important;
+        }
+        body.dark-mode #plan-paper #plan-editor-content *{
+            color: inherit;
+        }
+        body.dark-mode #plan-editor-content:empty:before{
+            color: rgba(15,23,42,0.42);
+        }
+        body.dark-mode #plan-editor-toolbar .plan-toolbar-btn{
+            background: rgba(30,41,59,0.66) !important;
+            border-color: rgba(148,163,184,0.22) !important;
+            color: rgba(226,232,240,0.92) !important;
+        }
+        body.dark-mode #plan-editor-toolbar .plan-toolbar-btn:hover{
+            background: rgba(30,41,59,0.82) !important;
+        }
     </style>
     </head>
 <body class="min-h-screen pb-20">
@@ -426,7 +640,7 @@
                 </div>
             </div>
 
-            <div class="icon-btn" title="Нова библиотека" onclick="showView('create')">
+            <div class="icon-btn" id="newDeckBtn" title="Нова библиотека" onclick="showView('create')">
                 <i data-lucide="plus" class="w-5 h-5 text-white"></i>
             </div>
         </div>
@@ -475,33 +689,100 @@
         </div>
     </section>
 
+    <!-- Import flow modal: triggered when coming from homepage with dropped files -->
+    <div id="import-modal" class="hidden-view fixed inset-0 z-40 flex items-center justify-center bg-black/25 backdrop-blur-md" onclick="if(event.target === this) closeImportModal()">
+        <div class="bg-white/95 backdrop-blur-xl w-full max-w-xl p-6 rounded-[32px] shadow-2xl border border-white/60" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900">Нов импорт</h2>
+                    <p class="text-xs text-gray-500 mt-1">AI ще анализира качените файлове и ще подготви материали за учене.</p>
+                </div>
+                <button onclick="closeImportModal()" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 ios-btn"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div class="mb-4">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Файлове</p>
+                <div id="import-file-list" class="flex flex-wrap gap-2"></div>
+            </div>
+            <div class="bg-gray-100 p-1 rounded-xl mb-5 flex relative">
+                <div id="import-toggle-bg" class="absolute top-1 left-1 w-[calc(50%-4px)] h-[calc(100%-8px)] bg-white rounded-lg shadow-sm transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"></div>
+                <button onclick="setImportMode('cards')" class="flex-1 py-2 text-sm font-semibold z-10 relative transition-colors duration-300 text-black" id="import-mode-cards-btn">Флашкарти</button>
+                <button onclick="setImportMode('plan')" class="flex-1 py-2 text-sm font-semibold z-10 relative transition-colors duration-300 text-gray-400" id="import-mode-plan-btn">Учебен план</button>
+            </div>
+            <div id="import-mode-cards-view" class="space-y-4">
+                <p class="text-sm text-gray-600">Генерирай автоматично флашкарти на база съдържанието на файловете.</p>
+                <div class="flex items-center justify-between gap-4">
+                    <div class="flex-1">
+                        <label for="import-cards-slider" class="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Брой карти</label>
+                        <input id="import-cards-slider" type="range" min="5" max="60" step="5" value="20" class="w-full" oninput="updateImportCardCount(this.value)">
+                    </div>
+                    <div class="w-20 text-right text-sm font-semibold text-gray-800"><span id="import-cards-count">20</span> бр.</div>
+                </div>
+                <label class="flex items-center gap-2 text-sm text-gray-600 select-none">
+                    <input id="import-include-plan" type="checkbox" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    <span>Съкратен план</span>
+                </label>
+                <button id="import-cards-generate-btn" onclick="generateCardsFromImport()" class="import-progress-btn w-full mt-2 py-3.5 bg-[#007AFF] text-white rounded-2xl font-semibold ios-btn flex items-center justify-center gap-2">
+                    <div class="import-progress-fill" aria-hidden="true"></div>
+                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    <span>Генерирай флашкарти</span>
+                </button>
+                <p class="text-xs text-gray-400">Генерираните карти ще се добавят към опашката за създаване долу, където можеш да ги редактираш и запазиш в папката.</p>
+            </div>
+            <div id="import-mode-plan-view" class="hidden space-y-3">
+                <p class="text-sm text-gray-600">AI ще изгради кратък учебен план / конспект по материала от файловете.</p>
+                <textarea id="import-plan-text" class="w-full min-h-[160px] max-h-80 p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Натисни \"Регенерирай план\", за да създадеш първа версия."></textarea>
+                <div class="flex gap-2 mt-1">
+                    <button id="import-plan-generate-btn" onclick="generateStudyPlanFromImport()" class="flex-1 py-3 bg-white text-gray-800 rounded-2xl border border-gray-200 text-sm font-medium hover:bg-gray-50 ios-btn">Регенерирай план</button>
+                    <button onclick="saveStudyPlanToDeck()" class="flex-1 py-3 bg-[#007AFF] text-white rounded-2xl text-sm font-semibold ios-btn">Запази в папката</button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <select id="import-plan-download-format" class="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="txt">Изтегли като .txt</option>
+                        <option value="md">Изтегли като .md</option>
+                        <option value="pdf">Изтегли като .pdf</option>
+                    </select>
+                    <button id="import-plan-download-btn" onclick="downloadImportPlan()" class="px-4 py-2.5 bg-white text-gray-800 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 ios-btn">Изтегли</button>
+                </div>
+                <p class="text-xs text-gray-400">Планът се запазва като специална карта „Учебен план“ в новата папка, за да го намираш лесно.</p>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-settings" class="hidden-view fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm fade-in" onclick="if(event.target === this) closeModal()">
         <div class="bg-white/90 backdrop-blur-xl w-full max-w-sm p-6 rounded-[32px] shadow-2xl border border-white/50 transform transition-all scale-100">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold" id="modal-title">Настройки</h2>
                 <button onclick="closeModal()" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
-            <div class="bg-gray-100 p-1 rounded-xl mb-6 flex relative">
+            <div id="session-mode-row" class="bg-gray-100 p-1 rounded-xl mb-6 flex relative">
                 <div id="toggle-bg" class="absolute top-1 left-1 w-[calc(50%-4px)] h-[calc(100%-8px)] bg-white rounded-lg shadow-sm transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"></div>
-                <button onclick="toggleMode('standard')" class="flex-1 py-2 text-sm font-semibold z-10 relative transition-colors duration-300 text-black" id="t-std">Преговор</button>
-                <button onclick="toggleMode('ai')" class="flex-1 py-2 text-sm font-semibold z-10 relative transition-colors duration-300 text-gray-400" id="t-ai">AI Изпит</button>
+                <button onclick="toggleMode('standard')" class="flex-1 py-2 text-sm font-semibold z-10 relative transition-colors duration-300 text-black" id="t-std" data-i18n="session.review">Преговор</button>
+                <button onclick="toggleMode('ai')" class="flex-1 py-2 text-sm font-semibold z-10 relative transition-colors duration-300 text-gray-400" id="t-ai" data-i18n="session.aiExam">AI Изпит</button>
             </div>
-            <div class="flex justify-between items-center mb-8 px-1">
-                <span class="font-medium text-gray-700">Разбъркване</span>
+            <div id="session-shuffle-row" class="flex justify-between items-center mb-8 px-1">
+                <span class="font-medium text-gray-700" data-i18n="session.shuffle">Разбъркване</span>
                 <label class="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" id="shuffle-check" class="sr-only peer">
                     <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-green-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm"></div>
                 </label>
             </div>
             <div class="mt-1 rounded-2xl bg-gray-50 border border-gray-200 p-3">
-                <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Управление на папката</p>
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2" data-i18n="deck.manage">Управление на папката</p>
                 <div class="flex gap-2">
-                    <button onclick="openRenameDeck()" class="flex-1 py-2.5 bg-white text-gray-800 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 ios-btn">Преименувай</button>
-                    <button onclick="confirmDeleteDeck()" class="flex-1 py-2.5 bg-red-50 text-red-600 rounded-xl border border-red-100 text-sm font-semibold hover:bg-red-100 ios-btn">Изтрий</button>
+                    <button onclick="openRenameDeck()" class="flex-1 py-2.5 bg-white text-gray-800 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 ios-btn" data-i18n="deck.rename">Преименувай</button>
+                    <button onclick="confirmDeleteDeck()" class="flex-1 py-2.5 bg-red-50 text-red-600 rounded-xl border border-red-100 text-sm font-semibold hover:bg-red-100 ios-btn" data-i18n="deck.delete">Изтрий</button>
                 </div>
             </div>
 
-            <button onclick="startSession()" class="mt-4 w-full py-4 bg-[#007AFF] text-white rounded-2xl font-bold text-lg hover:bg-blue-600 ios-btn shadow-lg shadow-blue-500/30">Започни</button>
+            <div class="mt-3 rounded-2xl bg-gray-50 border border-gray-200 p-3">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2" data-i18n="plan.section">Учебен план</p>
+                <button onclick="openPlanEditorFromCurrentDeck()" class="w-full py-2.5 bg-white text-gray-800 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 ios-btn flex items-center justify-center gap-2">
+                    <i data-lucide="file-text" class="w-4 h-4"></i>
+                    <span data-i18n="plan.open">Отвори плана</span>
+                </button>
+            </div>
+
+            <button id="session-start-btn" onclick="startSession()" class="mt-4 w-full py-4 bg-[#007AFF] text-white rounded-2xl font-bold text-lg hover:bg-blue-600 ios-btn shadow-lg shadow-blue-500/30" data-i18n="session.start">Започни</button>
         </div>
     </div>
 
@@ -529,6 +810,55 @@
             <div class="flex gap-2 mt-2">
                 <button onclick="closeDeleteModal()" class="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 ios-btn">Отказ</button>
                 <button onclick="performDeleteDeck()" class="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 ios-btn">Изтрий</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Plan editor (paper UI) -->
+    <div id="plan-editor" class="hidden-view fixed inset-0 z-[70] flex items-center justify-center" aria-hidden="true">
+        <div id="plan-editor-overlay" class="absolute inset-0 backdrop-blur-md" onclick="if(event.target === this) closePlanEditor()"></div>
+        <div id="plan-editor-frame" class="relative w-full max-w-4xl mx-auto px-4">
+            <div id="plan-editor-toolbar" class="w-full px-4 py-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+                <div class="flex items-center gap-3 min-w-[220px]">
+                    <div class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+                        <i data-lucide="file-text" class="w-5 h-5"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-sm font-bold text-gray-900 truncate" id="plan-editor-title">Учебен план</div>
+                        <div class="text-xs text-gray-500 truncate" id="plan-editor-subtitle">Редактиране</div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="applyPlanUnderline('accent')" class="plan-toolbar-btn w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 ios-btn" title="Подчертаване (акцент)">
+                        <span class="block w-full h-full rounded-xl relative">
+                            <span class="absolute left-2 right-2 bottom-2 h-[4px] rounded-full" style="background: var(--accent);"></span>
+                        </span>
+                    </button>
+                    <button onclick="applyPlanUnderline('green')" class="plan-toolbar-btn w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 ios-btn" title="Подчертаване (зелено)">
+                        <span class="block w-full h-full rounded-xl relative">
+                            <span class="absolute left-2 right-2 bottom-2 h-[4px] rounded-full" style="background: #22c55e;"></span>
+                        </span>
+                    </button>
+                    <button onclick="applyPlanUnderline('red')" class="plan-toolbar-btn w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 ios-btn" title="Подчертаване (червено)">
+                        <span class="block w-full h-full rounded-xl relative">
+                            <span class="absolute left-2 right-2 bottom-2 h-[4px] rounded-full" style="background: #ef4444;"></span>
+                        </span>
+                    </button>
+                    <button onclick="clearPlanUnderline()" class="plan-toolbar-btn px-3 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 ios-btn text-sm font-medium" title="Премахни подчертаване">Без</button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="savePlanEditor()" class="px-4 h-10 rounded-xl bg-[#007AFF] text-white ios-btn text-sm font-semibold">Запази</button>
+                    <button onclick="exportPlanEditorPdf()" class="plan-toolbar-btn px-4 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 ios-btn text-sm font-medium">PDF</button>
+                    <button onclick="closePlanEditor()" class="plan-toolbar-btn w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 ios-btn" title="Затвори">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="plan-paper" class="mt-4 w-full p-8 md:p-10">
+                <div id="plan-editor-content" class="text-[15px] leading-7 text-gray-900" contenteditable="true" spellcheck="false" data-placeholder="Започни да пишеш плана…"></div>
             </div>
         </div>
     </div>
@@ -626,12 +956,92 @@
             window.studyspaceSettings = { soundEnabled: !!s.sound, sfxEnabled: !!s.sfx };
         })();
 
+        // Language (persists from account page) + basic i18n for key menus
+        (function(){
+            const LANG_KEY = 'studyspace_language';
+            const FALLBACK = 'bg';
+            function normalize(v){
+                const x = String(v || '').toLowerCase();
+                return (x === 'en') ? 'en' : 'bg';
+            }
+            function getLang(){
+                try{ return normalize(localStorage.getItem(LANG_KEY) || FALLBACK); }catch(e){ return FALLBACK; }
+            }
+            function setLang(v){
+                const norm = normalize(v);
+                try{ localStorage.setItem(LANG_KEY, norm); }catch(e){}
+                document.documentElement.setAttribute('lang', norm);
+                applyI18n();
+                return norm;
+            }
+            function localeForLang(lang){
+                return (lang === 'en') ? 'en-GB' : 'bg-BG';
+            }
+
+            const DICT = {
+                bg: {
+                    'session.review': 'Преговор',
+                    'session.aiExam': 'AI Изпит',
+                    'session.shuffle': 'Разбъркване',
+                    'deck.manage': 'Управление на папката',
+                    'deck.rename': 'Преименувай',
+                    'deck.delete': 'Изтрий',
+                    'plan.section': 'Учебен план',
+                    'plan.open': 'Отвори плана',
+                    'session.start': 'Започни'
+                },
+                en: {
+                    'session.review': 'Review',
+                    'session.aiExam': 'AI Exam',
+                    'session.shuffle': 'Shuffle',
+                    'deck.manage': 'Folder management',
+                    'deck.rename': 'Rename',
+                    'deck.delete': 'Delete',
+                    'plan.section': 'Study plan',
+                    'plan.open': 'Open plan',
+                    'session.start': 'Start'
+                }
+            };
+
+            function applyI18n(){
+                const lang = getLang();
+                const t = DICT[lang] || DICT[FALLBACK] || {};
+                document.querySelectorAll('[data-i18n]').forEach(el => {
+                    const key = el.getAttribute('data-i18n');
+                    if(key && t[key]) el.textContent = t[key];
+                });
+            }
+
+            window.studyspaceI18n = window.studyspaceI18n || {};
+            window.studyspaceI18n.getLang = getLang;
+            window.studyspaceI18n.setLang = setLang;
+            window.studyspaceI18n.localeForLang = localeForLang;
+            window.studyspaceI18n.apply = applyI18n;
+            setLang(getLang());
+
+            // Optional: sync language from profile when logged in
+            setTimeout(async () => {
+                try{
+                    const { data: { user } } = await sb.auth.getUser();
+                    if(!user) return;
+                    const { data } = await sb.from('profiles').select('language').eq('id', user.id).single();
+                    if(data && data.language){
+                        setLang(data.language);
+                    }
+                }catch(e){
+                    // ignore
+                }
+            }, 0);
+        })();
+
         // Date + time inside the capsule
         function updateDateTime(){
             const d = new Date();
             const dateEl = document.getElementById('date');
             const timeEl = document.getElementById('time');
-            if(dateEl) dateEl.textContent = d.toLocaleDateString('bg-BG');
+            const lang = (window.studyspaceI18n && window.studyspaceI18n.getLang) ? window.studyspaceI18n.getLang() : 'bg';
+            const locale = (window.studyspaceI18n && window.studyspaceI18n.localeForLang) ? window.studyspaceI18n.localeForLang(lang) : 'bg-BG';
+            if(dateEl) dateEl.textContent = d.toLocaleDateString(locale);
             if(timeEl) timeEl.textContent = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
         }
         updateDateTime();
@@ -641,8 +1051,12 @@
         const S_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE";
         const sb = window.supabase.createClient(S_URL, S_KEY);
         const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev";
+        const IMPORT_KEY = 'studyspace_import_payload';
+        const PLAN_CARD_FRONT = 'Учебен план';
 
         let currentDeck = null, cards = [], cardIdx = 0, mode = 'standard', results = [], creationQueue = [];
+        let importSession = null;
+        let currentQueueIndex = -1;
 
         // Capsule progress elements (top navbar)
         const capsuleProgress = document.getElementById('capsuleProgress');
@@ -667,7 +1081,7 @@
                 await sb.from('recent_libraries').upsert({
                     user_id: user.id,
                     name: name,
-                    url: `Flashcardcreate.html?deck=${deckId}`,
+                    url: `Flashcardcreate (3).html?deck=${deckId}`,
                     last_used: new Date().toISOString()
                 }, { onConflict: 'user_id, name' });
             } catch (err) {
@@ -683,8 +1097,12 @@
             if(id === 'library' || id === 'create') setClipboardEnabled(true); else setClipboardEnabled(false);
 
             const homeNav = document.getElementById('homeNavBtn');
+            const newDeckBtn = document.getElementById('newDeckBtn');
             if (homeNav) {
                 homeNav.style.visibility = (id === 'focus' || id === 'summary') ? 'hidden' : 'visible';
+            }
+            if (newDeckBtn) {
+                newDeckBtn.style.visibility = (id === 'focus' || id === 'summary') ? 'hidden' : 'visible';
             }
 
             if(id === 'library') loadLibrary();
@@ -726,7 +1144,7 @@
             }
         }
 
-        function openSettings(id, name) {
+        async function openSettings(id, name) {
             currentDeck = { id, name };
             document.getElementById('modal-title').innerText = name;
             document.getElementById('modal-settings').classList.remove('hidden-view');
@@ -734,6 +1152,39 @@
             document.getElementById('shuffle-check').checked = false;
             // отбелязваме, че тази библиотека е отворена наскоро
             logRecentLibrary(name, id);
+
+            // Ако папката има само „Учебен план“, не показваме старт/режими.
+            await updateSettingsSessionControls(id);
+        }
+
+        async function updateSettingsSessionControls(deckId){
+            const modeRow = document.getElementById('session-mode-row');
+            const shuffleRow = document.getElementById('session-shuffle-row');
+            const startBtn = document.getElementById('session-start-btn');
+            if(!modeRow || !shuffleRow || !startBtn) return;
+
+            // default: show
+            modeRow.classList.remove('hidden');
+            shuffleRow.classList.remove('hidden');
+            startBtn.classList.remove('hidden');
+
+            try{
+                const { count, error } = await sb
+                    .from('flashcards')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('deck_id', deckId)
+                    .neq('front', PLAN_CARD_FRONT);
+
+                if(error) throw error;
+                const hasFlashcards = (count || 0) > 0;
+                if(!hasFlashcards){
+                    modeRow.classList.add('hidden');
+                    shuffleRow.classList.add('hidden');
+                    startBtn.classList.add('hidden');
+                }
+            }catch(err){
+                console.warn('updateSettingsSessionControls failed', err);
+            }
         }
 
         function closeModal() { document.getElementById('modal-settings').classList.add('hidden-view'); }
@@ -799,7 +1250,7 @@
                             .from('recent_libraries')
                             .delete()
                             .eq('user_id', user.id)
-                            .eq('url', `Flashcardcreate.html?deck=${deckId}`);
+                            .eq('url', `Flashcardcreate (3).html?deck=${deckId}`);
                     }
                 } catch (e) {
                     console.warn('recent_libraries cleanup failed', e);
@@ -859,12 +1310,298 @@
         async function startSession() {
             const { data } = await sb.from('flashcards').select('*').eq('deck_id', currentDeck.id);
             if(!data || data.length === 0) { alert('Папката е празна.'); return; }
-            cards = [...data];
+            // Учебният план не се учи като флашкарта – отваря се в paper editor.
+            cards = data.filter(c => String((c && c.front) || '').trim().toLowerCase() !== 'учебен план');
+            if(!cards.length){
+                alert('Папката няма флашкарти за учене. (Има само учебен план.)');
+                return;
+            }
             if(document.getElementById('shuffle-check').checked) cards.sort(() => Math.random() - 0.5);
             cardIdx = 0; results = []; closeModal();
             enterCapsuleProgressMode(cards.length);
             showView('focus');
             setupCardUI();
+        }
+
+        // ---------------------------
+        // Plan editor (paper view for "Учебен план")
+        // ---------------------------
+        let planEditorState = { deckId: null, deckName: '', cardId: null };
+
+        function isLikelyHtml(str){
+            const s = (str || '').toString();
+            return /<\s*\w+[\s>]/.test(s) && /<\s*\/?\s*(span|br|div|p)\b/i.test(s);
+        }
+
+        function sanitizePlanHtmlFromElement(sourceEl){
+            const clone = sourceEl.cloneNode(true);
+            const allowedTags = new Set(['DIV','P','BR','SPAN']);
+
+            const walker = document.createTreeWalker(clone, NodeFilter.SHOW_ELEMENT, null);
+            const nodes = [];
+            while(walker.nextNode()) nodes.push(walker.currentNode);
+
+            nodes.forEach((el) => {
+                const tag = el.tagName;
+                if(!allowedTags.has(tag)){
+                    const text = document.createTextNode(el.textContent || '');
+                    el.parentNode && el.parentNode.replaceChild(text, el);
+                    return;
+                }
+
+                // remove dangerous attrs
+                Array.from(el.attributes || []).forEach(attr => {
+                    const name = (attr.name || '').toLowerCase();
+                    if(name.startsWith('on')){
+                        el.removeAttribute(attr.name);
+                        return;
+                    }
+                    if(tag === 'SPAN' && (name === 'style' || name === 'data-plan-underline')) return;
+                    el.removeAttribute(attr.name);
+                });
+
+                if(tag === 'SPAN'){
+                    el.setAttribute('data-plan-underline','1');
+                    // keep underline styles only
+                    const styleRaw = (el.getAttribute('style') || '').toString();
+                    const colorMatch = styleRaw.match(/text-decoration-color\s*:\s*([^;]+)\s*;?/i);
+                    const color = colorMatch ? colorMatch[1].trim() : 'var(--accent)';
+                    el.style.textDecoration = 'underline';
+                    el.style.textDecorationColor = color;
+                    el.style.textDecorationThickness = '2px';
+                    el.style.textUnderlineOffset = '3px';
+                }
+            });
+
+            return clone.innerHTML;
+        }
+
+        function getPlanEditorEls(){
+            return {
+                root: document.getElementById('plan-editor'),
+                title: document.getElementById('plan-editor-title'),
+                subtitle: document.getElementById('plan-editor-subtitle'),
+                content: document.getElementById('plan-editor-content')
+            };
+        }
+
+        function openPlanEditorUi(){
+            const { root } = getPlanEditorEls();
+            if(!root) return;
+            root.classList.remove('hidden-view');
+            root.setAttribute('aria-hidden','false');
+            if(window.lucide) lucide.createIcons();
+        }
+
+        function closePlanEditor(){
+            const { root } = getPlanEditorEls();
+            if(!root) return;
+            root.classList.add('hidden-view');
+            root.setAttribute('aria-hidden','true');
+            planEditorState = { deckId: null, deckName: '', cardId: null };
+        }
+
+        async function openPlanEditorFromCurrentDeck(){
+            if(!currentDeck || !currentDeck.id){
+                alert('Няма избрана папка.');
+                return;
+            }
+            await openPlanEditorForDeck(currentDeck.id, currentDeck.name || '');
+        }
+
+        async function openPlanEditorForDeck(deckId, deckName){
+            const { title, subtitle, content } = getPlanEditorEls();
+            if(title) title.textContent = 'Учебен план';
+            if(subtitle) subtitle.textContent = (deckName || '').trim() ? `Папка: ${deckName}` : 'Редактиране';
+            if(content){
+                content.innerHTML = '';
+                content.textContent = '';
+            }
+
+            try{
+                const { data, error } = await sb
+                    .from('flashcards')
+                    .select('id,deck_id,front,back')
+                    .eq('deck_id', deckId)
+                    .eq('front', PLAN_CARD_FRONT)
+                    .order('id', { ascending: false })
+                    .limit(1);
+                if(error){
+                    console.warn('load plan card error', error);
+                }
+                const card = Array.isArray(data) && data.length ? data[0] : null;
+                if(!card){
+                    alert('Няма запазен учебен план в тази папка.');
+                    return;
+                }
+
+                planEditorState = { deckId: deckId, deckName: deckName || '', cardId: card.id };
+
+                if(content){
+                    const back = (card.back || '').toString();
+                    if(isLikelyHtml(back)){
+                        const tmp = document.createElement('div');
+                        tmp.innerHTML = back;
+                        content.innerHTML = sanitizePlanHtmlFromElement(tmp);
+                    } else {
+                        content.textContent = back;
+                    }
+                }
+
+                openPlanEditorUi();
+                // focus cursor at end
+                if(content){
+                    content.focus();
+                    try{
+                        const range = document.createRange();
+                        range.selectNodeContents(content);
+                        range.collapse(false);
+                        const sel = window.getSelection();
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    } catch(_){ }
+                }
+            } catch(e){
+                console.warn('open plan editor failed', e);
+                alert('Не успях да отворя плана.');
+            }
+        }
+
+        function getPlanSelectionRange(){
+            const { content } = getPlanEditorEls();
+            if(!content) return null;
+            const sel = window.getSelection();
+            if(!sel || sel.rangeCount === 0) return null;
+            const range = sel.getRangeAt(0);
+            if(!range) return null;
+            const container = range.commonAncestorContainer;
+            const node = container.nodeType === 1 ? container : container.parentNode;
+            if(!node || !content.contains(node)) return null;
+            return range;
+        }
+
+        function underlineColorForKey(key){
+            if(key === 'green') return '#22c55e';
+            if(key === 'red') return '#ef4444';
+            return 'var(--accent)';
+        }
+
+        function applyPlanUnderline(colorKey){
+            const { content } = getPlanEditorEls();
+            if(!content) return;
+            const range = getPlanSelectionRange();
+            if(!range || range.collapsed) return;
+
+            const color = underlineColorForKey(colorKey);
+            const span = document.createElement('span');
+            span.setAttribute('data-plan-underline','1');
+            span.style.textDecoration = 'underline';
+            span.style.textDecorationColor = color;
+            span.style.textDecorationThickness = '2px';
+            span.style.textUnderlineOffset = '3px';
+
+            const extracted = range.extractContents();
+            span.appendChild(extracted);
+            range.insertNode(span);
+
+            // move caret after inserted span
+            try{
+                const sel = window.getSelection();
+                const after = document.createRange();
+                after.setStartAfter(span);
+                after.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(after);
+            } catch(_){ }
+        }
+
+        function unwrapNode(node){
+            if(!node || !node.parentNode) return;
+            const parent = node.parentNode;
+            while(node.firstChild){
+                parent.insertBefore(node.firstChild, node);
+            }
+            parent.removeChild(node);
+        }
+
+        function clearPlanUnderline(){
+            const { content } = getPlanEditorEls();
+            if(!content) return;
+            const range = getPlanSelectionRange();
+            if(!range) return;
+
+            const spans = [];
+            const walker = document.createTreeWalker(content, NodeFilter.SHOW_ELEMENT, {
+                acceptNode(node){
+                    if(node && node.tagName === 'SPAN' && node.getAttribute('data-plan-underline') === '1') return NodeFilter.FILTER_ACCEPT;
+                    return NodeFilter.FILTER_SKIP;
+                }
+            });
+            while(walker.nextNode()){
+                const el = walker.currentNode;
+                try{
+                    if(range.intersectsNode(el)) spans.push(el);
+                } catch(_){ }
+            }
+
+            if(range.collapsed && spans.length === 0){
+                // try nearest ancestor
+                const c = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentNode;
+                const span = c && c.closest ? c.closest('span[data-plan-underline="1"]') : null;
+                if(span && content.contains(span)) spans.push(span);
+            }
+
+            spans.forEach(unwrapNode);
+        }
+
+        function getPlanEditorPlainText(){
+            const { content } = getPlanEditorEls();
+            if(!content) return '';
+            return (content.innerText || '').replace(/\u00a0/g,' ').trim();
+        }
+
+        function getPlanEditorSanitizedHtml(){
+            const { content } = getPlanEditorEls();
+            if(!content) return '';
+            return sanitizePlanHtmlFromElement(content);
+        }
+
+        async function savePlanEditor(){
+            if(!planEditorState || !planEditorState.cardId){
+                alert('Няма отворен план.');
+                return;
+            }
+            const html = getPlanEditorSanitizedHtml();
+            const plain = getPlanEditorPlainText();
+            if(!plain){
+                alert('Планът е празен.');
+                return;
+            }
+            try{
+                const { error } = await sb.from('flashcards').update({ back: html }).eq('id', planEditorState.cardId);
+                if(error){
+                    console.warn('save plan update error', error);
+                    alert('Неуспешно запазване на плана.');
+                    return;
+                }
+                // При запазване: автоматично изтегляме PDF
+                const base = (planEditorState && planEditorState.deckName) || (currentDeck && currentDeck.name) || getImportBaseName();
+                exportPlanAsPdf(plain, base);
+                alert('Планът е запазен.');
+            } catch(e){
+                console.warn('save plan failed', e);
+                alert('Неуспешно запазване на плана.');
+            }
+        }
+
+        function exportPlanEditorPdf(){
+            const plain = getPlanEditorPlainText();
+            if(!plain){
+                alert('Няма план за изтегляне.');
+                return;
+            }
+            const base = (planEditorState && planEditorState.deckName) || (currentDeck && currentDeck.name) || getImportBaseName();
+            exportPlanAsPdf(plain, base);
         }
 
         function setupCardUI() {
@@ -946,14 +1683,783 @@
             startSession();
         }
         function flipBack() { document.getElementById('createCard').classList.remove('flipped'); }
+
+        // Двойно кликване върху картата за бързо завъртане (AI резултат / въпрос)
+        document.addEventListener('DOMContentLoaded', () => {
+            const createCardEl = document.getElementById('createCard');
+            if(createCardEl){
+                createCardEl.addEventListener('dblclick', () => {
+                    createCardEl.classList.toggle('flipped');
+                });
+
+                // Drop files onto the big create card => open import modal automatically
+                const isFileDrag = (event) => {
+                    const dt = event.dataTransfer;
+                    if(!dt) return false;
+                    const types = Array.from(dt.types || []);
+                    if(types.includes('Files')) return true;
+                    if(types.includes('application/x-studyspace-clipboard-id')) return true;
+                    try{
+                        const id = dt.getData && dt.getData('application/x-studyspace-clipboard-id');
+                        if(id) return true;
+                    } catch(_){ }
+                    return dt.files && dt.files.length > 0;
+                };
+
+                const cardContainer = createCardEl.closest('.card-container') || createCardEl;
+                let dragDepth = 0;
+                const setHover = (on) => {
+                    if(!cardContainer || !cardContainer.classList) return;
+                    cardContainer.classList.toggle('file-drag-over', !!on);
+                };
+                const clearHover = () => { dragDepth = 0; setHover(false); };
+
+                cardContainer.addEventListener('dragenter', (event) => {
+                    if(!isFileDrag(event)) return;
+                    event.preventDefault();
+                    dragDepth += 1;
+                    setHover(true);
+                });
+                cardContainer.addEventListener('dragover', (event) => {
+                    if(!isFileDrag(event)) return;
+                    event.preventDefault();
+                    if(event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+                    setHover(true);
+                });
+                cardContainer.addEventListener('dragleave', (event) => {
+                    if(!isFileDrag(event)) return;
+                    dragDepth = Math.max(dragDepth - 1, 0);
+                    if(dragDepth === 0) setHover(false);
+                });
+                cardContainer.addEventListener('drop', async (event) => {
+                    if(!isFileDrag(event)) return;
+                    event.preventDefault();
+                    clearHover();
+                    const files = event.dataTransfer ? event.dataTransfer.files : null;
+                    if(files && files.length){
+                        await startImportFromLocalDrop(files);
+                        return;
+                    }
+
+                    // Fallback: drag from capsule may not populate DataTransfer.files in some browsers
+                    try{
+                        const dt = event.dataTransfer;
+                        const clipId = dt && dt.getData ? dt.getData('application/x-studyspace-clipboard-id') : '';
+                        if(clipId){
+                            const file = await getStudyClipboardFileById(clipId);
+                            if(file){
+                                await startImportFromLocalDrop([file]);
+                            }
+                        }
+                    } catch(_){ }
+                });
+
+                // Safety: if drag ends outside, avoid leaving the card scaled
+                document.addEventListener('dragend', clearHover, true);
+            }
+        });
+
+        // -------- Импорт от началната страница (дърпане на файлове върху „Нова“) --------
+
+        function renderImportFileList(){
+            const container = document.getElementById('import-file-list');
+            if(!container) return;
+            container.innerHTML = '';
+            if(!importSession || !Array.isArray(importSession.files) || importSession.files.length === 0){
+                const empty = document.createElement('span');
+                empty.className = 'text-xs text-gray-400';
+                empty.textContent = 'Няма намерени файлове.';
+                container.appendChild(empty);
+                return;
+            }
+            importSession.files.forEach(f => {
+                const chip = document.createElement('span');
+                chip.className = 'px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium flex items-center gap-1';
+                const dot = document.createElement('span');
+                dot.className = 'w-1.5 h-1.5 rounded-full bg-blue-500';
+                const name = document.createElement('span');
+                name.textContent = f.name || 'file';
+                chip.appendChild(dot);
+                chip.appendChild(name);
+                container.appendChild(chip);
+            });
+        }
+
+        function setImportMode(mode){
+            const bg = document.getElementById('import-toggle-bg');
+            const btnCards = document.getElementById('import-mode-cards-btn');
+            const btnPlan = document.getElementById('import-mode-plan-btn');
+            const viewCards = document.getElementById('import-mode-cards-view');
+            const viewPlan = document.getElementById('import-mode-plan-view');
+            if(!bg || !btnCards || !btnPlan || !viewCards || !viewPlan) return;
+
+            if(mode === 'cards'){
+                bg.style.left = '4px';
+                btnCards.classList.replace('text-gray-400','text-black');
+                btnPlan.classList.replace('text-black','text-gray-400');
+                viewCards.classList.remove('hidden');
+                viewPlan.classList.add('hidden');
+            } else {
+                bg.style.left = '50%';
+                btnPlan.classList.replace('text-gray-400','text-black');
+                btnCards.classList.replace('text-black','text-gray-400');
+                viewCards.classList.add('hidden');
+                viewPlan.classList.remove('hidden');
+            }
+        }
+
+        function updateImportCardCount(val){
+            const label = document.getElementById('import-cards-count');
+            if(label) label.textContent = String(val || 0);
+        }
+
+        function openImportModal(){
+            const modal = document.getElementById('import-modal');
+            if(!modal) return;
+            renderImportFileList();
+            setImportMode('cards');
+            modal.classList.remove('hidden-view');
+            if(window.lucide) lucide.createIcons();
+        }
+
+        function closeImportModal(){
+            const modal = document.getElementById('import-modal');
+            if(!modal) return;
+            modal.classList.add('hidden-view');
+        }
+
+        function buildImportContextText(limitPerFile){
+            if(!importSession || !Array.isArray(importSession.files)) return '';
+            const maxPerFile = typeof limitPerFile === 'number' && limitPerFile > 0 ? limitPerFile : 1200;
+            return importSession.files.map((f, idx) => {
+                const header = `Файл ${idx+1}: ${f.name || 'без име'} (${f.type || 'неизвестен тип'})`;
+                const snippet = (f.text || '').toString().slice(0, maxPerFile);
+                if(!snippet) return header;
+                return `${header}\nОткъс: ${snippet}`;
+            }).join('\n\n---\n\n');
+        }
+
+        let importProgressTimer = null;
+
+        function startImportButtonProgress(btn){
+            if(!btn) return;
+            const fill = btn.querySelector('.import-progress-fill');
+            if(!fill) return;
+            let pct = 0;
+            fill.style.width = '0%';
+            if(importProgressTimer){
+                clearInterval(importProgressTimer);
+                importProgressTimer = null;
+            }
+            importProgressTimer = setInterval(() => {
+                pct += 6;
+                if(pct > 88) pct = 88; // оставяме малък резерв докато чакаме AI
+                fill.style.width = pct + '%';
+            }, 300);
+        }
+
+        function finishImportButtonProgress(btn){
+            const fill = btn ? btn.querySelector('.import-progress-fill') : null;
+            if(importProgressTimer){
+                clearInterval(importProgressTimer);
+                importProgressTimer = null;
+            }
+            if(fill){
+                fill.style.width = '100%';
+                setTimeout(() => { fill.style.width = '0%'; }, 600);
+            }
+        }
+
+        async function generateCardsFromImport(){
+            if(!importSession || !importSession.files || importSession.files.length === 0) return;
+            const slider = document.getElementById('import-cards-slider');
+            const btn = document.getElementById('import-cards-generate-btn');
+            const desired = slider ? parseInt(slider.value, 10) || 20 : 20;
+            const includePlan = !!(document.getElementById('import-include-plan') && document.getElementById('import-include-plan').checked);
+            if(btn){
+                btn.disabled = true;
+                const labelSpan = btn.querySelector('span');
+                if(labelSpan) labelSpan.textContent = 'Генериране...';
+                startImportButtonProgress(btn);
+            }
+            const context = buildImportContextText(900);
+            const prompt = `Ти си помощник за учене. На български създай около ${desired} висококачествени флашкарти (въпрос/отговор) на база следните файлове и откъси. Изход: върни САМО флашкарти, по една на ред, във формат "Q: <въпрос> || A: <отговор>" без други обяснения, таблици или текст. Файлове и съдържание:\n\n${context}`;
+            try {
+                const res = await fetch(WORKER, { method:'POST', body: JSON.stringify({ prompt }) });
+                const data = await res.json();
+                let raw = '';
+                let parsed = null;
+                try{
+                    raw = String(data.answer || '');
+                    const m = raw.match(/\{[\s\S]*\}/);
+                    if(m) parsed = JSON.parse(m[0]);
+                } catch(e){ console.warn('parse cards JSON failed', e); }
+
+                let cardsArr = parsed && Array.isArray(parsed.cards) ? parsed.cards : [];
+
+                // Fallback: парсираме редове от вида "Q: ... || A: ..."
+                if((!cardsArr || !cardsArr.length) && raw){
+                    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+                    const fallback = [];
+                    lines.forEach(line => {
+                        const m2 = line.match(/^Q:\s*(.+?)\s*\|\|\s*A:\s*(.+)$/i);
+                        if(m2){
+                            const front = m2[1].trim();
+                            const back = m2[2].trim();
+                            if(front && back) fallback.push({ front, back });
+                        }
+                    });
+                    if(fallback.length) cardsArr = fallback;
+                }
+
+                // Ако картите са по-малко от зададения брой, опитваме да допълним с втори пас
+                if(cardsArr && cardsArr.length > 0 && cardsArr.length < desired){
+                    try{
+                        const missing = desired - cardsArr.length;
+                        const existingSummary = cardsArr.map((c,i) => `Карта ${i+1}: Q: ${c.front} || A: ${c.back}`).join('\n');
+                        const morePrompt = `Вече имаме няколко флашкарти, но искаме общо ${desired}. По-долу са съществуващите. Създай ДОПЪЛНИТЕЛНО още поне ${missing} нови и различни флашкарти на български върху същата тема. Формат отново: \"Q: <въпрос> || A: <отговор>\" по една на ред, без да повтаряш съществуващите. Съществуващи карти:\n${existingSummary}\n\nКонтекст:\n${context}`;
+                        const resMore = await fetch(WORKER, { method:'POST', body: JSON.stringify({ prompt: morePrompt }) });
+                        const dataMore = await resMore.json();
+                        const rawMore = String(dataMore.answer || '');
+                        const linesMore = rawMore.split('\n').map(l => l.trim()).filter(Boolean);
+                        const extra = [];
+                        linesMore.forEach(line => {
+                            const m4 = line.match(/^Q:\s*(.+?)\s*\|\|\s*A:\s*(.+)$/i);
+                            if(m4){
+                                const front = m4[1].trim();
+                                const back = m4[2].trim();
+                                if(front && back) extra.push({ front, back });
+                            }
+                        });
+                        if(extra.length){
+                            cardsArr = cardsArr.concat(extra);
+                        }
+                    } catch(eMore){ console.warn('extra cards generation failed', eMore); }
+                }
+
+                if(!cardsArr || !cardsArr.length){
+                    console.warn('AI cards answer could not be parsed', data);
+                    console.warn('Raw answer:', raw);
+
+                    // Fallback 2: помолваме AI да обобщи и въпреки това да създаде карти
+                    try {
+                        const fallbackPrompt = `Дори ако информацията изглежда малко или фрагментирана, първо направи кратко резюме (до 10 изречения) на съдържанието по-долу, а след това създай около ${desired} флашкарти на български върху това резюме. Изведи САМО флашкартите, по една на ред, във формат \"Q: <въпрос> || A: <отговор>\" без допълнителни обяснения, текст или преводи. Съдържание:\n\n${context}`;
+                        const res2 = await fetch(WORKER, { method:'POST', body: JSON.stringify({ prompt: fallbackPrompt }) });
+                        const data2 = await res2.json();
+                        const raw2 = String(data2.answer || '');
+                        const lines2 = raw2.split('\n').map(l => l.trim()).filter(Boolean);
+                        const cards2 = [];
+                        lines2.forEach(line => {
+                            const m3 = line.match(/^Q:\s*(.+?)\s*\|\|\s*A:\s*(.+)$/i);
+                            if(m3){
+                                const front = m3[1].trim();
+                                const back = m3[2].trim();
+                                if(front && back) cards2.push({ front, back });
+                            }
+                        });
+                        if(!cards2.length){
+                            console.warn('Fallback summary generation also returned no parsable cards', data2);
+                            alert('AI не успя да генерира карти дори след обобщение. Опитайте отново с друг файл.');
+                            return;
+                        }
+                        cardsArr = cards2;
+                    } catch(e2){
+                        console.warn('Fallback summary generation failed', e2);
+                        alert('Възникна грешка при опит за генериране на карти от резюме.');
+                        return;
+                    }
+                }
+
+                if(cardsArr && cardsArr.length){
+                    creationQueue = creationQueue.concat(cardsArr.map(c => ({ front: c.front || '', back: c.back || '' }))).filter(c => c.front && c.back);
+                    updateQueueUI();
+                    // Уверяваме се, че името на папката е попълнено с новосъздадената библиотека
+                    const deckInput = document.getElementById('deck-in');
+                    if(deckInput && currentDeck && currentDeck.name){ deckInput.value = currentDeck.name; }
+
+                    // If requested, generate the short plan as well (and keep modal open)
+                    if(includePlan){
+                        setImportMode('plan');
+                        showView('create');
+                        await generateStudyPlanFromImport();
+                    } else {
+                        closeImportModal();
+                        showView('create');
+                    }
+                }
+            } catch(e){
+                console.warn('generateCardsFromImport error', e);
+                alert('Възникна грешка при генериране на картите. Отвори конзолата (F12) за подробности.');
+            } finally {
+                if(btn){
+                    btn.disabled = false;
+                    finishImportButtonProgress(btn);
+                    const labelSpan = btn.querySelector('span');
+                    if(labelSpan) labelSpan.textContent = 'Генерирай флашкарти';
+                }
+            }
+        }
+
+        async function generateStudyPlanFromImport(){
+            if(!importSession || !importSession.files || importSession.files.length === 0) return;
+            const btn = document.getElementById('import-plan-generate-btn');
+            const textarea = document.getElementById('import-plan-text');
+            if(btn){ btn.disabled = true; btn.textContent = 'Генериране...'; }
+            const context = buildImportContextText(1200);
+            const prompt = `Ти си преподавател. На базата на следните файлове и откъси създай СЪКРАТЕН, структуриран учебен план/конспект на български. Включи раздели/подзаглавия и ключови точки. Представи ключовите точки като номериран списък (1., 2., 3.). Не добавяй уводни изречения; започни директно с плана. Файлове и съдържание:\n\n${context}`;
+            try{
+                const res = await fetch(WORKER, { method:'POST', body: JSON.stringify({ prompt }) });
+                const data = await res.json();
+                if(textarea){
+                    const raw = (data.answer || '').toString();
+                    textarea.value = normalizePlanToNumberedPoints(raw);
+                }
+            } catch(e){
+                console.warn('generateStudyPlanFromImport error', e);
+                alert('Възникна грешка при генериране на учебния план.');
+            } finally {
+                if(btn){ btn.disabled = false; btn.textContent = 'Регенерирай план'; }
+            }
+        }
+
+        function normalizePlanToNumberedPoints(text){
+            const src = (text || '').toString().replace(/\r\n/g,'\n');
+            const lines = src.split('\n');
+            let n = 1;
+            const out = [];
+            for(const line of lines){
+                const raw = line;
+                const t = raw.trim();
+                if(!t){ out.push(''); continue; }
+
+                // Headings / section markers keep as-is and reset numbering
+                if(/^#{1,6}\s+/.test(t) || /:$/.test(t) || /^(раздел|тема|подтема)\b/i.test(t)){
+                    out.push(raw);
+                    n = 1;
+                    continue;
+                }
+
+                // Convert bullet points to numbering
+                const bullet = t.match(/^[-*•]+\s+(.+)$/);
+                if(bullet){
+                    out.push(`${n}. ${bullet[1].trim()}`);
+                    n += 1;
+                    continue;
+                }
+
+                // Keep existing numbering; also advance counter
+                const existing = t.match(/^(\d+)[\).]\s+(.+)$/);
+                if(existing){
+                    const k = parseInt(existing[1], 10);
+                    out.push(`${k}. ${existing[2].trim()}`);
+                    n = Number.isFinite(k) ? k + 1 : n;
+                    continue;
+                }
+
+                // If it's a plain line (likely a point), number it
+                out.push(`${n}. ${t}`);
+                n += 1;
+            }
+            return out.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+        }
+
+        function downloadTextFile(content, filename, mime){
+            const blob = new Blob([content], { type: mime || 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 2500);
+        }
+
+        function exportPlanAsPdf(planText, filenameBase){
+            const raw = (planText || '').toString().replace(/\r\n/g,'\n').trim();
+            if(!raw){
+                alert('Няма план за изтегляне.');
+                return;
+            }
+            if(!window.jspdf || !window.jspdf.jsPDF){
+                alert('PDF export не е наличен (jsPDF не се зареди).');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+            const pageW = doc.internal.pageSize.getWidth();
+            const pageH = doc.internal.pageSize.getHeight();
+
+            const scale = 2;
+            const margin = 44; // pt
+            const fontSize = 13; // pt
+            const lineHeight = Math.round(fontSize * 1.5);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(pageW * scale);
+            canvas.height = Math.round(pageH * scale);
+            const ctx = canvas.getContext('2d');
+            if(!ctx){
+                alert('Не успях да подготвя PDF (canvas context).');
+                return;
+            }
+
+            const marginPx = margin * scale;
+            const maxWidthPx = (pageW - margin * 2) * scale;
+            const lineHeightPx = lineHeight * scale;
+            const fontPx = fontSize * scale;
+
+            const setBaseTextStyle = () => {
+                ctx.fillStyle = '#0b1220';
+                ctx.font = `${fontPx}px Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif`;
+                ctx.textBaseline = 'top';
+            };
+
+            const wrapLine = (text) => {
+                const cleaned = (text || '').toString();
+                if(!cleaned.trim()) return [''];
+                const words = cleaned.split(/\s+/);
+                const out = [];
+                let line = '';
+                for(const word of words){
+                    const next = line ? `${line} ${word}` : word;
+                    if(ctx.measureText(next).width <= maxWidthPx){
+                        line = next;
+                        continue;
+                    }
+                    if(line){
+                        out.push(line);
+                        line = word;
+                    } else {
+                        // single long token; hard break
+                        out.push(word);
+                        line = '';
+                    }
+                }
+                if(line) out.push(line);
+                return out.length ? out : [''];
+            };
+
+            const allLines = [];
+            const srcLines = raw.split('\n');
+            setBaseTextStyle();
+            for(const srcLine of srcLines){
+                const heading = srcLine.trim().match(/^#{1,6}\s+(.+)$/);
+                if(heading){
+                    allLines.push({ text: heading[1].trim(), heading: true });
+                    continue;
+                }
+                const wrapped = wrapLine(srcLine);
+                wrapped.forEach(t => allLines.push({ text: t, heading: false }));
+            }
+
+            const newPageCanvas = () => {
+                ctx.save();
+                ctx.setTransform(1,0,0,1,0,0);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
+                setBaseTextStyle();
+            };
+
+            const commitPage = () => {
+                const img = canvas.toDataURL('image/png');
+                doc.addImage(img, 'PNG', 0, 0, pageW, pageH);
+            };
+
+            newPageCanvas();
+            let y = marginPx;
+            for(let i = 0; i < allLines.length; i++){
+                const line = allLines[i];
+                if(y + lineHeightPx > (canvas.height - marginPx)){
+                    commitPage();
+                    doc.addPage();
+                    newPageCanvas();
+                    y = marginPx;
+                }
+
+                if(line.heading){
+                    ctx.fillStyle = '#0b1220';
+                    ctx.font = `${Math.round(fontPx * 1.15)}px Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif`;
+                    ctx.fillText(line.text, marginPx, y);
+                    y += Math.round(lineHeightPx * 1.15);
+                    setBaseTextStyle();
+                    continue;
+                }
+
+                if(!line.text){
+                    y += lineHeightPx;
+                    continue;
+                }
+                ctx.fillText(line.text, marginPx, y);
+                y += lineHeightPx;
+            }
+
+            // final page
+            commitPage();
+            const safeBase = (filenameBase || 'Учебен план').toString().replace(/[\\/:*?"<>|]+/g,'-').slice(0,80) || 'Учебен план';
+            doc.save(`${safeBase} - план.pdf`);
+        }
+
+        function getImportBaseName(){
+            const deckInput = document.getElementById('deck-in');
+            const nameFromInput = deckInput ? (deckInput.value || '').trim() : '';
+            const base = nameFromInput || (importSession && importSession.deckName) || 'Учебен план';
+            return base.replace(/[\\/:*?"<>|]+/g,'-').slice(0,80) || 'Учебен план';
+        }
+
+        function downloadImportPlan(){
+            const textarea = document.getElementById('import-plan-text');
+            const formatSel = document.getElementById('import-plan-download-format');
+            const raw = textarea ? (textarea.value || '').trim() : '';
+            if(!raw){ alert('Няма план за изтегляне.'); return; }
+            const fmt = formatSel ? (formatSel.value || 'txt') : 'txt';
+            const base = getImportBaseName();
+            if(fmt === 'pdf'){
+                exportPlanAsPdf(raw, base);
+            } else if(fmt === 'md'){
+                const md = raw;
+                downloadTextFile(md + '\n', `${base} - план.md`, 'text/markdown;charset=utf-8');
+            } else {
+                const txt = raw.replace(/^#{1,6}\s+/gm,'');
+                downloadTextFile(txt + '\n', `${base} - план.txt`, 'text/plain;charset=utf-8');
+            }
+        }
+
+        async function saveStudyPlanToDeck(){
+            const deckInput = document.getElementById('deck-in');
+            const desiredName = (deckInput ? deckInput.value : '') || (importSession && importSession.deckName) || 'Нова папка';
+            if(!currentDeck || !currentDeck.id){
+                try{
+                    let { data: deck } = await sb.from('decks').select('id,name').eq('name', desiredName).maybeSingle();
+                    if(!deck){
+                        const { data } = await sb.from('decks').insert({ name: desiredName }).select().single();
+                        deck = data;
+                    }
+                    if(deck && deck.id){
+                        currentDeck = { id: deck.id, name: deck.name || desiredName };
+                        try{ await logRecentLibrary(currentDeck.name || desiredName, currentDeck.id); } catch(_){ }
+                    }
+                } catch(e){
+                    console.warn('ensure deck for plan save failed', e);
+                }
+            }
+            if(!currentDeck || !currentDeck.id){
+                alert('Не успях да създам/намеря папка за запазване.');
+                return;
+            }
+            const textarea = document.getElementById('import-plan-text');
+            const text = textarea ? (textarea.value || '').trim() : '';
+            if(!text){ alert('Няма текст за запазване.'); return; }
+            try{
+                // Upsert: ако вече има план в папката – обновяваме, иначе създаваме.
+                let existing = null;
+                try{
+                    const { data: found } = await sb
+                        .from('flashcards')
+                        .select('id')
+                        .eq('deck_id', currentDeck.id)
+                        .eq('front', 'Учебен план')
+                        .maybeSingle();
+                    existing = found || null;
+                } catch(_){ }
+
+                if(existing && existing.id){
+                    await sb.from('flashcards').update({ back: text }).eq('id', existing.id);
+                } else {
+                    await sb.from('flashcards').insert({ deck_id: currentDeck.id, front: 'Учебен план', back: text });
+                }
+                await logRecentLibrary(currentDeck.name || 'Импорт', currentDeck.id);
+                // При запазване: автоматично изтегляме PDF
+                try{
+                    exportPlanAsPdf(text, getImportBaseName());
+                } catch(_){ }
+                alert('Учебният план е запазен в папката (и свален като PDF).');
+                closeImportModal();
+                goHome();
+            } catch(e){
+                console.warn('saveStudyPlanToDeck error', e);
+                alert('Неуспешно запазване на плана.');
+            }
+        }
+
+        function isProbablyTextFile(file){
+            if(!file) return false;
+            const type = (file.type || '').toLowerCase();
+            const name = (file.name || '').toLowerCase();
+            if(type.startsWith('text/')) return true;
+            if(type.includes('json') || type.includes('xml') || type.includes('yaml') || type.includes('csv')) return true;
+            return /\.(txt|md|csv|json|xml|html?)$/.test(name);
+        }
+
+        // --- StudySpace capsule clipboard persistence (shared across pages) ---
+        const STUDY_CLIPBOARD_DB_NAME = 'studyspace_clipboard_db_v1';
+        const STUDY_CLIPBOARD_STORE = 'files';
+
+        function openStudyClipboardDb(){
+            return new Promise((resolve, reject) => {
+                if(!('indexedDB' in window)) return reject(new Error('IndexedDB not available'));
+                const req = indexedDB.open(STUDY_CLIPBOARD_DB_NAME, 1);
+                req.onupgradeneeded = () => {
+                    const db = req.result;
+                    if(!db.objectStoreNames.contains(STUDY_CLIPBOARD_STORE)){
+                        const store = db.createObjectStore(STUDY_CLIPBOARD_STORE, { keyPath: 'id' });
+                        store.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error || new Error('IndexedDB open failed'));
+            });
+        }
+
+        async function getStudyClipboardFileById(id){
+            if(!id) return null;
+            let db;
+            try{ db = await openStudyClipboardDb(); } catch(_){ return null; }
+            return new Promise((resolve) => {
+                try{
+                    const tx = db.transaction(STUDY_CLIPBOARD_STORE, 'readonly');
+                    const store = tx.objectStore(STUDY_CLIPBOARD_STORE);
+                    const req = store.get(id);
+                    req.onsuccess = () => {
+                        const rec = req.result;
+                        if(!rec || !rec.blob) return resolve(null);
+                        try{
+                            const file = new File([rec.blob], rec.name || 'file', { type: rec.type || (rec.blob.type || ''), lastModified: rec.lastModified || Date.now() });
+                            resolve(file);
+                        } catch(_){
+                            resolve(null);
+                        }
+                    };
+                    req.onerror = () => resolve(null);
+                } catch(_){
+                    resolve(null);
+                }
+            });
+        }
+
+        async function startImportFromLocalDrop(fileList){
+            const files = Array.from(fileList || []).filter(Boolean);
+            if(files.length === 0) return;
+
+            const first = files[0];
+            const base = (first.name || 'Материал').replace(/\.[^/.]+$/,'').slice(0,60) || 'Материал';
+            const suggestedDeckName = `Импорт: ${base}`;
+
+            const payload = [];
+            for(const f of files){
+                let text = '';
+                try{
+                    if(isProbablyTextFile(f)){
+                        const full = await f.text();
+                        text = (full || '').toString().slice(0, 20000);
+                    }
+                } catch(e){
+                    text = '';
+                }
+                payload.push({ name: f.name, type: f.type, size: f.size, text });
+            }
+
+            importSession = { deckId: null, deckName: suggestedDeckName, files: payload };
+            const deckInput = document.getElementById('deck-in');
+            if(deckInput && !deckInput.value){ deckInput.value = suggestedDeckName; }
+            openImportModal();
+        }
+
+        async function handleInitialImportIfAny(){
+            let params;
+            try { params = new URLSearchParams(window.location.search || ''); } catch(e){ return; }
+            if(params.get('import') !== '1') return;
+            let raw = null;
+            try { raw = sessionStorage.getItem(IMPORT_KEY); } catch(e){ raw = null; }
+            if(!raw) return;
+            let payload;
+            try { payload = JSON.parse(raw); } catch(e){ return; }
+            if(!Array.isArray(payload) || payload.length === 0) return;
+
+            const first = payload[0] || {};
+            const base = (first.name || 'Материал').replace(/\.[^/.]+$/,'').slice(0,60) || 'Материал';
+            const deckName = `Импорт: ${base}`;
+
+            try{
+                const { data, error } = await sb.from('decks').insert({ name: deckName }).select().single();
+                if(error || !data){
+                    console.warn('import deck create error', error);
+                    return;
+                }
+                currentDeck = { id: data.id, name: data.name };
+                importSession = { deckId: data.id, deckName: data.name, files: payload };
+                const deckInput = document.getElementById('deck-in');
+                if(deckInput) deckInput.value = data.name || '';
+                try { await logRecentLibrary(data.name, data.id); } catch(_){ }
+
+                // Премахваме import флага от URL, за да не се повтаря при рефреш
+                try{
+                    params.delete('import');
+                    const qs = params.toString();
+                    const newUrl = window.location.pathname + (qs ? `?${qs}` : '');
+                    window.history.replaceState({}, '', newUrl);
+                } catch(_){ }
+
+                openImportModal();
+            } catch(e){
+                console.warn('handleInitialImportIfAny failed', e);
+            }
+        }
         async function runAI() {
             const q = document.getElementById('q-in').value; if(!q) return;
             const btn = document.getElementById('genBtn'); btn.innerHTML = `<div class="apple-loader w-4 h-4 mr-2 border-white"></div>`;
             try { const res = await fetch(WORKER, { method: 'POST', body: JSON.stringify({ prompt: q }) }); const data = await res.json(); document.getElementById('a-out').value = data.answer; document.getElementById('createCard').classList.add('flipped'); } catch(e){}
             btn.innerHTML = `<i data-lucide="sparkles" class="w-4 h-4"></i> Авто-генериране`;
         }
-        function addToQueue() { const f = document.getElementById('q-in').value, b = document.getElementById('a-out').value; if(f&&b) { creationQueue.push({front:f, back:b}); updateQueueUI(); flipBack(); document.getElementById('q-in').value=''; } }
-        function updateQueueUI() { document.getElementById('q-count').innerText = creationQueue.length; document.getElementById('carousel').innerHTML = creationQueue.map(c => `<div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0 border border-blue-200">?</div>`).join(''); }
+        function addToQueue() {
+            const f = document.getElementById('q-in').value;
+            const b = document.getElementById('a-out').value;
+            if(f && b) {
+                creationQueue.push({front:f, back:b});
+                currentQueueIndex = creationQueue.length - 1;
+                updateQueueUI();
+                flipBack();
+                document.getElementById('q-in').value='';
+            }
+        }
+
+        function loadQueueCard(index){
+            if(index < 0 || index >= creationQueue.length) return;
+            currentQueueIndex = index;
+            const c = creationQueue[index];
+            const qEl = document.getElementById('q-in');
+            const aEl = document.getElementById('a-out');
+            if(qEl) qEl.value = c.front || '';
+            if(aEl) aEl.value = c.back || '';
+            // При избор на карта показваме първо лицето; двойно кликване ще я завърти
+            const cardEl = document.getElementById('createCard');
+            if(cardEl) cardEl.classList.remove('flipped');
+        }
+
+        function updateQueueUI() {
+            const countEl = document.getElementById('q-count');
+            const carousel = document.getElementById('carousel');
+            if(countEl) countEl.innerText = creationQueue.length;
+            if(!carousel) return;
+
+            carousel.innerHTML = '';
+            creationQueue.forEach((c, idx) => {
+                const dot = document.createElement('button');
+                dot.type = 'button';
+                const isActive = idx === currentQueueIndex;
+                dot.className = 'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border focus:outline-none focus:ring-2 focus:ring-blue-400 ' +
+                    (isActive ? 'bg-blue-600 text-white border-blue-600' : 'bg-blue-100 text-blue-600 border-blue-200 hover:bg-blue-200');
+                dot.textContent = String(idx+1);
+                dot.onclick = () => {
+                    loadQueueCard(idx);
+                    updateQueueUI();
+                };
+                carousel.appendChild(dot);
+            });
+        }
         async function saveAll() {
             const name = document.getElementById('deck-in').value || 'Нова папка';
             let { data: deck } = await sb.from('decks').select('id').eq('name', name).maybeSingle();
@@ -966,7 +2472,11 @@
             creationQueue = []; updateQueueUI(); goHome();
         }
 
-        window.onload = () => { lucide.createIcons(); loadLibrary(); };
+        window.onload = async () => {
+            lucide.createIcons();
+            await loadLibrary();
+            await handleInitialImportIfAny();
+        };
     </script>
 
     <!-- Clipboard behavior copied from homepage so capsule works 1:1 -->
@@ -994,6 +2504,99 @@
             let clipboardOpen = false;
             let dragDepth = 0;
             let dragGhostEl = null;
+
+            const STUDY_CLIPBOARD_DB_NAME = 'studyspace_clipboard_db_v1';
+            const STUDY_CLIPBOARD_STORE = 'files';
+
+            function openStudyClipboardDb(){
+                return new Promise((resolve, reject) => {
+                    if(!('indexedDB' in window)) return reject(new Error('IndexedDB not available'));
+                    const req = indexedDB.open(STUDY_CLIPBOARD_DB_NAME, 1);
+                    req.onupgradeneeded = () => {
+                        const db = req.result;
+                        if(!db.objectStoreNames.contains(STUDY_CLIPBOARD_STORE)){
+                            const store = db.createObjectStore(STUDY_CLIPBOARD_STORE, { keyPath: 'id' });
+                            store.createIndex('createdAt', 'createdAt', { unique: false });
+                        }
+                    };
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error || new Error('IndexedDB open failed'));
+                });
+            }
+
+            async function persistClipboardItem(item){
+                if(!item || !item.id || !item.file) return;
+                let db;
+                try{ db = await openStudyClipboardDb(); } catch(_){ return; }
+                const rec = {
+                    id: item.id,
+                    name: item.name || (item.file && item.file.name) || 'file',
+                    type: item.type || (item.file && item.file.type) || '',
+                    size: item.size || (item.file && item.file.size) || 0,
+                    lastModified: (item.file && item.file.lastModified) || Date.now(),
+                    createdAt: item.createdAt || Date.now(),
+                    blob: item.file
+                };
+                await new Promise((resolve) => {
+                    try{
+                        const tx = db.transaction(STUDY_CLIPBOARD_STORE, 'readwrite');
+                        tx.oncomplete = () => resolve();
+                        tx.onerror = () => resolve();
+                        tx.objectStore(STUDY_CLIPBOARD_STORE).put(rec);
+                    } catch(_){ resolve(); }
+                });
+            }
+
+            async function loadPersistedClipboardItems(){
+                let db;
+                try{ db = await openStudyClipboardDb(); } catch(_){ return; }
+                const records = await new Promise((resolve) => {
+                    try{
+                        const tx = db.transaction(STUDY_CLIPBOARD_STORE, 'readonly');
+                        const store = tx.objectStore(STUDY_CLIPBOARD_STORE);
+                        const out = [];
+                        const idx = store.index ? store.index('createdAt') : null;
+                        const req = idx ? idx.openCursor(null, 'next') : store.openCursor();
+                        req.onsuccess = () => {
+                            const cursor = req.result;
+                            if(cursor){
+                                out.push(cursor.value);
+                                cursor.continue();
+                            } else {
+                                resolve(out);
+                            }
+                        };
+                        req.onerror = () => resolve([]);
+                    } catch(_){ resolve([]); }
+                });
+
+                const revived = [];
+                records.forEach(rec => {
+                    if(!rec || !rec.blob) return;
+                    let file = null;
+                    try{
+                        file = new File([rec.blob], rec.name || 'file', { type: rec.type || (rec.blob.type || ''), lastModified: rec.lastModified || Date.now() });
+                    } catch(_){
+                        file = null;
+                    }
+                    revived.push({
+                        id: rec.id,
+                        name: rec.name || 'file',
+                        size: rec.size || (rec.blob && rec.blob.size) || 0,
+                        type: rec.type || (rec.blob && rec.blob.type) || '',
+                        displayType: rec.type || 'Файл',
+                        file,
+                        createdAt: rec.createdAt || Date.now(),
+                        previewUrl: null,
+                        previewKind: null,
+                        previewIcon: null,
+                        snippet: '',
+                        previewPrepared: false
+                    });
+                });
+
+                clipboardItems = revived.filter(i => i.file);
+            }
 
             function formatBytes(bytes){
                 if(typeof bytes !== 'number' || Number.isNaN(bytes)) return '0 B';
@@ -1133,6 +2736,9 @@
                     try{
                         event.dataTransfer.setData('application/x-study-clipboard', JSON.stringify({ name: item.name, size: item.size, type: item.displayType || 'Файл', mime: item.type || '' }));
                     } catch(err){}
+                    try{
+                        event.dataTransfer.setData('application/x-studyspace-clipboard-id', item.id);
+                    } catch(err){}
                     if(event.dataTransfer.items && typeof event.dataTransfer.items.add === 'function' && item.file){
                         try{ event.dataTransfer.items.add(item.file); } catch(err){}
                     }
@@ -1233,19 +2839,23 @@
                 let captured = false;
                 Array.from(files || []).forEach(file => {
                     const mime = file.type || '';
-                    clipboardItems.push({
-                        id: `${file.name}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                    const id = `${file.name}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                    const item = {
+                        id,
                         name: file.name,
                         size: file.size,
                         type: mime,
                         displayType: mime || 'Файл',
                         file,
+                        createdAt: Date.now(),
                         previewUrl: null,
                         previewKind: null,
                         previewIcon: null,
                         snippet: '',
                         previewPrepared: false
-                    });
+                    };
+                    clipboardItems.push(item);
+                    persistClipboardItem(item).catch(()=>{});
                     captured = true;
                 });
                 if(captured){
@@ -1311,9 +2921,15 @@
                 }
             });
 
-            capsule.addEventListener('dblclick', () => {
+            capsule.addEventListener('dblclick', async () => {
                 if(clipboard.classList.contains('clipboard-disabled')) return;
-                setClipboardOpen(!clipboardOpen);
+                if(clipboardOpen){
+                    setClipboardOpen(false);
+                    return;
+                }
+                await loadPersistedClipboardItems();
+                updateClipboardUI();
+                setClipboardOpen(true);
             });
 
             let hoverIntentTimer = null;
@@ -1344,7 +2960,14 @@
             capsule.addEventListener('keydown', (event) => {
                 if(event.key === 'Enter' || event.key === ' '){
                     event.preventDefault();
-                    setClipboardOpen(!clipboardOpen);
+                    if(clipboardOpen){
+                        setClipboardOpen(false);
+                    } else {
+                        loadPersistedClipboardItems().then(() => {
+                            updateClipboardUI();
+                            setClipboardOpen(true);
+                        });
+                    }
                 } else if(event.key === 'Escape' && clipboardOpen){
                     setClipboardOpen(false);
                 }
@@ -1369,8 +2992,14 @@
                 }
             });
 
-            updateClipboardUI();
-            setClipboardOpen(false);
+            // Initial sync from persistent clipboard (so count/badge is correct everywhere)
+            loadPersistedClipboardItems().then(() => {
+                updateClipboardUI();
+                setClipboardOpen(false);
+            }).catch(() => {
+                updateClipboardUI();
+                setClipboardOpen(false);
+            });
         })();
     </script>
 
