@@ -97,6 +97,9 @@
         /* Cards area */
         .cards-wrap{margin-top:calc(var(--gap) * 1.2);padding:18px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.4), rgba(240,250,255,0.18));border:1px solid rgba(255,255,255,0.6);display:flex;align-items:flex-start;box-shadow:0 8px 24px rgba(45,80,150,0.04);position:relative;z-index:1}
 
+        /* When the profile dropdown is open, prevent clicking through to cards underneath */
+        body.dropdown-open .cards-wrap{pointer-events:none}
+
         /* Responsive flow: cards will wrap and scale to available width */
         .cards{display:flex;gap:var(--gap);width:100%;flex-wrap:wrap;align-items:flex-start}
 
@@ -2050,7 +2053,7 @@
                         </li>
 
                         <li>
-                            <a href="account.html">
+                            <a href="login.html">
                                 <i class="fa-solid fa-right-from-bracket icon" aria-hidden="true"></i>
                                 <span data-i18n="menu.logout">Изход</span>
                                 <span class="arrow">▶</span>
@@ -2434,12 +2437,24 @@
     
         profileBtn.addEventListener("click", () => {
             profileDropdown.classList.toggle("show");
+            document.body.classList.toggle('dropdown-open', profileDropdown.classList.contains('show'));
         });
 
         // Don't let clicks inside the dropdown trigger underlying UI (e.g., cards)
         if (profileDropdown) {
             profileDropdown.addEventListener('click', (e) => {
                 e.stopPropagation();
+            });
+
+            // Navigate using each dropdown link's href (prevents click-through to underlying cards)
+            profileDropdown.querySelectorAll('a').forEach((a) => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    document.body.classList.remove('dropdown-open');
+                    const href = a.getAttribute('href') || 'account.html';
+                    window.location.href = href;
+                });
             });
         }
     
@@ -2450,6 +2465,7 @@
             if (pBtn && pDrop && !pBtn.contains(e.target) && !pDrop.contains(e.target)) {
                 pDrop.classList.remove("show");
                 pDrop.classList.remove("active");
+                document.body.classList.remove('dropdown-open');
             }
         });
 
