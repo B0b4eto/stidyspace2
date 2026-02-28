@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Study Space — Redirecting...</title>
   <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body {
       font-family: Montserrat, Arial, sans-serif;
@@ -34,40 +33,11 @@
 
   <script>
     (function(){
-      async function checkAuthAndRedirect(){
-        const INTRO_URL = 'introduction.html';
-        const HOME_URL = 'homepage (3).html';
-
-        // Small delay to make the transition feel smooth
-        await new Promise(r => setTimeout(r, 300));
-
-        try {
-          // Prefer Supabase session over any custom tokens
-          if (window.supabase && typeof window.supabase.createClient === 'function') {
-            const SUPABASE_URL = 'https://zfqpfhtbpfdudbpqzbbg.supabase.co';
-            // Use the same project key style used across the app; session is stored in localStorage.
-            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE';
-            const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-            const { data: sessionData } = await sb.auth.getSession();
-            const session = sessionData && sessionData.session;
-
-            if (session && session.user) {
-              window.location.replace(HOME_URL);
-              return;
-            }
-            window.location.replace(INTRO_URL);
-            return;
-          }
-        } catch (e) {
-          // fall through to the safe default below
-        }
-
-        // Safe default: if we can't verify auth, send to intro
-        window.location.replace(INTRO_URL);
-      }
-      
-      checkAuthAndRedirect();
+      // Always land on the Intro page first (login/signup flow).
+      // This avoids skipping straight into the homepage due to cached auth/session state.
+      setTimeout(() => {
+        window.location.replace('introduction.html');
+      }, 300);
     })();
   </script>
 </body>
