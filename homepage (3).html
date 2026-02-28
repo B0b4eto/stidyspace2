@@ -2047,7 +2047,7 @@
                         </li>
 
                         <li>
-                            <a href="log-in.html">
+                            <a href="account.html">
                                 <i class="fa-solid fa-right-from-bracket icon" aria-hidden="true"></i>
                                 <span data-i18n="menu.logout">Изход</span>
                                 <span class="arrow">▶</span>
@@ -6401,6 +6401,13 @@
 
             // Fetch and render recent flashcards for authenticated users
             const recentContainer = document.getElementById('recentCards');
+            window.normalizeLibraryUrl = window.normalizeLibraryUrl || function(url){
+                const u = String(url || '');
+                // Back-compat: older entries may point to the legacy file name
+                return u
+                    .replace(/Flashcardcreate%20\(3\)\.html/gi, 'Flashcardcreate.html')
+                    .replace(/Flashcardcreate\s*\(3\)\.html/gi, 'Flashcardcreate.html');
+            };
             function stripAndSnippet(html, limit = 110){
                 const text = (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
                 if(!text) return '';
@@ -6435,7 +6442,8 @@ async function renderRecentCards() {
             recent.forEach((item) => {
                 const cardDiv = document.createElement('div');
                 cardDiv.className = 'card';
-                cardDiv.onclick = () => window.location.href = item.url;
+                const targetUrl = (window.normalizeLibraryUrl ? window.normalizeLibraryUrl(item.url) : (item.url || ''));
+                cardDiv.onclick = () => window.location.href = targetUrl;
                 cardDiv.innerHTML = `
                     <div class="card-content" style="text-align:center">
                         <div style="font-size:10px;opacity:0.6;margin-bottom:5px;">ПОСЛЕДНО ОТВАРЯНА</div>
@@ -6607,7 +6615,8 @@ setTimeout(loadUserCustomization, 1200);
                 recent.forEach((item) => {
                     const cardDiv = document.createElement('div');
                     cardDiv.className = 'card';
-                    cardDiv.onclick = () => window.location.href = item.url;
+                    const targetUrl = (window.normalizeLibraryUrl ? window.normalizeLibraryUrl(item.url) : (item.url || ''));
+                    cardDiv.onclick = () => window.location.href = targetUrl;
                     cardDiv.innerHTML = `
                         <div class="card-content" style="text-align:center">
                             <div style="font-size:10px;opacity:0.6;margin-bottom:5px;">ПОСЛЕДНО ОТВАРЯНА</div>
