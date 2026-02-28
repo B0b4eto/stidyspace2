@@ -1,38 +1,55 @@
 <!DOCTYPE html>
 <html lang="bg">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skyline OS | Flashcard Studio</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Твоят Профил — StudySpace</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,600,700,900&display=swap" rel="stylesheet" />
     
-    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap" rel="stylesheet">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.js"></script>
+
     <style>
         :root {
-            --ios-blue: #007AFF;
-            --ios-gray: #F2F2F7;
-            --ease-apple: cubic-bezier(0.25, 1, 0.5, 1);
+            --bg: #f5f5f7;
             --accent: #0b63c7;
             --accent-2: #009fe6;
             --grad-start: rgba(32, 102, 255, 0.72);
             --grad-end: rgba(255, 255, 255, 0.5);
+            --theme-color: var(--accent);
+            --text-main: #1d1d1f;
+            --text-sub: #86868b;
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --border: rgba(0, 0, 0, 0.05);
+            --danger: #ff3b30;
         }
-        
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            background:
-                linear-gradient(180deg, var(--grad-start), var(--grad-end));
-            font-family: 'Inter', sans-serif;
-            color: #1D1D1F;
+            font-family: 'Montserrat', sans-serif;
+            /* Smooth gradient that fades into the solid background,
+               so the profile page doesn't show harsh horizontal lines. */
+            background:linear-gradient(
+                180deg,
+                var(--grad-start) 0,
+                var(--grad-end) 420px,
+                var(--bg) 840px,
+                var(--bg) 100%
+            );
+            color: var(--text-main);
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Frame + capsule navbar copied from homepage */
+        .background-blobs {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1;
+            background: radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 40%);
+        }
+
+        /* --- FRAME + TOPBAR (copied from homepage for 1:1 look) --- */
         .frame{
             width:100vw;
             max-width:100%;
@@ -46,7 +63,7 @@
             margin:0;
             position:relative;
             overflow:visible;
-            z-index:100; /* keep capsule navbar above overlays */
+            z-index:10;
         }
 
         .topbar{
@@ -92,21 +109,21 @@
 
         .pill{
             width:min(1100px,92%);
-            background:linear-gradient(90deg, rgba(255,255,255,0.16), rgba(240,250,255,0.10));
-            border-radius:44px;
-            padding:16px 32px;
-            border:1px solid rgba(255,255,255,0.16);
+            background:linear-gradient(90deg, rgba(255,255,255,0.10), rgba(240,250,255,0.06));
+            border-radius:40px;
+            padding:12px 28px;
+            border:1px solid rgba(255,255,255,0.12);
             display:flex;
             justify-content:center;
-            gap:26px;
+            gap:24px;
             font-weight:800;
             align-items:center;
             position:relative;
             overflow:visible;
-            backdrop-filter:blur(10px);
+            backdrop-filter:blur(6px);
         }
 
-        .pill span{font-size:clamp(16px,1.6vw,19px);color:var(--capsule-text-color,#020617);position:relative;z-index:2}
+        .pill span{font-size:clamp(15px,1.4vw,18px);color:#e6f5ff;position:relative;z-index:2}
 
         /* faint mouse-position reflection for pill (like homepage) */
         .pill{overflow:hidden}
@@ -118,11 +135,12 @@
         .pill::after{z-index:2}
         .pill > span{position:relative;z-index:3}
 
-        .home-clipboard{position:relative;display:flex;flex-direction:column;align-items:center;width:min(1100px,96%);gap:12px;z-index:1;padding-bottom:28px}
+        /* Clipboard capsule styles */
+        .home-clipboard{position:relative;display:flex;flex-direction:column;align-items:center;width:min(1100px,92%);gap:10px;z-index:1;padding-bottom:24px}
         .home-clipboard.open{z-index:460}
-        .home-clipboard .pill{width:100%;position:relative;padding:14px 32px;border-radius:40px}
-        .home-capsule{justify-content:center;gap:24px;cursor:default;transition:transform 0.5s cubic-bezier(.25,.85,.35,1),box-shadow 0.4s ease,border-color 0.25s ease, padding 0.45s cubic-bezier(.25,1,.5,1), border-radius 0.45s cubic-bezier(.25,1,.5,1);min-height:60px;outline:none;position:relative;z-index:2;box-shadow:0 16px 42px rgba(6,40,90,0.18);will-change:transform,box-shadow}
-        .home-capsule span{color:#e6f5ff;font-size:clamp(16px,1.6vw,19px);font-weight:inherit}
+        .home-clipboard .pill{width:100%;position:relative;padding-right:110px;padding-left:28px;padding-top:10px;padding-bottom:10px;border-radius:34px}
+        .home-capsule{justify-content:center;gap:20px;cursor:default;transition:transform 0.5s cubic-bezier(.25,.85,.35,1),box-shadow 0.4s ease,border-color 0.25s ease;min-height:48px;outline:none;position:relative;z-index:2;box-shadow:0 12px 34px rgba(6,40,90,0.14);will-change:transform,box-shadow}
+        .home-capsule span{color:#e6f5ff;font-size:clamp(15px,1.4vw,18px);font-weight:inherit}
         .home-clipboard-count{position:absolute;top:50%;right:12px;min-width:32px;height:22px;padding:0 12px;border-radius:999px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 36px rgba(11,99,199,0.32);transform:translateY(-50%) scale(0);opacity:0;transition:transform 0.3s ease,opacity 0.3s ease;pointer-events:none;z-index:4}
         .home-clipboard.has-items .home-clipboard-count{transform:translateY(-50%) scale(1);opacity:1}
         .home-clipboard.drag-ready{z-index:480}
@@ -144,134 +162,7 @@
         .home-clipboard-info{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
         .home-clipboard-item-title{font-size:13px;font-weight:600;color:var(--accent-dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .home-clipboard-snippet{font-size:11px;line-height:1.35;color:var(--accent-dark);margin:0;overflow:hidden;display:-webkit-box;line-clamp:2;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-        .home-clipboard-item-details{font-size:10px;color:#6b87b7;text-transform:uppercase;letter-spacing:0.5px}
-
-        /* Capsule progress mode (Apple-like) */
-        .capsule-progress{
-            position:absolute;
-            inset:0;
-            display:flex;
-            flex-direction:column;
-            align-items:center;
-            justify-content:center;
-            gap:4px;
-            min-width:180px;
-            opacity:0;
-            transform:translateY(10px) scale(0.96);
-            transition:opacity 0.38s cubic-bezier(.25,1,.5,1), transform 0.38s cubic-bezier(.25,1,.5,1);
-            pointer-events:none;
-        }
-
-        .capsule-progress-label{
-            font-size:11px;
-            letter-spacing:0.14em;
-            text-transform:uppercase;
-            color:var(--capsule-muted-color,rgba(15,23,42,0.72));
-        }
-
-        .capsule-progress-row{
-            display:flex;
-            align-items:center;
-            gap:14px;
-            width:100%;
-            padding:0 52px;
-            box-sizing:border-box;
-        }
-
-        .capsule-progress-bar{
-            flex:1;
-            height:6px;
-            border-radius:999px;
-            background:rgba(255,255,255,0.26);
-            overflow:hidden;
-            position:relative;
-            box-shadow:inset 0 0 0 1px rgba(255,255,255,0.18);
-        }
-
-        .capsule-progress-fill{
-            position:absolute;
-            inset:0;
-            width:0%;
-            background:linear-gradient(90deg,var(--accent),var(--accent-2));
-            border-radius:inherit;
-            box-shadow:0 0 16px rgba(11,99,199,0.8);
-            transform-origin:left center;
-            transition:width 0.5s cubic-bezier(.25,1,.5,1);
-        }
-
-        .capsule-progress-counter{
-            min-width:42px;
-            font-size:12px;
-            font-weight:600;
-            text-align:right;
-            color:var(--capsule-muted-color,rgba(15,23,42,0.72));
-        }
-
-        .home-clipboard.progress-mode .home-capsule,
-        .home-clipboard.summary-mode .home-capsule{
-            padding-top:10px;
-            padding-bottom:10px;
-            gap:12px;
-            border-radius:999px;
-            box-shadow:0 30px 80px rgba(6,40,90,0.4);
-            max-width:680px;
-            margin:0 auto;
-            animation:capsuleMorphBounce 0.7s var(--ease-apple);
-        }
-
-        .home-clipboard.progress-mode #date,
-        .home-clipboard.progress-mode #time,
-        .home-clipboard.progress-mode #homeClipboardCount,
-        .home-clipboard.summary-mode #date,
-        .home-clipboard.summary-mode #time,
-        .home-clipboard.summary-mode #homeClipboardCount{
-            opacity:0;
-            transform:translateY(-10px);
-            transition:opacity 0.28s ease, transform 0.28s ease;
-            pointer-events:none;
-            position:absolute;
-        }
-
-        .home-clipboard.progress-mode .capsule-progress{
-            opacity:1;
-            transform:translateY(0) scale(1);
-            pointer-events:auto;
-        }
-
-        .home-clipboard:not(.progress-mode) .capsule-progress{
-            opacity:0;
-            transform:translateY(8px) scale(0.96);
-            pointer-events:none;
-        }
-
-        .capsule-summary-label{
-            position:absolute;
-            inset:0;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            font-size:13px;
-            font-weight:700;
-            letter-spacing:0.16em;
-            text-transform:uppercase;
-            color:var(--capsule-text-color,#123055);
-            opacity:0;
-            transform:translateY(8px) scale(0.96);
-            transition:opacity 0.4s cubic-bezier(.25,1,.5,1), transform 0.4s cubic-bezier(.25,1,.5,1);
-            pointer-events:none;
-        }
-
-        .home-clipboard.summary-mode .capsule-summary-label{
-            opacity:1;
-            transform:translateY(0) scale(1);
-            color:rgba(15,23,42,0.96);
-        }
-
-        @keyframes capsuleMorphBounce{
-            0%{transform:scale(0.96);}
-            50%{transform:scale(1.04);}
-            100%{transform:scale(1);}
-        }
+        .home-clipboard-item-details{font-size:10px;color:var(--text-sub);text-transform:uppercase;letter-spacing:0.5px}
 
         @media (max-width:640px){
             .topbar{gap:10px}
@@ -286,334 +177,214 @@
             .home-clipboard.drag-ready .home-capsule{transform:none;box-shadow:0 12px 34px rgba(6,40,90,0.14)}
             .home-clipboard.captured .home-capsule{animation:none}
         }
+        
+        /* Profile dropdown styles copied from homepage */
+        .profile-container { position: relative; }
 
-        .skyline-logo {
-            font-family: 'Montserrat', Arial, sans-serif;
-            font-weight: 700;
-            font-size: 24px;
-            letter-spacing: -1px;
-            color: #05294a;
-            user-select: none;
+        .profile-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
             cursor: pointer;
+            transition: 0.2s;
         }
 
-        /* 3D CAPSULE ELEMENT */
-        .capsule-container {
-            width: 140px;
-            height: 260px;
-            background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
-            border-radius: 9999px;
-            border: 1px solid rgba(255,255,255,0.6);
-            box-shadow: 
-                20px 20px 60px #bebebe, 
-                -20px -20px 60px #ffffff,
-                inset 0 0 20px rgba(0, 122, 255, 0.1);
+        .profile-icon:hover { transform: scale(1.07); }
+
+        .profile-dropdown {
+            position: absolute;
+            right: 0;
+            top: 58px;
+            width: 220px;
+            background: #fff;
+            border-radius: 12px;
+            padding: 10px 0;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.22s ease;
+            z-index: 999;
+        }
+
+        .profile-dropdown.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-header {
             display: flex;
             align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            position: relative;
-            overflow: hidden;
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
         }
 
-        .capsule-container:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 
-                25px 25px 70px #bebebe, 
-                -25px -25px 70px #ffffff,
-                inset 0 0 30px rgba(0, 122, 255, 0.2);
-        }
-
-        .capsule-container:active {
-            transform: scale(0.95);
-        }
-
-        .capsule-content {
-            text-align: center;
-            color: #007AFF;
-            pointer-events: none; /* Кликовете минават към капсулата */
-        }
-
-        .capsule-shine {
-            position: absolute;
-            top: 0; left: 0; right: 0; height: 50%;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.8), rgba(255,255,255,0));
-            border-radius: 9999px 9999px 0 0;
-            pointer-events: none;
-        }
-
-        /* UI & CARDS */
-        .ios-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-        }
-
-        .ios-btn { transition: all 0.2s var(--ease-apple); }
-        .ios-btn:active { transform: scale(0.96); opacity: 0.8; }
-
-        .hidden-view { display: none !important; }
-        .fade-in { animation: fadeIn 0.4s var(--ease-apple) forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
-
-        /* 3D FLIP */
-        .card-container {
-            perspective: 2000px;
-            width: min(700px, 90vw);
-            height: 420px;
-            position: relative;
-            transform-origin: center;
-            transition: transform 0.22s var(--ease-apple);
-        }
-        .card-container.file-drag-over{ transform: scale(1.04); }
-        @media (prefers-reduced-motion: reduce){
-            .card-container{ transition:none; }
-        }
-        .card-inner {
-            position: relative; width: 100%; height: 100%;
-            transition: transform 0.6s var(--ease-apple); transform-style: preserve-3d;
-        }
-        .card-inner.flipped { transform: rotateY(180deg); }
-        .face {
-            position: absolute; inset: 0; backface-visibility: hidden;
-            border-radius: 32px; padding: 40px; display: flex; flex-direction: column;
-            background: white; border: 1px solid #E5E5EA;
-            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1);
-        }
-        .back { transform: rotateY(180deg); background: #FAFAFA; }
-        
-        .apple-loader {
-            width: 60px; height: 60px; background: var(--accent);
+        .dropdown-avatar {
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
-        }
-        @keyframes pulse-ring { 
-            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(0, 122, 255, 0); }
-            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 122, 255, 0); }
+            margin-right: 10px;
         }
 
-        /* Progress-fill button for import generation */
-        .import-progress-btn{
-            position:relative;
-            overflow:hidden;
-        }
-        .import-progress-btn .import-progress-fill{
-            position:absolute;
-            inset:0;
-            width:0%;
-            background:linear-gradient(90deg,var(--accent),var(--accent-2));
-            opacity:0.22;
-            pointer-events:none;
-            transition:width 0.4s cubic-bezier(.25,1,.5,1);
-            z-index:0;
-        }
-        .import-progress-btn > *{
-            position:relative;
-            z-index:1;
+        .profile-dropdown ul {
+            padding: 0;
+            margin: 0;
+            list-style: none;
         }
 
-        /* Dark mode variant similar to homepage */
+        .profile-dropdown li a {
+            display: block;
+            padding: 12px 18px;
+            font-size: 15px;
+            color: #333;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .profile-dropdown li a:hover {
+            background: #f5f5f5;
+            transform: translateX(3px);
+        }
+
+        .profile-dropdown .icon {
+            width: 18px;
+            height: 18px;
+            margin-right: 10px;
+            opacity: 0.85;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-dropdown .arrow {
+            margin-left: auto;
+            opacity: 0;
+            transform: translateX(-6px);
+            transition: 0.25s ease;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .profile-dropdown ul li a:hover .arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* --- CONTAINER --- */
+        .main-container { position: relative; z-index: 10; max-width: 1000px; margin: 0 auto; padding: 100px 20px; }
+        .profile-grid { display: grid; grid-template-columns: 320px 1fr; gap: 30px; margin-top: 20px; }
+        .glass-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 24px; padding: 35px; backdrop-filter: blur(30px); box-shadow: 0 15px 35px rgba(0,0,0,0.03); }
+
+        /* --- AVATAR & CROPPER --- */
+        .avatar-section { text-align: center; }
+        .avatar-wrap { position: relative; width: 160px; height: 160px; margin: 0 auto 20px; }
+        .profile-pic { width: 100%; height: 100%; border-radius: 40px; object-fit: cover; border: 5px solid white; box-shadow: 0 10px 25px rgba(0,0,0,0.06); }
+        .upload-btn { position: absolute; bottom: -5px; right: -5px; background: white; border: 1px solid var(--border); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.08); z-index: 5; font-size: 16px; }
+
+        /* Cropper Modal */
+        #cropper-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 2000; align-items: center; justify-content: center; }
+        .cropper-container { background: white; padding: 25px; border-radius: 30px; width: 90%; max-width: 450px; text-align: center; }
+        
+        /* --- FORM --- */
+        .field { margin-bottom: 20px; }
+        .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 8px; margin-left: 5px; }
+        .field input, .field select { width: 100%; padding: 14px 18px; background: #fff; border: 1px solid rgba(0,0,0,0.1); border-radius: 14px; font-size: 16px; outline: none; transition: 0.3s; }
+        .field input:focus { border-color: var(--theme-color); box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1); }
+        .btn-save { width: 100%; padding: 16px; background: var(--theme-color); color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; transition: 0.3s; }
+
+        /* --- APPLE CALENDAR OVERRIDE --- */
+        .flatpickr-calendar { border-radius: 20px !important; box-shadow: 0 15px 40px rgba(0,0,0,0.1) !important; border: none !important; padding: 10px; }
+        .flatpickr-day.selected { background: var(--theme-color) !important; border-radius: 10px; }
+
+        /* --- LOGOUT POPUP --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-card { background: white; padding: 30px; border-radius: 20px; width: 300px; text-align: center; }
+        .sign-out-btn { margin-top: 40px; color: var(--danger); font-weight: 600; cursor: pointer; background: white; border: 1px solid rgba(255,43,48,0.1); padding: 12px 30px; border-radius: 12px; }
+
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 12px 25px; background: #1d1d1f; color: white; border-radius: 50px; font-size: 14px; opacity: 0; transition: 0.4s; z-index: 3000; }
+        .toast.show { opacity: 1; bottom: 50px; }
+
+        /* Dark mode tweaks to match homepage */
         body.dark-mode {
-            --accent-dark: #e5e7eb;
-            --capsule-text-color: #e5e7eb;
-            --capsule-muted-color: rgba(226,232,240,0.72);
+            --text-main: #e5e7eb;
+            --text-sub: rgba(226,232,240,0.68);
+            --card-bg: rgba(15,23,42,0.86);
+            --border: rgba(148,163,184,0.22);
             color: #e5e7eb;
             background:
                 linear-gradient(180deg, rgba(15,23,42,0.96), rgba(15,23,42,0.92));
         }
-        body.dark-mode nav { background: rgba(15,23,42,0.88); border-color: rgba(148,163,184,0.4); }
-        body.dark-mode .ios-card { background: rgba(15,23,42,0.9); border-color: rgba(148,163,184,0.35); box-shadow: 0 18px 40px rgba(0,0,0,0.5); }
+        body.dark-mode nav { background: rgba(15,23,42,0.85); border-color: rgba(148,163,184,0.4); }
+        body.dark-mode .glass-card { background: rgba(15,23,42,0.9); border-color: rgba(148,163,184,0.35); box-shadow: 0 18px 40px rgba(0,0,0,0.45); }
+        body.dark-mode .field input,
+        body.dark-mode .field select { background: rgba(15,23,42,0.9); border-color: rgba(55,65,81,0.9); color: #e5e7eb; }
+        body.dark-mode .field label { color: #9ca3af; }
+        body.dark-mode .btn-save { box-shadow: 0 10px 26px rgba(37,99,235,0.6); }
 
-        /* Dark mode: make hard-coded light text/colors readable */
-        body.dark-mode .skyline-logo { color: rgba(226,232,240,0.92); }
-        body.dark-mode #view-library h1 { color: rgba(226,232,240,0.96) !important; }
-
-        /* Dark mode: Tailwind utility overrides (scoped) */
-        body.dark-mode .text-gray-900 { color: rgba(226,232,240,0.96) !important; }
-        body.dark-mode .text-gray-800 { color: rgba(226,232,240,0.92) !important; }
-        body.dark-mode .text-gray-700 { color: rgba(226,232,240,0.86) !important; }
-        body.dark-mode .text-gray-600 { color: rgba(226,232,240,0.74) !important; }
-        body.dark-mode .text-gray-500 { color: rgba(226,232,240,0.64) !important; }
-        body.dark-mode .text-gray-400 { color: rgba(226,232,240,0.54) !important; }
-        body.dark-mode .text-black { color: rgba(226,232,240,0.92) !important; }
-
-        body.dark-mode .bg-white { background-color: rgba(15,23,42,0.86) !important; }
-        body.dark-mode .bg-gray-50 { background-color: rgba(15,23,42,0.62) !important; }
-        body.dark-mode .bg-gray-100 { background-color: rgba(30,41,59,0.66) !important; }
-        body.dark-mode .bg-gray-200 { background-color: rgba(148,163,184,0.18) !important; }
-        body.dark-mode .border-gray-100 { border-color: rgba(148,163,184,0.18) !important; }
-        body.dark-mode .border-gray-200 { border-color: rgba(148,163,184,0.22) !important; }
-
-        /* Dark mode: flip-card surfaces */
-        body.dark-mode .face {
-            background: rgba(15,23,42,0.90);
-            border-color: rgba(148,163,184,0.22);
-            box-shadow: 0 26px 60px -18px rgba(0,0,0,0.55);
+        body.dark-mode .profile-dropdown {
+            background: rgba(15,23,42,0.92);
+            border: 1px solid rgba(148,163,184,0.22);
+            box-shadow: 0 18px 50px rgba(0,0,0,0.55);
         }
-        body.dark-mode .back { background: rgba(2,6,23,0.88); }
+        body.dark-mode .dropdown-header { border-bottom-color: rgba(148,163,184,0.16); }
+        body.dark-mode .profile-dropdown li a { color: rgba(226,232,240,0.92); }
+        body.dark-mode .profile-dropdown li a:hover { background: rgba(148,163,184,0.12); }
+        body.dark-mode .profile-dropdown .arrow { color: rgba(226,232,240,0.62); }
 
-        /* Dark mode: modals (settings/rename/import) */
-        body.dark-mode #modal-settings { background-color: rgba(0,0,0,0.55) !important; }
-        body.dark-mode #modal-settings > div,
-        body.dark-mode #rename-modal > div {
-            background: rgba(15,23,42,0.90) !important;
-            border-color: rgba(148,163,184,0.22) !important;
+        body.dark-mode #cropper-modal { background: rgba(0,0,0,0.75); }
+        body.dark-mode .cropper-container {
+            background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(2,6,23,0.92));
+            border: 1px solid rgba(148,163,184,0.22);
+            color: rgba(226,232,240,0.92);
         }
 
-        body.dark-mode #import-modal{
-            background-color: rgba(0,0,0,0.62) !important;
+        body.dark-mode .modal-overlay { background: rgba(0,0,0,0.62); }
+        body.dark-mode .modal-card {
+            background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(2,6,23,0.92));
+            border: 1px solid rgba(148,163,184,0.22);
+            color: rgba(226,232,240,0.92);
         }
-        body.dark-mode #import-modal > div{
-            background: rgba(15,23,42,0.92) !important;
-            border-color: rgba(148,163,184,0.22) !important;
-            box-shadow: 0 30px 90px rgba(0,0,0,0.62) !important;
-        }
-
-        body.dark-mode #delete-modal{
-            background-color: rgba(0,0,0,0.62) !important;
-        }
-        body.dark-mode #delete-modal > div{
-            background: rgba(15,23,42,0.92) !important;
-            border-color: rgba(148,163,184,0.22) !important;
-            box-shadow: 0 30px 90px rgba(0,0,0,0.62) !important;
-        }
-
-        /* Dark mode: import modal segmented toggle */
-        body.dark-mode #import-modal #import-toggle-bg{
-            background: rgba(226,232,240,0.10) !important;
-            box-shadow: none !important;
-        }
-
-        /* Dark mode: import modal secondary surfaces */
-        body.dark-mode #import-modal textarea,
-        body.dark-mode #import-modal select{
-            background-color: rgba(2,6,23,0.34) !important;
-            border-color: rgba(148,163,184,0.22) !important;
-            color: rgba(226,232,240,0.90) !important;
-        }
-        body.dark-mode #import-modal textarea::placeholder{
-            color: rgba(226,232,240,0.48) !important;
-        }
-
-        body.dark-mode #import-modal button.bg-white{
-            background-color: rgba(30,41,59,0.58) !important;
-            border-color: rgba(148,163,184,0.22) !important;
-        }
-        body.dark-mode #import-modal button.bg-white:hover{
-            background-color: rgba(30,41,59,0.72) !important;
-        }
-
-        /* Dark mode: range slider readability */
-        body.dark-mode #import-cards-slider{
-            accent-color: var(--accent);
-        }
-        body.dark-mode #import-cards-slider::-webkit-slider-runnable-track{
-            height: 6px;
-            border-radius: 999px;
-            background: rgba(148,163,184,0.22);
-        }
-        body.dark-mode #import-cards-slider::-webkit-slider-thumb{
-            -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 999px;
-            background: rgba(226,232,240,0.92);
-            border: 2px solid var(--accent);
-            box-shadow: 0 10px 26px rgba(0,0,0,0.45);
-            margin-top: -6px;
-        }
-        body.dark-mode #import-cards-slider::-moz-range-track{
-            height: 6px;
-            border-radius: 999px;
-            background: rgba(148,163,184,0.22);
-        }
-        body.dark-mode #import-cards-slider::-moz-range-thumb{
-            width: 18px;
-            height: 18px;
-            border-radius: 999px;
-            background: rgba(226,232,240,0.92);
-            border: 2px solid var(--accent);
-            box-shadow: 0 10px 26px rgba(0,0,0,0.45);
-        }
-
-        /* Plan editor (paper UI) */
-        #plan-editor-overlay{
-            background-color: rgba(0,0,0,0.40);
-        }
-        #plan-paper{
-            background: rgba(255,255,255,0.96);
-            border: 1px solid rgba(15,23,42,0.10);
-            box-shadow: 0 40px 120px rgba(0,0,0,0.18);
-            border-radius: 28px;
-        }
-        #plan-editor-frame{
-            max-height: 86vh;
-            display: flex;
-            flex-direction: column;
-        }
-        #plan-editor-toolbar{
-            background: rgba(255,255,255,0.92);
-            border: 1px solid rgba(15,23,42,0.10);
-            border-radius: 22px;
-        }
-        #plan-paper{
-            flex: 1;
-            overflow: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        #plan-editor-content{
-            outline: none;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-        #plan-editor-content:empty:before{
-            content: attr(data-placeholder);
-            color: rgba(15,23,42,0.42);
-        }
-
-        body.dark-mode #plan-editor-overlay{
-            background-color: rgba(0,0,0,0.62);
-        }
-        body.dark-mode #plan-paper{
-            background: rgba(255,255,255,0.92);
-            border-color: rgba(148,163,184,0.22);
-            box-shadow: 0 46px 140px rgba(0,0,0,0.55);
-        }
-        body.dark-mode #plan-editor-toolbar{
+        body.dark-mode .sign-out-btn {
             background: rgba(15,23,42,0.72);
-            border-color: rgba(148,163,184,0.22);
+            border-color: rgba(255,43,48,0.22);
         }
 
-        /* Dark mode: keep paper text dark on white sheet + style toolbar buttons */
-        body.dark-mode #plan-paper #plan-editor-content{
-            color: rgba(15,23,42,0.92) !important;
+        /* Change password modal */
+        .pw-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.45); backdrop-filter: blur(8px); z-index: 2200; display: none; align-items: center; justify-content: center; }
+        .pw-card { width: 92%; max-width: 420px; background: white; border-radius: 22px; padding: 22px; box-shadow: 0 18px 50px rgba(0,0,0,0.18); border: 1px solid rgba(0,0,0,0.06); }
+        .pw-card h3 { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+        .pw-card p { font-size: 13px; color: var(--text-sub); margin-bottom: 14px; }
+        .pw-row { display:flex; gap:10px; margin-top: 14px; }
+        .pw-btn-secondary { flex:1; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(0,0,0,0.08); background: #f2f2f7; color: #111; font-weight: 700; cursor:pointer; }
+        .pw-btn-primary { flex:1; padding: 14px 16px; border-radius: 14px; border: none; background: var(--theme-color); color: white; font-weight: 800; cursor:pointer; }
+        .pw-btn-primary:disabled { opacity: 0.7; cursor: default; }
+        .pw-field { margin-top: 12px; }
+        .pw-field label { display:block; font-size: 12px; font-weight: 700; color: var(--text-sub); margin: 0 0 6px 5px; }
+        .pw-field input { width: 100%; padding: 14px 18px; background: #fff; border: 1px solid rgba(0,0,0,0.1); border-radius: 14px; font-size: 15px; outline:none; }
+        .pw-field input:focus { border-color: var(--theme-color); box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.12); }
+
+        body.dark-mode .pw-modal { background: rgba(0,0,0,0.62); }
+        body.dark-mode .pw-card {
+            background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(2,6,23,0.92));
+            border-color: rgba(148,163,184,0.22);
+            color: rgba(226,232,240,0.92);
+            box-shadow: 0 18px 60px rgba(0,0,0,0.62);
         }
-        body.dark-mode #plan-paper #plan-editor-content *{
-            color: inherit;
-        }
-        body.dark-mode #plan-editor-content:empty:before{
-            color: rgba(15,23,42,0.42);
-        }
-        body.dark-mode #plan-editor-toolbar .plan-toolbar-btn{
-            background: rgba(30,41,59,0.66) !important;
-            border-color: rgba(148,163,184,0.22) !important;
-            color: rgba(226,232,240,0.92) !important;
-        }
-        body.dark-mode #plan-editor-toolbar .plan-toolbar-btn:hover{
-            background: rgba(30,41,59,0.82) !important;
-        }
+        body.dark-mode .pw-card p { color: rgba(226,232,240,0.62); }
+        body.dark-mode .pw-field label { color: rgba(226,232,240,0.62); }
+        body.dark-mode .pw-field input { background: rgba(15,23,42,0.82); border-color: rgba(55,65,81,0.9); color: rgba(226,232,240,0.92); }
+        body.dark-mode .pw-btn-secondary { background: rgba(30,41,59,0.72); border-color: rgba(148,163,184,0.22); color: rgba(226,232,240,0.92); }
     </style>
-    </head>
-<body class="min-h-screen pb-20">
+</head>
+<body>
+
+    <div class="background-blobs"></div>
 
     <div class="frame">
         <div class="topbar">
-            <div class="icon-btn" id="homeNavBtn" title="Начало" onclick="location.href='homepage (3).html'">
-                <i data-lucide="home" class="w-5 h-5 text-white"></i>
+            <div class="icon-btn" title="Начало" onclick="window.location.href='homepage (3) (2).html'">
+                <i class="fa-solid fa-house-chimney" style="color:#ffffff;"></i>
             </div>
 
             <div class="center-pill">
@@ -622,16 +393,6 @@
                         <span id="date">17.02.2026 г.</span>
                         <span id="time">10:29 PM</span>
                         <span class="home-clipboard-count" id="homeClipboardCount" aria-hidden="true">0</span>
-                        <div class="capsule-progress" id="capsuleProgress" aria-hidden="true">
-                            <div class="capsule-progress-label">ПРОГРЕС</div>
-                            <div class="capsule-progress-row">
-                                <div class="capsule-progress-bar">
-                                    <div class="capsule-progress-fill" id="capsuleProgressFill"></div>
-                                </div>
-                                <div class="capsule-progress-counter" id="capsuleProgressCounter">0/0</div>
-                            </div>
-                        </div>
-                        <span class="capsule-summary-label" id="capsuleSummaryLabel" aria-hidden="true">Резултат</span>
                     </div>
                     <div class="home-clipboard-panel" id="homeClipboardPanel" aria-hidden="true">
                         <p class="home-clipboard-empty" id="homeClipboardEmpty">Плъзни файлове върху капсулата, за да ги запазиш временно.</p>
@@ -640,282 +401,124 @@
                 </div>
             </div>
 
-            <div class="icon-btn" id="newDeckBtn" title="Нова библиотека" onclick="showView('create')">
-                <i data-lucide="plus" class="w-5 h-5 text-white"></i>
-            </div>
-        </div>
+            <div class="profile-container">
+                <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22128%22%20height%3D%22128%22%20viewBox%3D%220%200%20128%20128%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20x2%3D%221%22%20y1%3D%220%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23009fe6%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230b63c7%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2264%22%20r%3D%2264%22%20fill%3D%22url%28%23g%29%22%2F%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2250%22%20r%3D%2222%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.92%29%22%2F%3E%3Cpath%20d%3D%22M24%20118c9-20%2027-32%2040-32s31%2012%2040%2032%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.92%29%22%2F%3E%3C%2Fsvg%3E" id="profileBtn" class="profile-icon" alt="Profile">
 
-    <section id="view-library" class="max-w-6xl mx-auto px-6 py-10 fade-in">
-        <div class="flex flex-col items-center mb-10 text-center">
-            <h1 class="text-3xl font-bold tracking-tight text-[#1D1D1F] mb-2">Твоите Библиотеки</h1>
-            <p class="text-gray-500 max-w-md">Управление на знанията и картите.</p>
-        </div>
-        <div id="deck-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
-    </section>
-
-    <!-- Time capsule removed from this page -->
-
-    <section id="view-create" class="hidden-view pt-10 flex flex-col items-center">
-        <div class="card-container mb-6">
-            <div class="card-inner" id="createCard">
-                <div class="face front">
-                    <div class="flex justify-between items-center mb-4">
-                        <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Тема</span>
-                        <button onclick="goHome()" class="text-gray-400 hover:text-black"><i data-lucide="x"></i></button>
+                <div class="profile-dropdown" id="profileDropdown">
+                    <div class="dropdown-header">
+                        <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22128%22%20height%3D%22128%22%20viewBox%3D%220%200%20128%20128%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20x2%3D%221%22%20y1%3D%220%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23009fe6%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230b63c7%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2264%22%20r%3D%2264%22%20fill%3D%22url%28%23g%29%22%2F%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2250%22%20r%3D%2222%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.92%29%22%2F%3E%3Cpath%20d%3D%22M24%20118c9-20%2027-32%2040-32s31%2012%2040%2032%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.92%29%22%2F%3E%3C%2Fsvg%3E" class="dropdown-avatar" alt="Avatar">
+                        <h4 data-i18n="menu.profileTitle">Твоят профил</h4>
                     </div>
-                    <textarea id="q-in" class="flex-1 text-2xl font-bold bg-transparent outline-none resize-none placeholder-gray-300" placeholder="Въведи тема..."></textarea>
-                    <button onclick="runAI()" id="genBtn" class="w-full py-3.5 bg-black text-white rounded-xl font-medium ios-btn flex items-center justify-center gap-2">
-                        <i data-lucide="sparkles" class="w-4 h-4"></i> Авто-генериране
-                    </button>
-                </div>
-                <div class="face back">
-                    <span class="text-xs font-bold text-green-600 uppercase tracking-widest mb-4">AI Резултат</span>
-                    <textarea id="a-out" class="flex-1 text-lg bg-transparent outline-none resize-none text-gray-700"></textarea>
-                    <div class="flex gap-2">
-                        <button onclick="flipBack()" class="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-medium ios-btn">Отказ</button>
-                        <button onclick="addToQueue()" class="flex-[2] py-3 bg-[#007AFF] text-white rounded-xl font-medium ios-btn">Запази</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="w-full max-w-2xl bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
-            <span class="text-xs font-bold text-gray-400 uppercase w-20">Чакащи: <span id="q-count">0</span></span>
-            <div id="carousel" class="flex-1 flex gap-2 overflow-x-auto h-12 items-center"></div>
-            <div class="flex gap-2">
-                <input id="deck-in" class="bg-gray-50 border-none rounded-lg px-3 py-2 text-sm outline-none w-32 focus:ring-1 ring-blue-500" placeholder="Име на папка">
-                <button onclick="saveAll()" class="w-10 h-10 bg-green-500 text-white rounded-lg flex items-center justify-center ios-btn"><i data-lucide="save"></i></button>
-            </div>
-        </div>
-    </section>
 
-    <!-- Import flow modal: triggered when coming from homepage with dropped files -->
-    <div id="import-modal" class="hidden-view fixed inset-0 z-40 flex items-center justify-center bg-black/25 backdrop-blur-md" onclick="if(event.target === this) closeImportModal()">
-        <div class="bg-white/95 backdrop-blur-xl w-full max-w-xl p-6 rounded-[32px] shadow-2xl border border-white/60" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-center mb-4">
-                <div>
-                    <h2 class="text-xl font-bold text-gray-900">Нов импорт</h2>
-                    <p class="text-xs text-gray-500 mt-1">AI ще анализира качените файлове и ще подготви материали за учене.</p>
+                    <ul>
+                        <li>
+                            <a href="account (1).html">
+                                <i class="fa-solid fa-user-pen icon" aria-hidden="true"></i>
+                                <span data-i18n="menu.editProfile">Редактирай профил</span>
+                                <span class="arrow">▶</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="homepage (3) (2).html">
+                                <i class="fa-solid fa-house-chimney icon" aria-hidden="true"></i>
+                                <span data-i18n="menu.home">Начало</span>
+                                <span class="arrow">▶</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" onclick="signOut(); return false;">
+                                <i class="fa-solid fa-right-from-bracket icon" aria-hidden="true"></i>
+                                <span data-i18n="menu.logout">Изход</span>
+                                <span class="arrow">▶</span>
+                            </a>
+                        </li>
+                    </ul>
                 </div>
-                <button onclick="closeImportModal()" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300 ios-btn"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
-            <div class="mb-4">
-                <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Файлове</p>
-                <div id="import-file-list" class="flex flex-wrap gap-2"></div>
-            </div>
-            <div class="bg-gray-100 p-1 rounded-xl mb-5 flex relative">
-                <div id="import-toggle-bg" class="absolute top-1 left-1 w-[calc(50%-4px)] h-[calc(100%-8px)] bg-white rounded-lg shadow-sm transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"></div>
-                <button onclick="setImportMode('cards')" class="flex-1 py-2 text-sm font-semibold z-10 relative transition-colors duration-300 text-black" id="import-mode-cards-btn">Флашкарти</button>
-                <button onclick="setImportMode('plan')" class="flex-1 py-2 text-sm font-semibold z-10 relative transition-colors duration-300 text-gray-400" id="import-mode-plan-btn">Учебен план</button>
-            </div>
-            <div id="import-mode-cards-view" class="space-y-4">
-                <p class="text-sm text-gray-600">Генерирай автоматично флашкарти на база съдържанието на файловете.</p>
-                <div class="flex items-center justify-between gap-4">
-                    <div class="flex-1">
-                        <label for="import-cards-slider" class="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Брой карти</label>
-                        <input id="import-cards-slider" type="range" min="5" max="60" step="5" value="20" class="w-full" oninput="updateImportCardCount(this.value)">
+        </div>
+
+        <div class="main-container">
+        <div class="profile-grid">
+            <aside class="glass-card avatar-section">
+                <div class="avatar-wrap">
+                    <img id="profile-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22128%22%20height%3D%22128%22%20viewBox%3D%220%200%20128%20128%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20x2%3D%221%22%20y1%3D%220%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23009fe6%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230b63c7%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2264%22%20r%3D%2264%22%20fill%3D%22url%28%23g%29%22%2F%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2250%22%20r%3D%2222%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.92%29%22%2F%3E%3Cpath%20d%3D%22M24%20118c9-20%2027-32%2040-32s31%2012%2040%2032%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.92%29%22%2F%3E%3C%2Fsvg%3E" class="profile-pic" alt="Профил">
+                    <label class="upload-btn" aria-label="Качи снимка">
+                        <i class="fa-solid fa-camera"></i>
+                        <input type="file" id="avatar-input" hidden accept="image/*">
+                    </label>
+                </div>
+                <h2 id="display-name" style="font-size: 20px;">Потребител</h2>
+                <p id="display-email" style="font-size: 13px; color: var(--text-sub);"></p>
+            </aside>
+
+            <main class="glass-card">
+                <form id="profile-form">
+                    <div class="field"><label data-i18n="profile.email">Имейл</label><input type="email" id="email" readonly></div>
+                    <div class="field"><label data-i18n="profile.fullName">Пълно име</label><input type="text" id="full_name" placeholder="Твоето име"></div>
+                    <div class="field"><label data-i18n="profile.birthday">Дата на раждане</label><input type="text" id="birthday" placeholder="Избери дата"></div>
+                    <div class="field"><label data-i18n="profile.location">Град / Държава</label><input type="text" id="location" placeholder="София, България"></div>
+                    <div class="field">
+                        <label data-i18n="profile.language">Език</label>
+                        <select id="language"><option value="bg">Български</option><option value="en">English</option></select>
                     </div>
-                    <div class="w-20 text-right text-sm font-semibold text-gray-800"><span id="import-cards-count">20</span> бр.</div>
+                    <button type="submit" class="btn-save" data-i18n="profile.save">Запази промените</button>
+                </form>
+
+                <div style="margin-top:14px; display:flex; gap:10px;">
+                    <button type="button" class="btn-save" id="changePwBtn" style="background:#f2f2f7; color:black" data-i18n="profile.changePassword">Смени парола</button>
                 </div>
-                <label class="flex items-center gap-2 text-sm text-gray-600 select-none">
-                    <input id="import-include-plan" type="checkbox" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                    <span>Съкратен план</span>
-                </label>
-                <button id="import-cards-generate-btn" onclick="generateCardsFromImport()" class="import-progress-btn w-full mt-2 py-3.5 bg-[#007AFF] text-white rounded-2xl font-semibold ios-btn flex items-center justify-center gap-2">
-                    <div class="import-progress-fill" aria-hidden="true"></div>
-                    <i data-lucide="sparkles" class="w-4 h-4"></i>
-                    <span>Генерирай флашкарти</span>
-                </button>
-                <p class="text-xs text-gray-400">Генерираните карти ще се добавят към опашката за създаване долу, където можеш да ги редактираш и запазиш в папката.</p>
-            </div>
-            <div id="import-mode-plan-view" class="hidden space-y-3">
-                <p class="text-sm text-gray-600">AI ще изгради кратък учебен план / конспект по материала от файловете.</p>
-                <textarea id="import-plan-text" class="w-full min-h-[160px] max-h-80 p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Натисни \"Регенерирай план\", за да създадеш първа версия."></textarea>
-                <div class="flex gap-2 mt-1">
-                    <button id="import-plan-generate-btn" onclick="generateStudyPlanFromImport()" class="flex-1 py-3 bg-white text-gray-800 rounded-2xl border border-gray-200 text-sm font-medium hover:bg-gray-50 ios-btn">Регенерирай план</button>
-                    <button onclick="saveStudyPlanToDeck()" class="flex-1 py-3 bg-[#007AFF] text-white rounded-2xl text-sm font-semibold ios-btn">Запази в папката</button>
-                </div>
-                <div class="flex items-center gap-2">
-                    <select id="import-plan-download-format" class="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="txt">Изтегли като .txt</option>
-                        <option value="md">Изтегли като .md</option>
-                        <option value="pdf">Изтегли като .pdf</option>
-                    </select>
-                    <button id="import-plan-download-btn" onclick="downloadImportPlan()" class="px-4 py-2.5 bg-white text-gray-800 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 ios-btn">Изтегли</button>
-                </div>
-                <p class="text-xs text-gray-400">Планът се запазва като специална карта „Учебен план“ в новата папка, за да го намираш лесно.</p>
+            </main>
+        </div>
+
+        <div style="text-align:center"><button class="sign-out-btn" onclick="toggleLogoutModal(true)" data-i18n="profile.signOut">Изход от акаунта</button></div>
+    </div>
+
+    <div id="cropper-modal">
+        <div class="cropper-container">
+            <h3 style="margin-bottom:15px">Редактирай снимката</h3>
+            <div id="cropper-viewport"></div>
+            <div style="margin-top:20px; display:flex; gap:10px;">
+                <button class="btn-save" style="background:#f2f2f7; color:black;" onclick="closeCropper()">Отказ</button>
+                <button class="btn-save" id="crop-result">Запази снимката</button>
             </div>
         </div>
     </div>
 
-    <div id="modal-settings" class="hidden-view fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm fade-in" onclick="if(event.target === this) closeModal()">
-        <div class="bg-white/90 backdrop-blur-xl w-full max-w-sm p-6 rounded-[32px] shadow-2xl border border-white/50 transform transition-all scale-100">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold" id="modal-title">Настройки</h2>
-                <button onclick="closeModal()" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300"><i data-lucide="x" class="w-4 h-4"></i></button>
-            </div>
-            <div id="session-mode-row" class="bg-gray-100 p-1 rounded-xl mb-6 flex relative">
-                <div id="toggle-bg" class="absolute top-1 left-1 w-[calc(50%-4px)] h-[calc(100%-8px)] bg-white rounded-lg shadow-sm transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"></div>
-                <button onclick="toggleMode('standard')" class="flex-1 py-2 text-sm font-semibold z-10 relative transition-colors duration-300 text-black" id="t-std" data-i18n="session.review">Преговор</button>
-                <button onclick="toggleMode('ai')" class="flex-1 py-2 text-sm font-semibold z-10 relative transition-colors duration-300 text-gray-400" id="t-ai" data-i18n="session.aiExam">AI Изпит</button>
-            </div>
-            <div id="session-shuffle-row" class="flex justify-between items-center mb-8 px-1">
-                <span class="font-medium text-gray-700" data-i18n="session.shuffle">Разбъркване</span>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="shuffle-check" class="sr-only peer">
-                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-green-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm"></div>
-                </label>
-            </div>
-            <div class="mt-1 rounded-2xl bg-gray-50 border border-gray-200 p-3">
-                <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2" data-i18n="deck.manage">Управление на папката</p>
-                <div class="flex gap-2">
-                    <button onclick="openRenameDeck()" class="flex-1 py-2.5 bg-white text-gray-800 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 ios-btn" data-i18n="deck.rename">Преименувай</button>
-                    <button onclick="confirmDeleteDeck()" class="flex-1 py-2.5 bg-red-50 text-red-600 rounded-xl border border-red-100 text-sm font-semibold hover:bg-red-100 ios-btn" data-i18n="deck.delete">Изтрий</button>
-                </div>
-            </div>
-
-            <div class="mt-3 rounded-2xl bg-gray-50 border border-gray-200 p-3">
-                <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2" data-i18n="plan.section">Учебен план</p>
-                <button onclick="openPlanEditorFromCurrentDeck()" class="w-full py-2.5 bg-white text-gray-800 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 ios-btn flex items-center justify-center gap-2">
-                    <i data-lucide="file-text" class="w-4 h-4"></i>
-                    <span data-i18n="plan.open">Отвори плана</span>
-                </button>
-            </div>
-
-            <button id="session-start-btn" onclick="startSession()" class="mt-4 w-full py-4 bg-[#007AFF] text-white rounded-2xl font-bold text-lg hover:bg-blue-600 ios-btn shadow-lg shadow-blue-500/30" data-i18n="session.start">Започни</button>
+    <div class="modal-overlay" id="logoutModal">
+        <div class="modal-card">
+            <h3>Изход?</h3>
+            <p style="margin: 15px 0; font-size:14px; color:var(--text-sub)">Сигурни ли сте?</p>
+            <button class="btn-save" style="background:var(--danger); margin-bottom:10px" onclick="signOut()">Да, излез</button>
+            <button class="btn-save" style="background:#f2f2f7; color:black" onclick="toggleLogoutModal(false)">Отказ</button>
         </div>
     </div>
 
-    <!-- Rename deck modal -->
-    <div id="rename-modal" class="hidden-view fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onclick="if(event.target === this) closeRenameModal()">
-        <div class="bg-white/95 backdrop-blur-xl w-full max-w-sm p-6 rounded-[32px] shadow-2xl border border-white/60">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-gray-900">Преименуване</h3>
-                <button onclick="closeRenameModal()" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-300"><i data-lucide="x" class="w-4 h-4"></i></button>
+    <div id="toast" class="toast">Запазено!</div>
+
+    <div class="pw-modal" id="pwModal" onclick="if(event.target === this) togglePwModal(false)">
+        <div class="pw-card">
+            <h3 data-i18n="pw.title">Смяна на парола</h3>
+            <p data-i18n="pw.subtitle">За сигурност въведи текущата парола и избери нова.</p>
+
+            <div class="pw-field">
+                <label for="pwCurrent" data-i18n="pw.current">Текуща парола</label>
+                <input id="pwCurrent" type="password" autocomplete="current-password" placeholder="••••••••" />
             </div>
-            <p class="text-sm text-gray-500 mb-4">Въведи ново име за избраната папка.</p>
-            <input id="rename-input" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ново име">
-            <div class="flex gap-2 mt-5">
-                <button onclick="closeRenameModal()" class="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 ios-btn">Отказ</button>
-                <button onclick="applyRenameDeck()" class="flex-1 py-2.5 rounded-xl bg-[#007AFF] text-white text-sm font-semibold hover:bg-blue-600 ios-btn">Запази</button>
+            <div class="pw-field">
+                <label for="pwNew" data-i18n="pw.new">Нова парола</label>
+                <input id="pwNew" type="password" autocomplete="new-password" placeholder="Минимум 8 символа" />
             </div>
-        </div>
-    </div>
-
-    <!-- Delete deck confirmation modal -->
-    <div id="delete-modal" class="hidden-view fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onclick="if(event.target === this) closeDeleteModal()">
-        <div class="bg-white/95 backdrop-blur-xl w-full max-w-sm p-6 rounded-[32px] shadow-2xl border border-white/60">
-            <h3 class="text-lg font-bold text-gray-900 mb-2">Изтриване на папка</h3>
-            <p class="text-sm text-gray-600 mb-4">Сигурни ли сте, че искате да изтриете „<span id="delete-name" class="font-semibold"></span>“? Всички карти в нея ще бъдат премахнати.</p>
-            <div class="flex gap-2 mt-2">
-                <button onclick="closeDeleteModal()" class="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 ios-btn">Отказ</button>
-                <button onclick="performDeleteDeck()" class="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 ios-btn">Изтрий</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Plan editor (paper UI) -->
-    <div id="plan-editor" class="hidden-view fixed inset-0 z-[70] flex items-center justify-center" aria-hidden="true">
-        <div id="plan-editor-overlay" class="absolute inset-0 backdrop-blur-md" onclick="if(event.target === this) closePlanEditor()"></div>
-        <div id="plan-editor-frame" class="relative w-full max-w-4xl mx-auto px-4">
-            <div id="plan-editor-toolbar" class="w-full px-4 py-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
-                <div class="flex items-center gap-3 min-w-[220px]">
-                    <div class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
-                        <i data-lucide="file-text" class="w-5 h-5"></i>
-                    </div>
-                    <div class="min-w-0">
-                        <div class="text-sm font-bold text-gray-900 truncate" id="plan-editor-title">Учебен план</div>
-                        <div class="text-xs text-gray-500 truncate" id="plan-editor-subtitle">Редактиране</div>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2">
-                    <button onclick="applyPlanUnderline('accent')" class="plan-toolbar-btn w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 ios-btn" title="Подчертаване (акцент)">
-                        <span class="block w-full h-full rounded-xl relative">
-                            <span class="absolute left-2 right-2 bottom-2 h-[4px] rounded-full" style="background: var(--accent);"></span>
-                        </span>
-                    </button>
-                    <button onclick="applyPlanUnderline('green')" class="plan-toolbar-btn w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 ios-btn" title="Подчертаване (зелено)">
-                        <span class="block w-full h-full rounded-xl relative">
-                            <span class="absolute left-2 right-2 bottom-2 h-[4px] rounded-full" style="background: #22c55e;"></span>
-                        </span>
-                    </button>
-                    <button onclick="applyPlanUnderline('red')" class="plan-toolbar-btn w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 ios-btn" title="Подчертаване (червено)">
-                        <span class="block w-full h-full rounded-xl relative">
-                            <span class="absolute left-2 right-2 bottom-2 h-[4px] rounded-full" style="background: #ef4444;"></span>
-                        </span>
-                    </button>
-                    <button onclick="clearPlanUnderline()" class="plan-toolbar-btn px-3 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 ios-btn text-sm font-medium" title="Премахни подчертаване">Без</button>
-                </div>
-
-                <div class="flex items-center gap-2">
-                    <button onclick="savePlanEditor()" class="px-4 h-10 rounded-xl bg-[#007AFF] text-white ios-btn text-sm font-semibold">Запази</button>
-                    <button onclick="exportPlanEditorPdf()" class="plan-toolbar-btn px-4 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 ios-btn text-sm font-medium">PDF</button>
-                    <button onclick="closePlanEditor()" class="plan-toolbar-btn w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 ios-btn" title="Затвори">
-                        <i data-lucide="x" class="w-4 h-4"></i>
-                    </button>
-                </div>
+            <div class="pw-field">
+                <label for="pwNew2" data-i18n="pw.repeat">Повтори новата парола</label>
+                <input id="pwNew2" type="password" autocomplete="new-password" placeholder="Повтори паролата" />
             </div>
 
-            <div id="plan-paper" class="mt-4 w-full p-8 md:p-10">
-                <div id="plan-editor-content" class="text-[15px] leading-7 text-gray-900" contenteditable="true" spellcheck="false" data-placeholder="Започни да пишеш плана…"></div>
+            <div class="pw-row">
+                <button type="button" class="pw-btn-secondary" onclick="togglePwModal(false)" data-i18n="common.cancel">Отказ</button>
+                <button type="button" class="pw-btn-primary" id="pwSaveBtn" onclick="changePassword()" data-i18n="common.save">Запази</button>
             </div>
         </div>
     </div>
-
-    <section id="view-focus" class="hidden-view fixed left-0 right-0 bottom-0 top-24 z-40 bg-transparent flex flex-col items-center justify-center pt-10">
-        <span id="counter" class="sr-only">1/10</span>
-        <div class="card-container" id="session-card-wrapper">
-            <div class="card-inner" id="sessionCard">
-                <div class="face front items-center justify-center text-center">
-                    <p id="s-front" class="text-3xl font-bold text-gray-800"></p>
-                    <div id="ai-input-box" class="w-full mt-6 hidden">
-                        <textarea id="ai-user-ans" class="w-full p-4 bg-gray-50 border rounded-xl text-sm focus:ring-2 ring-blue-500 outline-none transition" rows="3" placeholder="Вашият отговор..."></textarea>
-                        <button onclick="checkAI()" id="checkBtn" class="w-full mt-3 py-3 bg-black text-white rounded-xl font-medium ios-btn">Провери</button>
-                    </div>
-                </div>
-                <div class="face back items-center justify-center text-center">
-                    <div id="std-back">
-                        <span class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Верен Отговор</span>
-                        <p id="s-back" class="text-2xl font-medium text-gray-800"></p>
-                    </div>
-                    <div id="ai-back" class="hidden w-full flex flex-col items-center">
-                        <div id="score-circle" class="w-16 h-16 rounded-full border-4 flex items-center justify-center text-lg font-bold mb-4"></div>
-                        <p id="ai-feedback-text" class="text-sm text-gray-600 mb-6 px-4"></p>
-                        <button onclick="nextCard()" class="w-full py-3 bg-[#007AFF] text-white rounded-xl font-medium ios-btn">Продължи</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div id="std-controls" class="mt-8 flex items-center gap-4">
-            <button onclick="confirmLeaveSession()" class="w-12 h-12 bg-white/80 border border-gray-200 rounded-full flex items-center justify-center ios-btn shadow-sm">
-                <i data-lucide="arrow-left"></i>
-            </button>
-            <button onclick="flipSessionCard()" class="px-8 py-3 bg-white border border-gray-200 rounded-full font-medium text-gray-700 hover:bg-gray-50 ios-btn shadow-sm">Обърни</button>
-            <button onclick="nextCard()" class="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center ios-btn"><i data-lucide="arrow-right"></i></button>
-        </div>
-    </section>
-
-    <div id="view-loading" class="hidden-view fixed inset-0 z-[60] bg-white/80 backdrop-blur-xl flex flex-col items-center justify-center fade-in">
-        <div class="apple-loader mb-6"></div>
-        <h2 class="text-xl font-bold text-gray-800">AI Оценява</h2>
-        <p class="text-sm text-gray-500 mt-2">Анализ на резултатите...</p>
-    </div>
-
-    <section id="view-summary" class="hidden-view fixed left-0 right-0 bottom-0 top-24 z-[50] bg-transparent overflow-y-auto pt-4">
-        <div class="max-w-2xl mx-auto min-h-[calc(100vh-6rem)] px-6 pb-6 flex flex-col">
-            <div class="flex-1 mt-6">
-                <div class="text-center mb-8">
-                    <div id="final-badge" class="inline-flex items-center justify-center px-4 py-1 rounded-full text-sm font-bold bg-gray-200 text-gray-700">Приключено</div>
-                </div>
-                <div id="summary-grid" class="space-y-4"></div>
-            </div>
-            <div class="sticky bottom-6 mt-6 bg-white/90 backdrop-blur-md p-4 rounded-3xl shadow-2xl border border-gray-200 flex gap-4">
-                <button onclick="goHome()" class="flex-1 py-3.5 text-gray-600 font-bold bg-gray-100 rounded-xl hover:bg-gray-200 ios-btn">Към Библиотека</button>
-                <button onclick="restartDeck()" class="flex-1 py-3.5 bg-[#007AFF] text-white font-bold rounded-xl ios-btn">Учи Отново</button>
-            </div>
-        </div>
-    </section>
 
     <script>
         // Apply shared StudySpace theme based on saved settings
@@ -945,18 +548,11 @@
             root.style.setProperty('--accent', accent);
             root.style.setProperty('--accent-2', accent);
             root.style.setProperty('--grad-start', hexToRgbaStart(accent));
-
-            const dark = !!s.darkMode;
-            const capsuleText = dark ? '#f9fbff' : '#020617';
-            const capsuleMuted = dark ? 'rgba(226,232,240,0.96)' : 'rgba(15,23,42,0.72)';
-            root.style.setProperty('--capsule-text-color', capsuleText);
-            root.style.setProperty('--capsule-muted-color', capsuleMuted);
-
-            document.body.classList.toggle('dark-mode', dark);
+            document.body.classList.toggle('dark-mode', !!s.darkMode);
             window.studyspaceSettings = { soundEnabled: !!s.sound, sfxEnabled: !!s.sfx };
         })();
 
-        // Language (persists from account page) + basic i18n for key menus
+        // Persist language selection across all pages
         (function(){
             const LANG_KEY = 'studyspace_language';
             const FALLBACK = 'bg';
@@ -974,32 +570,49 @@
                 applyI18n();
                 return norm;
             }
-            function localeForLang(lang){
-                return (lang === 'en') ? 'en-GB' : 'bg-BG';
-            }
 
             const DICT = {
                 bg: {
-                    'session.review': 'Преговор',
-                    'session.aiExam': 'AI Изпит',
-                    'session.shuffle': 'Разбъркване',
-                    'deck.manage': 'Управление на папката',
-                    'deck.rename': 'Преименувай',
-                    'deck.delete': 'Изтрий',
-                    'plan.section': 'Учебен план',
-                    'plan.open': 'Отвори плана',
-                    'session.start': 'Започни'
+                    'menu.profileTitle': 'Твоят профил',
+                    'menu.editProfile': 'Редактирай профил',
+                    'menu.home': 'Начало',
+                    'menu.logout': 'Изход',
+                    'profile.email': 'Имейл',
+                    'profile.fullName': 'Пълно име',
+                    'profile.birthday': 'Дата на раждане',
+                    'profile.location': 'Град / Държава',
+                    'profile.language': 'Език',
+                    'profile.save': 'Запази промените',
+                    'profile.changePassword': 'Смени парола',
+                    'profile.signOut': 'Изход от акаунта',
+                    'pw.title': 'Смяна на парола',
+                    'pw.subtitle': 'За сигурност въведи текущата парола и избери нова.',
+                    'pw.current': 'Текуща парола',
+                    'pw.new': 'Нова парола',
+                    'pw.repeat': 'Повтори новата парола',
+                    'common.cancel': 'Отказ',
+                    'common.save': 'Запази'
                 },
                 en: {
-                    'session.review': 'Review',
-                    'session.aiExam': 'AI Exam',
-                    'session.shuffle': 'Shuffle',
-                    'deck.manage': 'Folder management',
-                    'deck.rename': 'Rename',
-                    'deck.delete': 'Delete',
-                    'plan.section': 'Study plan',
-                    'plan.open': 'Open plan',
-                    'session.start': 'Start'
+                    'menu.profileTitle': 'Your profile',
+                    'menu.editProfile': 'Edit profile',
+                    'menu.home': 'Home',
+                    'menu.logout': 'Logout',
+                    'profile.email': 'Email',
+                    'profile.fullName': 'Full name',
+                    'profile.birthday': 'Birthday',
+                    'profile.location': 'City / Country',
+                    'profile.language': 'Language',
+                    'profile.save': 'Save changes',
+                    'profile.changePassword': 'Change password',
+                    'profile.signOut': 'Sign out',
+                    'pw.title': 'Change password',
+                    'pw.subtitle': 'For security, enter your current password and choose a new one.',
+                    'pw.current': 'Current password',
+                    'pw.new': 'New password',
+                    'pw.repeat': 'Repeat new password',
+                    'common.cancel': 'Cancel',
+                    'common.save': 'Save'
                 }
             };
 
@@ -1011,30 +624,330 @@
                     if(key && t[key]) el.textContent = t[key];
                 });
             }
-
             window.studyspaceI18n = window.studyspaceI18n || {};
             window.studyspaceI18n.getLang = getLang;
             window.studyspaceI18n.setLang = setLang;
-            window.studyspaceI18n.localeForLang = localeForLang;
+            window.studyspaceI18n.localeForLang = (lang) => (lang === 'en' ? 'en-GB' : 'bg-BG');
             window.studyspaceI18n.apply = applyI18n;
             setLang(getLang());
-
-            // Optional: sync language from profile when logged in
-            setTimeout(async () => {
-                try{
-                    const { data: { user } } = await sb.auth.getUser();
-                    if(!user) return;
-                    const { data } = await sb.from('profiles').select('language').eq('id', user.id).single();
-                    if(data && data.language){
-                        setLang(data.language);
-                    }
-                }catch(e){
-                    // ignore
-                }
-            }, 0);
         })();
 
-        // Date + time inside the capsule
+    </script>
+
+    <script>
+        // Read Supabase config from meta tags (preferred) or fall back to hardcoded values
+        const SUPABASE_URL = document.querySelector('meta[name="supabase-url"]')?.content || 'https://zfqpfhtbpfdudbpqzbbg.supabase.co';
+        const SUPABASE_KEY = document.querySelector('meta[name="supabase-key"]')?.content || 'sb_publishable_-pHOflGGasRf4o18KIXXQg_OPRhB6gK';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Cached DOM nodes
+        const profileImg = document.getElementById('profile-img');
+        const avatarInput = document.getElementById('avatar-input');
+        const cropperModal = document.getElementById('cropper-modal');
+        const cropperViewport = document.getElementById('cropper-viewport');
+        const displayName = document.getElementById('display-name');
+        const displayEmail = document.getElementById('display-email');
+        const fullNameInput = document.getElementById('full_name');
+        const birthdayInput = document.getElementById('birthday');
+        const locationInput = document.getElementById('location');
+        const languageSelect = document.getElementById('language');
+        const profileForm = document.getElementById('profile-form');
+        const toastEl = document.getElementById('toast');
+        const logoutModal = document.getElementById('logoutModal');
+
+        let croppieInstance = null;
+        let flatpickrInstance = null;
+        let currentUser = null;
+        let toastTimer = null;
+
+        const DEFAULT_AVATAR = 'data:image/svg+xml,' + encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><defs><radialGradient id="bg" cx="0.3" cy="0.2" r="0.8"><stop offset="0%" stop-color="#e7f3ff"/><stop offset="55%" stop-color="#c7ddff"/><stop offset="100%" stop-color="#a9c7ff"/></radialGradient></defs><circle cx="80" cy="80" r="76" fill="url(#bg)"/><circle cx="80" cy="64" r="28" fill="#fdfefe"/><path d="M34 132c8-22 25-36 46-36s38 14 46 36" fill="#fdfefe"/></svg>'
+        );
+        profileImg.src = DEFAULT_AVATAR;
+        profileImg.onerror = () => { profileImg.src = DEFAULT_AVATAR; };
+
+        // Initialize flatpickr and keep the instance for later
+        flatpickrInstance = flatpickr(birthdayInput, { dateFormat: 'Y-m-d', locale: 'bg' });
+
+        async function getCurrentUser() {
+            if (currentUser) return currentUser;
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                currentUser = user;
+                return user;
+            } catch (err) {
+                console.error('getUser failed', err);
+                return null;
+            }
+        }
+
+        async function loadProfile() {
+            try {
+                const user = await getCurrentUser();
+                if (!user) { window.location.href = 'login.html'; return; }
+
+                profileForm.querySelector('#email').value = user.email || '';
+                displayEmail.innerText = user.email || '';
+
+                const { data, error } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
+                if (error && error.code !== 'PGRST116') console.warn('profiles select error', error);
+                if (data) {
+                    fullNameInput.value = data.full_name || '';
+                    displayName.innerText = data.full_name || 'Потребител';
+                    locationInput.value = data.location || '';
+                    languageSelect.value = data.language || 'bg';
+                    if(window.studyspaceI18n && typeof window.studyspaceI18n.setLang === 'function'){
+                        window.studyspaceI18n.setLang(languageSelect.value);
+                    } else {
+                        try{ localStorage.setItem('studyspace_language', languageSelect.value); }catch(e){}
+                    }
+                    if (data.birthday && flatpickrInstance) flatpickrInstance.setDate(data.birthday, true);
+                    if (data.avatar_url) profileImg.src = data.avatar_url;
+                    else profileImg.src = DEFAULT_AVATAR;
+                }
+            } catch (err) {
+                console.error('loadProfile error', err);
+                showToast('Грешка при зареждане на профила');
+            }
+        }
+
+        function persistLanguage(lang){
+            if(window.studyspaceI18n && typeof window.studyspaceI18n.setLang === 'function'){
+                window.studyspaceI18n.setLang(lang);
+            } else {
+                try{ localStorage.setItem('studyspace_language', lang); }catch(e){}
+                document.documentElement.setAttribute('lang', String(lang || 'bg'));
+            }
+        }
+
+        // Save profile changes
+        profileForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const user = await getCurrentUser();
+                if (!user) return showToast('Не сте вписани');
+
+                const updates = {
+                    id: user.id,
+                    full_name: fullNameInput.value,
+                    birthday: birthdayInput.value,
+                    location: locationInput.value,
+                    language: languageSelect.value,
+                    updated_at: new Date().toISOString(),
+                };
+
+                const { error } = await supabaseClient.from('profiles').upsert(updates);
+                if (error) {
+                    console.error('upsert error', error);
+                    showToast('Грешка при запазване');
+                } else {
+                    persistLanguage(languageSelect.value);
+                    showToast('Профилът е обновен!');
+                }
+            } catch (err) {
+                console.error('save profile failed', err);
+                showToast('Грешка при запазване');
+            }
+        });
+
+        if(languageSelect){
+            // Apply stored language early (before profile loads)
+            try{
+                const stored = localStorage.getItem('studyspace_language');
+                if(stored) languageSelect.value = stored;
+            }catch(e){}
+            languageSelect.addEventListener('change', async () => {
+                persistLanguage(languageSelect.value);
+                try{
+                    const user = await getCurrentUser();
+                    if(user){
+                        await supabaseClient.from('profiles').upsert({
+                            id: user.id,
+                            language: languageSelect.value,
+                            updated_at: new Date().toISOString()
+                        });
+                    }
+                }catch(err){
+                    console.warn('language upsert failed', err);
+                }
+                showToast('Езикът е обновен');
+            });
+        }
+
+        // Change password modal + logic
+        const pwModal = document.getElementById('pwModal');
+        const changePwBtn = document.getElementById('changePwBtn');
+        const pwSaveBtn = document.getElementById('pwSaveBtn');
+        const pwCurrent = document.getElementById('pwCurrent');
+        const pwNew = document.getElementById('pwNew');
+        const pwNew2 = document.getElementById('pwNew2');
+
+        function togglePwModal(show){
+            if(!pwModal) return;
+            pwModal.style.display = show ? 'flex' : 'none';
+            if(show){
+                setTimeout(() => { try{ pwCurrent && pwCurrent.focus(); }catch(e){} }, 0);
+            } else {
+                if(pwCurrent) pwCurrent.value = '';
+                if(pwNew) pwNew.value = '';
+                if(pwNew2) pwNew2.value = '';
+                if(pwSaveBtn) pwSaveBtn.disabled = false;
+            }
+        }
+        window.togglePwModal = togglePwModal;
+
+        if(changePwBtn){
+            changePwBtn.addEventListener('click', () => togglePwModal(true));
+        }
+
+        async function changePassword(){
+            const current = (pwCurrent && pwCurrent.value) ? pwCurrent.value : '';
+            const next = (pwNew && pwNew.value) ? pwNew.value : '';
+            const next2 = (pwNew2 && pwNew2.value) ? pwNew2.value : '';
+
+            if(next.length < 8){
+                showToast('Новата парола трябва да е поне 8 символа');
+                return;
+            }
+            if(next !== next2){
+                showToast('Двете нови пароли не съвпадат');
+                return;
+            }
+
+            try{
+                if(pwSaveBtn) pwSaveBtn.disabled = true;
+                const user = await getCurrentUser();
+                if(!user || !user.email){
+                    showToast('Не сте вписани');
+                    return;
+                }
+
+                // Re-authenticate to validate current password (password users)
+                const { error: signErr } = await supabaseClient.auth.signInWithPassword({
+                    email: user.email,
+                    password: current
+                });
+                if(signErr){
+                    console.warn('reauth failed', signErr);
+                    showToast('Грешна текуща парола или нужда от повторно вписване');
+                    return;
+                }
+
+                const { error: updErr } = await supabaseClient.auth.updateUser({ password: next });
+                if(updErr){
+                    console.error('update password failed', updErr);
+                    showToast('Неуспешна смяна на парола');
+                    return;
+                }
+
+                showToast('Паролата е сменена');
+                togglePwModal(false);
+            }catch(err){
+                console.error('changePassword failed', err);
+                showToast('Грешка при смяна на парола');
+            }finally{
+                if(pwSaveBtn) pwSaveBtn.disabled = false;
+            }
+        }
+        window.changePassword = changePassword;
+
+        // Image Cropping: open modal & init Croppie
+        avatarInput.addEventListener('change', function () {
+            const file = this.files && this.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                cropperModal.style.display = 'flex';
+                if (croppieInstance) {
+                    try { croppieInstance.destroy(); } catch (e) { /* ignore */ }
+                    croppieInstance = null;
+                }
+
+                croppieInstance = new Croppie(cropperViewport, {
+                    viewport: { width: 200, height: 200, type: 'square' },
+                    boundary: { width: 300, height: 300 },
+                    showZoomer: true
+                });
+                croppieInstance.bind({ url: ev.target.result });
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Crop & upload
+        document.getElementById('crop-result').addEventListener('click', async () => {
+            if (!croppieInstance) return showToast('Няма изображение за запазване');
+            try {
+                const blob = await croppieInstance.result({ type: 'blob', size: 'viewport', format: 'jpeg' });
+                const user = await getCurrentUser();
+                if (!user) return showToast('Не сте вписани');
+
+                const fileName = `avatars/${user.id}-${Date.now()}.jpg`;
+
+                const { error: upErr } = await supabaseClient.storage.from('avatars').upload(fileName, blob, { contentType: 'image/jpeg' });
+                if (upErr) { console.error('upload err', upErr); return showToast('Грешка при качване'); }
+
+                const { data } = supabaseClient.storage.from('avatars').getPublicUrl(fileName);
+                if (data?.publicUrl) {
+                    // Записваме/създаваме ред в profiles с avatar_url,
+                    // за да може началната страница да го прочете.
+                    const { error: profErr } = await supabaseClient
+                        .from('profiles')
+                        .upsert({
+                            id: user.id,
+                            avatar_url: data.publicUrl,
+                            updated_at: new Date().toISOString()
+                        });
+
+                    if (profErr) console.warn('profiles upsert avatar_url error', profErr);
+
+                    profileImg.src = data.publicUrl;
+                    closeCropper();
+                    showToast('Снимката е обновена!');
+                } else {
+                    showToast('Неуспешен публичен URL');
+                }
+            } catch (err) {
+                console.error('crop upload failed', err);
+                showToast('Грешка при качване');
+            }
+        });
+
+        function closeCropper() { cropperModal.style.display = 'none'; }
+        function toggleLogoutModal(s) { logoutModal.style.display = s ? 'flex' : 'none'; }
+
+        function showToast(m) {
+            toastEl.innerText = m;
+            toastEl.classList.add('show');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3000);
+        }
+
+        async function signOut() {
+            try {
+                await supabaseClient.auth.signOut();
+            } catch (err) {
+                console.warn('signOut error', err);
+            }
+            window.location.href = 'login.html';
+        }
+
+        // Account Dropdown Toggle for top-right avatar
+        const topProfileBtn = document.getElementById("profileBtn");
+        const profileDropdown = document.getElementById("profileDropdown");
+
+        if (topProfileBtn && profileDropdown) {
+            topProfileBtn.addEventListener("click", () => {
+                profileDropdown.classList.toggle("show");
+            });
+
+            document.addEventListener("click", (e) => {
+                if (!topProfileBtn.contains(e.target) && !profileDropdown.contains(e.target)) {
+                    profileDropdown.classList.remove("show");
+                }
+            });
+        }
+
         function updateDateTime(){
             const d = new Date();
             const dateEl = document.getElementById('date');
@@ -1047,1441 +960,18 @@
         updateDateTime();
         setInterval(updateDateTime, 60000);
 
-        const S_URL = "https://zfqpfhtbpfdudbpqzbbg.supabase.co";
-        const S_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmcXBmaHRicGZkdWRicHF6YmJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTQ5NzQsImV4cCI6MjA4Mzg3MDk3NH0.QnmNeFn9LX9ZIc-bINH_4DNKFeJj9LCYU7QF5ZwfaDE";
-        const sb = window.supabase.createClient(S_URL, S_KEY);
-        const WORKER = "https://curly-mountain-4c28.boy05geo.workers.dev";
-        const IMPORT_KEY = 'studyspace_import_payload';
-        const PLAN_CARD_FRONT = 'Учебен план';
-
-        let currentDeck = null, cards = [], cardIdx = 0, mode = 'standard', results = [], creationQueue = [];
-        let importSession = null;
-        let currentQueueIndex = -1;
-
-        // Capsule progress elements (top navbar)
-        const capsuleProgress = document.getElementById('capsuleProgress');
-        const capsuleProgressFill = document.getElementById('capsuleProgressFill');
-        const capsuleProgressCounter = document.getElementById('capsuleProgressCounter');
-        const capsuleClipboardRoot = document.getElementById('homeClipboard');
-        const capsuleSummaryLabel = document.getElementById('capsuleSummaryLabel');
-
-        function setClipboardEnabled(enabled) {
-            if (!capsuleClipboardRoot) return;
-            capsuleClipboardRoot.style.pointerEvents = enabled ? '' : 'none';
-            capsuleClipboardRoot.classList.toggle('clipboard-disabled', !enabled);
-            document.body.classList.toggle('capsule-locked', !enabled);
-        }
-
-        // Записва/обновява последно използвана библиотека за началната страница
-        async function logRecentLibrary(name, deckId) {
-            try {
-                const { data: { user } } = await sb.auth.getUser();
-                if (!user) return;
-
-                await sb.from('recent_libraries').upsert({
-                    user_id: user.id,
-                    name: name,
-                    url: `Flashcardcreate (3).html?deck=${deckId}`,
-                    last_used: new Date().toISOString()
-                }, { onConflict: 'user_id, name' });
-            } catch (err) {
-                console.warn('recent_libraries log failed', err);
-            }
-        }
-
-        function showView(id) {
-            document.querySelectorAll('section, .hidden-view').forEach(el => { if(!el.id.includes('modal')) el.classList.add('hidden-view'); });
-            if(id !== 'modal-settings') document.getElementById('modal-settings').classList.add('hidden-view');
-            document.getElementById('view-' + id).classList.remove('hidden-view');
-
-            if(id === 'library' || id === 'create') setClipboardEnabled(true); else setClipboardEnabled(false);
-
-            const homeNav = document.getElementById('homeNavBtn');
-            const newDeckBtn = document.getElementById('newDeckBtn');
-            if (homeNav) {
-                homeNav.style.visibility = (id === 'focus' || id === 'summary') ? 'hidden' : 'visible';
-            }
-            if (newDeckBtn) {
-                newDeckBtn.style.visibility = (id === 'focus' || id === 'summary') ? 'hidden' : 'visible';
-            }
-
-            if(id === 'library') loadLibrary();
-        }
-
-        function goHome() {
-            exitCapsuleProgressMode();
-            showView('library');
-        }
-
-        function confirmLeaveSession() {
-            const leave = confirm('Ако напуснете теста, текущите отговори ще бъдат изтрити. Сигурни ли сте, че искате да продължите?');
-            if (!leave) return;
-            results = [];
-            cards = [];
-            cardIdx = 0;
-            exitCapsuleProgressMode();
-            showView('library');
-        }
-
-        // Time capsule removed from this page; functions and state omitted.
-        // ---------------------------
-
-        async function loadLibrary() {
-            const { data } = await sb.from('decks').select('*').order('created_at', { ascending: false });
-            const grid = document.getElementById('deck-grid');
-            if(data) {
-                grid.innerHTML = data.map(d => `
-                    <div onclick="openSettings(${d.id}, '${d.name}')" class="ios-card p-6 rounded-[24px] hover:scale-[1.02] transition cursor-pointer group">
-                        <div class="flex justify-between items-start mb-10">
-                            <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center"><i data-lucide="folder"></i></div>
-                            <i data-lucide="chevron-right" class="text-gray-300"></i>
-                        </div>
-                        <h3 class="text-xl font-bold text-gray-900">${d.name}</h3>
-                        <p class="text-sm text-gray-400 mt-1">Кликни за преглед</p>
-                    </div>
-                `).join('');
-                lucide.createIcons();
-            }
-        }
-
-        async function openSettings(id, name) {
-            currentDeck = { id, name };
-            document.getElementById('modal-title').innerText = name;
-            document.getElementById('modal-settings').classList.remove('hidden-view');
-            toggleMode('standard');
-            document.getElementById('shuffle-check').checked = false;
-            // отбелязваме, че тази библиотека е отворена наскоро
-            logRecentLibrary(name, id);
-
-            // Ако папката има само „Учебен план“, не показваме старт/режими.
-            await updateSettingsSessionControls(id);
-        }
-
-        async function updateSettingsSessionControls(deckId){
-            const modeRow = document.getElementById('session-mode-row');
-            const shuffleRow = document.getElementById('session-shuffle-row');
-            const startBtn = document.getElementById('session-start-btn');
-            if(!modeRow || !shuffleRow || !startBtn) return;
-
-            // default: show
-            modeRow.classList.remove('hidden');
-            shuffleRow.classList.remove('hidden');
-            startBtn.classList.remove('hidden');
-
-            try{
-                const { count, error } = await sb
-                    .from('flashcards')
-                    .select('id', { count: 'exact', head: true })
-                    .eq('deck_id', deckId)
-                    .neq('front', PLAN_CARD_FRONT);
-
-                if(error) throw error;
-                const hasFlashcards = (count || 0) > 0;
-                if(!hasFlashcards){
-                    modeRow.classList.add('hidden');
-                    shuffleRow.classList.add('hidden');
-                    startBtn.classList.add('hidden');
-                }
-            }catch(err){
-                console.warn('updateSettingsSessionControls failed', err);
-            }
-        }
-
-        function closeModal() { document.getElementById('modal-settings').classList.add('hidden-view'); }
-
-        // Rename / delete helpers
-        function openRenameDeck() {
-            if (!currentDeck) return;
-            const input = document.getElementById('rename-input');
-            input.value = currentDeck.name || '';
-            document.getElementById('rename-modal').classList.remove('hidden-view');
-        }
-
-        function closeRenameModal() {
-            document.getElementById('rename-modal').classList.add('hidden-view');
-        }
-
-        async function applyRenameDeck() {
-            if (!currentDeck) return;
-            const input = document.getElementById('rename-input');
-            const newName = (input.value || '').trim();
-            if (!newName) return;
-
-            try {
-                const { error } = await sb.from('decks').update({ name: newName }).eq('id', currentDeck.id);
-                if (error) {
-                    console.warn('rename deck error', error);
-                    return;
-                }
-                currentDeck.name = newName;
-                document.getElementById('modal-title').innerText = newName;
-                closeRenameModal();
-                await logRecentLibrary(newName, currentDeck.id);
-                await loadLibrary();
-            } catch (e) {
-                console.warn('rename deck failed', e);
-            }
-        }
-
-        function confirmDeleteDeck() {
-            if (!currentDeck) return;
-            document.getElementById('delete-name').innerText = currentDeck.name || '';
-            document.getElementById('delete-modal').classList.remove('hidden-view');
-        }
-
-        function closeDeleteModal() {
-            document.getElementById('delete-modal').classList.add('hidden-view');
-        }
-
-        async function performDeleteDeck() {
-            if (!currentDeck) return;
-            const deckId = currentDeck.id;
-            try {
-                // Първо изтриваме картите в тази папка
-                await sb.from('flashcards').delete().eq('deck_id', deckId);
-                // После самата папка
-                await sb.from('decks').delete().eq('id', deckId);
-
-                // Премахваме я и от recent_libraries за текущия потребител
-                try {
-                    const { data: { user } } = await sb.auth.getUser();
-                    if (user) {
-                        await sb
-                            .from('recent_libraries')
-                            .delete()
-                            .eq('user_id', user.id)
-                            .eq('url', `Flashcardcreate (3).html?deck=${deckId}`);
-                    }
-                } catch (e) {
-                    console.warn('recent_libraries cleanup failed', e);
-                }
-
-                closeDeleteModal();
-                closeModal();
-                currentDeck = null;
-                await loadLibrary();
-            } catch (e) {
-                console.warn('delete deck failed', e);
-            }
-        }
-        function toggleMode(m) {
-            mode = m;
-            const bg = document.getElementById('toggle-bg');
-            const tStd = document.getElementById('t-std'), tAi = document.getElementById('t-ai');
-            if (m === 'standard') { bg.style.left = '4px'; tStd.classList.replace('text-gray-400', 'text-black'); tAi.classList.replace('text-black', 'text-gray-400'); }
-            else { bg.style.left = '50%'; tStd.classList.replace('text-black', 'text-gray-400'); tAi.classList.replace('text-gray-400', 'text-black'); }
-        }
-
-        function enterCapsuleProgressMode(total) {
-            if (!capsuleClipboardRoot || !capsuleProgress) return;
-            capsuleClipboardRoot.classList.remove('summary-mode');
-            capsuleClipboardRoot.classList.add('progress-mode');
-            capsuleProgress.setAttribute('aria-hidden', 'false');
-            if (capsuleSummaryLabel) capsuleSummaryLabel.setAttribute('aria-hidden','true');
-            updateCapsuleProgress(1, total);
-        }
-
-        function updateCapsuleProgress(currentIndex, total) {
-            if (!capsuleClipboardRoot || !capsuleProgress || !capsuleProgressFill || !capsuleProgressCounter) return;
-            const safeTotal = Math.max(total, 1);
-            const clamped = Math.min(Math.max(currentIndex, 1), safeTotal);
-            const pct = (clamped / safeTotal) * 100;
-            capsuleProgressFill.style.width = `${pct}%`;
-            capsuleProgressCounter.textContent = `${clamped}/${safeTotal}`;
-        }
-
-        function exitCapsuleProgressMode() {
-            if (!capsuleClipboardRoot || !capsuleProgress) return;
-            capsuleClipboardRoot.classList.remove('progress-mode');
-            capsuleClipboardRoot.classList.remove('summary-mode');
-            capsuleProgress.setAttribute('aria-hidden', 'true');
-            if (capsuleProgressFill) capsuleProgressFill.style.width = '0%';
-            if (capsuleSummaryLabel) capsuleSummaryLabel.setAttribute('aria-hidden','true');
-        }
-
-        function enterCapsuleSummaryMode() {
-            if (!capsuleClipboardRoot) return;
-            capsuleClipboardRoot.classList.remove('progress-mode');
-            capsuleClipboardRoot.classList.add('summary-mode');
-            capsuleProgress.setAttribute('aria-hidden','true');
-            if (capsuleSummaryLabel) capsuleSummaryLabel.setAttribute('aria-hidden','false');
-        }
-
-        async function startSession() {
-            const { data } = await sb.from('flashcards').select('*').eq('deck_id', currentDeck.id);
-            if(!data || data.length === 0) { alert('Папката е празна.'); return; }
-            // Учебният план не се учи като флашкарта – отваря се в paper editor.
-            cards = data.filter(c => String((c && c.front) || '').trim().toLowerCase() !== 'учебен план');
-            if(!cards.length){
-                alert('Папката няма флашкарти за учене. (Има само учебен план.)');
-                return;
-            }
-            if(document.getElementById('shuffle-check').checked) cards.sort(() => Math.random() - 0.5);
-            cardIdx = 0; results = []; closeModal();
-            enterCapsuleProgressMode(cards.length);
-            showView('focus');
-            setupCardUI();
-        }
-
-        // ---------------------------
-        // Plan editor (paper view for "Учебен план")
-        // ---------------------------
-        let planEditorState = { deckId: null, deckName: '', cardId: null };
-
-        function isLikelyHtml(str){
-            const s = (str || '').toString();
-            return /<\s*\w+[\s>]/.test(s) && /<\s*\/?\s*(span|br|div|p)\b/i.test(s);
-        }
-
-        function sanitizePlanHtmlFromElement(sourceEl){
-            const clone = sourceEl.cloneNode(true);
-            const allowedTags = new Set(['DIV','P','BR','SPAN']);
-
-            const walker = document.createTreeWalker(clone, NodeFilter.SHOW_ELEMENT, null);
-            const nodes = [];
-            while(walker.nextNode()) nodes.push(walker.currentNode);
-
-            nodes.forEach((el) => {
-                const tag = el.tagName;
-                if(!allowedTags.has(tag)){
-                    const text = document.createTextNode(el.textContent || '');
-                    el.parentNode && el.parentNode.replaceChild(text, el);
-                    return;
-                }
-
-                // remove dangerous attrs
-                Array.from(el.attributes || []).forEach(attr => {
-                    const name = (attr.name || '').toLowerCase();
-                    if(name.startsWith('on')){
-                        el.removeAttribute(attr.name);
-                        return;
-                    }
-                    if(tag === 'SPAN' && (name === 'style' || name === 'data-plan-underline')) return;
-                    el.removeAttribute(attr.name);
-                });
-
-                if(tag === 'SPAN'){
-                    el.setAttribute('data-plan-underline','1');
-                    // keep underline styles only
-                    const styleRaw = (el.getAttribute('style') || '').toString();
-                    const colorMatch = styleRaw.match(/text-decoration-color\s*:\s*([^;]+)\s*;?/i);
-                    const color = colorMatch ? colorMatch[1].trim() : 'var(--accent)';
-                    el.style.textDecoration = 'underline';
-                    el.style.textDecorationColor = color;
-                    el.style.textDecorationThickness = '2px';
-                    el.style.textUnderlineOffset = '3px';
-                }
-            });
-
-            return clone.innerHTML;
-        }
-
-        function getPlanEditorEls(){
-            return {
-                root: document.getElementById('plan-editor'),
-                title: document.getElementById('plan-editor-title'),
-                subtitle: document.getElementById('plan-editor-subtitle'),
-                content: document.getElementById('plan-editor-content')
-            };
-        }
-
-        function openPlanEditorUi(){
-            const { root } = getPlanEditorEls();
-            if(!root) return;
-            root.classList.remove('hidden-view');
-            root.setAttribute('aria-hidden','false');
-            if(window.lucide) lucide.createIcons();
-        }
-
-        function closePlanEditor(){
-            const { root } = getPlanEditorEls();
-            if(!root) return;
-            root.classList.add('hidden-view');
-            root.setAttribute('aria-hidden','true');
-            planEditorState = { deckId: null, deckName: '', cardId: null };
-        }
-
-        async function openPlanEditorFromCurrentDeck(){
-            if(!currentDeck || !currentDeck.id){
-                alert('Няма избрана папка.');
-                return;
-            }
-            await openPlanEditorForDeck(currentDeck.id, currentDeck.name || '');
-        }
-
-        async function openPlanEditorForDeck(deckId, deckName){
-            const { title, subtitle, content } = getPlanEditorEls();
-            if(title) title.textContent = 'Учебен план';
-            if(subtitle) subtitle.textContent = (deckName || '').trim() ? `Папка: ${deckName}` : 'Редактиране';
-            if(content){
-                content.innerHTML = '';
-                content.textContent = '';
-            }
-
-            try{
-                const { data, error } = await sb
-                    .from('flashcards')
-                    .select('id,deck_id,front,back')
-                    .eq('deck_id', deckId)
-                    .eq('front', PLAN_CARD_FRONT)
-                    .order('id', { ascending: false })
-                    .limit(1);
-                if(error){
-                    console.warn('load plan card error', error);
-                }
-                const card = Array.isArray(data) && data.length ? data[0] : null;
-                if(!card){
-                    alert('Няма запазен учебен план в тази папка.');
-                    return;
-                }
-
-                planEditorState = { deckId: deckId, deckName: deckName || '', cardId: card.id };
-
-                if(content){
-                    const back = (card.back || '').toString();
-                    if(isLikelyHtml(back)){
-                        const tmp = document.createElement('div');
-                        tmp.innerHTML = back;
-                        content.innerHTML = sanitizePlanHtmlFromElement(tmp);
-                    } else {
-                        content.textContent = back;
-                    }
-                }
-
-                openPlanEditorUi();
-                // focus cursor at end
-                if(content){
-                    content.focus();
-                    try{
-                        const range = document.createRange();
-                        range.selectNodeContents(content);
-                        range.collapse(false);
-                        const sel = window.getSelection();
-                        sel.removeAllRanges();
-                        sel.addRange(range);
-                    } catch(_){ }
-                }
-            } catch(e){
-                console.warn('open plan editor failed', e);
-                alert('Не успях да отворя плана.');
-            }
-        }
-
-        function getPlanSelectionRange(){
-            const { content } = getPlanEditorEls();
-            if(!content) return null;
-            const sel = window.getSelection();
-            if(!sel || sel.rangeCount === 0) return null;
-            const range = sel.getRangeAt(0);
-            if(!range) return null;
-            const container = range.commonAncestorContainer;
-            const node = container.nodeType === 1 ? container : container.parentNode;
-            if(!node || !content.contains(node)) return null;
-            return range;
-        }
-
-        function underlineColorForKey(key){
-            if(key === 'green') return '#22c55e';
-            if(key === 'red') return '#ef4444';
-            return 'var(--accent)';
-        }
-
-        function applyPlanUnderline(colorKey){
-            const { content } = getPlanEditorEls();
-            if(!content) return;
-            const range = getPlanSelectionRange();
-            if(!range || range.collapsed) return;
-
-            const color = underlineColorForKey(colorKey);
-            const span = document.createElement('span');
-            span.setAttribute('data-plan-underline','1');
-            span.style.textDecoration = 'underline';
-            span.style.textDecorationColor = color;
-            span.style.textDecorationThickness = '2px';
-            span.style.textUnderlineOffset = '3px';
-
-            const extracted = range.extractContents();
-            span.appendChild(extracted);
-            range.insertNode(span);
-
-            // move caret after inserted span
-            try{
-                const sel = window.getSelection();
-                const after = document.createRange();
-                after.setStartAfter(span);
-                after.collapse(true);
-                sel.removeAllRanges();
-                sel.addRange(after);
-            } catch(_){ }
-        }
-
-        function unwrapNode(node){
-            if(!node || !node.parentNode) return;
-            const parent = node.parentNode;
-            while(node.firstChild){
-                parent.insertBefore(node.firstChild, node);
-            }
-            parent.removeChild(node);
-        }
-
-        function clearPlanUnderline(){
-            const { content } = getPlanEditorEls();
-            if(!content) return;
-            const range = getPlanSelectionRange();
-            if(!range) return;
-
-            const spans = [];
-            const walker = document.createTreeWalker(content, NodeFilter.SHOW_ELEMENT, {
-                acceptNode(node){
-                    if(node && node.tagName === 'SPAN' && node.getAttribute('data-plan-underline') === '1') return NodeFilter.FILTER_ACCEPT;
-                    return NodeFilter.FILTER_SKIP;
-                }
-            });
-            while(walker.nextNode()){
-                const el = walker.currentNode;
-                try{
-                    if(range.intersectsNode(el)) spans.push(el);
-                } catch(_){ }
-            }
-
-            if(range.collapsed && spans.length === 0){
-                // try nearest ancestor
-                const c = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentNode;
-                const span = c && c.closest ? c.closest('span[data-plan-underline="1"]') : null;
-                if(span && content.contains(span)) spans.push(span);
-            }
-
-            spans.forEach(unwrapNode);
-        }
-
-        function getPlanEditorPlainText(){
-            const { content } = getPlanEditorEls();
-            if(!content) return '';
-            return (content.innerText || '').replace(/\u00a0/g,' ').trim();
-        }
-
-        function getPlanEditorSanitizedHtml(){
-            const { content } = getPlanEditorEls();
-            if(!content) return '';
-            return sanitizePlanHtmlFromElement(content);
-        }
-
-        async function savePlanEditor(){
-            if(!planEditorState || !planEditorState.cardId){
-                alert('Няма отворен план.');
-                return;
-            }
-            const html = getPlanEditorSanitizedHtml();
-            const plain = getPlanEditorPlainText();
-            if(!plain){
-                alert('Планът е празен.');
-                return;
-            }
-            try{
-                const { error } = await sb.from('flashcards').update({ back: html }).eq('id', planEditorState.cardId);
-                if(error){
-                    console.warn('save plan update error', error);
-                    alert('Неуспешно запазване на плана.');
-                    return;
-                }
-                // При запазване: автоматично изтегляме PDF
-                const base = (planEditorState && planEditorState.deckName) || (currentDeck && currentDeck.name) || getImportBaseName();
-                exportPlanAsPdf(plain, base);
-                alert('Планът е запазен.');
-            } catch(e){
-                console.warn('save plan failed', e);
-                alert('Неуспешно запазване на плана.');
-            }
-        }
-
-        function exportPlanEditorPdf(){
-            const plain = getPlanEditorPlainText();
-            if(!plain){
-                alert('Няма план за изтегляне.');
-                return;
-            }
-            const base = (planEditorState && planEditorState.deckName) || (currentDeck && currentDeck.name) || getImportBaseName();
-            exportPlanAsPdf(plain, base);
-        }
-
-        function setupCardUI() {
-            const c = cards[cardIdx];
-            document.getElementById('s-front').innerText = c.front; document.getElementById('s-back').innerText = c.back;
-            document.getElementById('sessionCard').classList.remove('flipped');
-            document.getElementById('ai-user-ans').value = '';
-            document.getElementById('counter').innerText = `${cardIdx + 1}/${cards.length}`;
-            updateCapsuleProgress(cardIdx + 1, cards.length);
-            
-            const isAI = mode === 'ai';
-            document.getElementById('std-controls').classList.toggle('hidden', isAI);
-            document.getElementById('ai-input-box').classList.toggle('hidden', !isAI);
-            document.getElementById('std-back').classList.toggle('hidden', isAI);
-            document.getElementById('ai-back').classList.toggle('hidden', !isAI);
-        }
-
-        function flipSessionCard() { document.getElementById('sessionCard').classList.toggle('flipped'); }
-
-        async function checkAI() {
-            const uAns = document.getElementById('ai-user-ans').value; if(!uAns) return;
-            const btn = document.getElementById('checkBtn'); btn.innerText = "Оценяване...";
-            try {
-                const res = await fetch(WORKER, { method: 'POST', body: JSON.stringify({ prompt: `Rate 0-100. Q:${cards[cardIdx].front} A:${cards[cardIdx].back} Student:${uAns}. JSON only: {"score":number, "feedback":string}` }) });
-                const data = await res.json();
-                let g = { score: 0, feedback: data.answer };
-                try { const m = data.answer.match(/\{[\s\S]*\}/); if(m) g = JSON.parse(m[0]); } catch(e){}
-                
-                document.getElementById('score-circle').innerText = g.score + '%';
-                document.getElementById('score-circle').className = `w-16 h-16 rounded-full border-4 flex items-center justify-center text-lg font-bold mb-4 ${g.score > 60 ? 'border-green-500 text-green-600 bg-green-50' : 'border-red-500 text-red-600 bg-red-50'}`;
-                document.getElementById('ai-feedback-text').innerText = g.feedback;
-                
-                results.push({ ...cards[cardIdx], score: g.score, userAns: uAns, correct: g.score > 60 });
-                document.getElementById('sessionCard').classList.add('flipped');
-            } catch(e) { console.log(e); alert("Error"); }
-            btn.innerText = "Провери";
-        }
-
-        function nextCard() { if(cardIdx < cards.length - 1) { cardIdx++; setupCardUI(); } else { finishSession(); } }
-
-        function finishSession() {
-            if(mode === 'ai') {
-                document.getElementById('view-focus').classList.add('hidden-view');
-                document.getElementById('view-loading').classList.remove('hidden-view');
-                setTimeout(() => { document.getElementById('view-loading').classList.add('hidden-view'); renderSummary(); }, 2500);
-            } else { renderSummary(); }
-        }
-
-        function renderSummary() {
-            enterCapsuleSummaryMode();
-            showView('summary');
-            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-            const grid = document.getElementById('summary-grid'), badge = document.getElementById('final-badge');
-            if (mode === 'standard') {
-                badge.innerText = "Преговор"; badge.className = "inline-flex items-center justify-center px-4 py-1 rounded-full text-sm font-bold bg-blue-100 text-blue-600";
-                grid.innerHTML = `<div class="text-center py-20 text-gray-400">Преминахте успешно през ${cards.length} карти.</div>`;
-            } else {
-                const avg = Math.round(results.reduce((a,b)=>a+b.score,0)/results.length) || 0;
-                badge.innerText = `Среден успех: ${avg}%`;
-                badge.className = `inline-flex items-center justify-center px-4 py-1 rounded-full text-sm font-bold ${avg>=60 ? 'bg-green-100 text-green-700':'bg-red-100 text-red-700'}`;
-                grid.innerHTML = results.map((r, i) => `
-                    <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-2">
-                        <div class="flex justify-between"><span class="text-xs font-bold text-gray-400 uppercase">Карта ${i+1}</span><span class="font-bold ${r.correct?'text-green-500':'text-red-500'}">${r.score}%</span></div>
-                        <p class="font-bold text-gray-800">${r.front}</p>
-                        <p class="text-sm text-gray-500 bg-gray-50 p-2 rounded-lg">Ти: "${r.userAns}"</p>
-                    </div>`).join('');
-            }
-        }
-
-        function restartDeck() {
-            if (!currentDeck) {
-                showView('library');
-                return;
-            }
-            // Reset local session state and smoothly morph capsule from summary back into progress mode
-            results = [];
-            cards = [];
-            cardIdx = 0;
-            startSession();
-        }
-        function flipBack() { document.getElementById('createCard').classList.remove('flipped'); }
-
-        // Двойно кликване върху картата за бързо завъртане (AI резултат / въпрос)
-        document.addEventListener('DOMContentLoaded', () => {
-            const createCardEl = document.getElementById('createCard');
-            if(createCardEl){
-                createCardEl.addEventListener('dblclick', () => {
-                    createCardEl.classList.toggle('flipped');
-                });
-
-                // Drop files onto the big create card => open import modal automatically
-                const isFileDrag = (event) => {
-                    const dt = event.dataTransfer;
-                    if(!dt) return false;
-                    const types = Array.from(dt.types || []);
-                    if(types.includes('Files')) return true;
-                    if(types.includes('application/x-studyspace-clipboard-id')) return true;
-                    try{
-                        const id = dt.getData && dt.getData('application/x-studyspace-clipboard-id');
-                        if(id) return true;
-                    } catch(_){ }
-                    return dt.files && dt.files.length > 0;
-                };
-
-                const cardContainer = createCardEl.closest('.card-container') || createCardEl;
-                let dragDepth = 0;
-                const setHover = (on) => {
-                    if(!cardContainer || !cardContainer.classList) return;
-                    cardContainer.classList.toggle('file-drag-over', !!on);
-                };
-                const clearHover = () => { dragDepth = 0; setHover(false); };
-
-                cardContainer.addEventListener('dragenter', (event) => {
-                    if(!isFileDrag(event)) return;
-                    event.preventDefault();
-                    dragDepth += 1;
-                    setHover(true);
-                });
-                cardContainer.addEventListener('dragover', (event) => {
-                    if(!isFileDrag(event)) return;
-                    event.preventDefault();
-                    if(event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
-                    setHover(true);
-                });
-                cardContainer.addEventListener('dragleave', (event) => {
-                    if(!isFileDrag(event)) return;
-                    dragDepth = Math.max(dragDepth - 1, 0);
-                    if(dragDepth === 0) setHover(false);
-                });
-                cardContainer.addEventListener('drop', async (event) => {
-                    if(!isFileDrag(event)) return;
-                    event.preventDefault();
-                    clearHover();
-                    const files = event.dataTransfer ? event.dataTransfer.files : null;
-                    if(files && files.length){
-                        await startImportFromLocalDrop(files);
-                        return;
-                    }
-
-                    // Fallback: drag from capsule may not populate DataTransfer.files in some browsers
-                    try{
-                        const dt = event.dataTransfer;
-                        const clipId = dt && dt.getData ? dt.getData('application/x-studyspace-clipboard-id') : '';
-                        if(clipId){
-                            const file = await getStudyClipboardFileById(clipId);
-                            if(file){
-                                await startImportFromLocalDrop([file]);
-                            }
-                        }
-                    } catch(_){ }
-                });
-
-                // Safety: if drag ends outside, avoid leaving the card scaled
-                document.addEventListener('dragend', clearHover, true);
-            }
-        });
-
-        // -------- Импорт от началната страница (дърпане на файлове върху „Нова“) --------
-
-        function renderImportFileList(){
-            const container = document.getElementById('import-file-list');
-            if(!container) return;
-            container.innerHTML = '';
-            if(!importSession || !Array.isArray(importSession.files) || importSession.files.length === 0){
-                const empty = document.createElement('span');
-                empty.className = 'text-xs text-gray-400';
-                empty.textContent = 'Няма намерени файлове.';
-                container.appendChild(empty);
-                return;
-            }
-            importSession.files.forEach(f => {
-                const chip = document.createElement('span');
-                chip.className = 'px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium flex items-center gap-1';
-                const dot = document.createElement('span');
-                dot.className = 'w-1.5 h-1.5 rounded-full bg-blue-500';
-                const name = document.createElement('span');
-                name.textContent = f.name || 'file';
-                chip.appendChild(dot);
-                chip.appendChild(name);
-                container.appendChild(chip);
-            });
-        }
-
-        function setImportMode(mode){
-            const bg = document.getElementById('import-toggle-bg');
-            const btnCards = document.getElementById('import-mode-cards-btn');
-            const btnPlan = document.getElementById('import-mode-plan-btn');
-            const viewCards = document.getElementById('import-mode-cards-view');
-            const viewPlan = document.getElementById('import-mode-plan-view');
-            if(!bg || !btnCards || !btnPlan || !viewCards || !viewPlan) return;
-
-            if(mode === 'cards'){
-                bg.style.left = '4px';
-                btnCards.classList.replace('text-gray-400','text-black');
-                btnPlan.classList.replace('text-black','text-gray-400');
-                viewCards.classList.remove('hidden');
-                viewPlan.classList.add('hidden');
-            } else {
-                bg.style.left = '50%';
-                btnPlan.classList.replace('text-gray-400','text-black');
-                btnCards.classList.replace('text-black','text-gray-400');
-                viewCards.classList.add('hidden');
-                viewPlan.classList.remove('hidden');
-            }
-        }
-
-        function updateImportCardCount(val){
-            const label = document.getElementById('import-cards-count');
-            if(label) label.textContent = String(val || 0);
-        }
-
-        function openImportModal(){
-            const modal = document.getElementById('import-modal');
-            if(!modal) return;
-            renderImportFileList();
-            setImportMode('cards');
-            modal.classList.remove('hidden-view');
-            if(window.lucide) lucide.createIcons();
-        }
-
-        function closeImportModal(){
-            const modal = document.getElementById('import-modal');
-            if(!modal) return;
-            modal.classList.add('hidden-view');
-        }
-
-        function buildImportContextText(limitPerFile){
-            if(!importSession || !Array.isArray(importSession.files)) return '';
-            const maxPerFile = typeof limitPerFile === 'number' && limitPerFile > 0 ? limitPerFile : 1200;
-            return importSession.files.map((f, idx) => {
-                const header = `Файл ${idx+1}: ${f.name || 'без име'} (${f.type || 'неизвестен тип'})`;
-                const snippet = (f.text || '').toString().slice(0, maxPerFile);
-                if(!snippet) return header;
-                return `${header}\nОткъс: ${snippet}`;
-            }).join('\n\n---\n\n');
-        }
-
-        let importProgressTimer = null;
-
-        function startImportButtonProgress(btn){
-            if(!btn) return;
-            const fill = btn.querySelector('.import-progress-fill');
-            if(!fill) return;
-            let pct = 0;
-            fill.style.width = '0%';
-            if(importProgressTimer){
-                clearInterval(importProgressTimer);
-                importProgressTimer = null;
-            }
-            importProgressTimer = setInterval(() => {
-                pct += 6;
-                if(pct > 88) pct = 88; // оставяме малък резерв докато чакаме AI
-                fill.style.width = pct + '%';
-            }, 300);
-        }
-
-        function finishImportButtonProgress(btn){
-            const fill = btn ? btn.querySelector('.import-progress-fill') : null;
-            if(importProgressTimer){
-                clearInterval(importProgressTimer);
-                importProgressTimer = null;
-            }
-            if(fill){
-                fill.style.width = '100%';
-                setTimeout(() => { fill.style.width = '0%'; }, 600);
-            }
-        }
-
-        async function generateCardsFromImport(){
-            if(!importSession || !importSession.files || importSession.files.length === 0) return;
-            const slider = document.getElementById('import-cards-slider');
-            const btn = document.getElementById('import-cards-generate-btn');
-            const desired = slider ? parseInt(slider.value, 10) || 20 : 20;
-            const includePlan = !!(document.getElementById('import-include-plan') && document.getElementById('import-include-plan').checked);
-            if(btn){
-                btn.disabled = true;
-                const labelSpan = btn.querySelector('span');
-                if(labelSpan) labelSpan.textContent = 'Генериране...';
-                startImportButtonProgress(btn);
-            }
-            const context = buildImportContextText(900);
-            const prompt = `Ти си помощник за учене. На български създай около ${desired} висококачествени флашкарти (въпрос/отговор) на база следните файлове и откъси. Изход: върни САМО флашкарти, по една на ред, във формат "Q: <въпрос> || A: <отговор>" без други обяснения, таблици или текст. Файлове и съдържание:\n\n${context}`;
-            try {
-                const res = await fetch(WORKER, { method:'POST', body: JSON.stringify({ prompt }) });
-                const data = await res.json();
-                let raw = '';
-                let parsed = null;
-                try{
-                    raw = String(data.answer || '');
-                    const m = raw.match(/\{[\s\S]*\}/);
-                    if(m) parsed = JSON.parse(m[0]);
-                } catch(e){ console.warn('parse cards JSON failed', e); }
-
-                let cardsArr = parsed && Array.isArray(parsed.cards) ? parsed.cards : [];
-
-                // Fallback: парсираме редове от вида "Q: ... || A: ..."
-                if((!cardsArr || !cardsArr.length) && raw){
-                    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
-                    const fallback = [];
-                    lines.forEach(line => {
-                        const m2 = line.match(/^Q:\s*(.+?)\s*\|\|\s*A:\s*(.+)$/i);
-                        if(m2){
-                            const front = m2[1].trim();
-                            const back = m2[2].trim();
-                            if(front && back) fallback.push({ front, back });
-                        }
-                    });
-                    if(fallback.length) cardsArr = fallback;
-                }
-
-                // Ако картите са по-малко от зададения брой, опитваме да допълним с втори пас
-                if(cardsArr && cardsArr.length > 0 && cardsArr.length < desired){
-                    try{
-                        const missing = desired - cardsArr.length;
-                        const existingSummary = cardsArr.map((c,i) => `Карта ${i+1}: Q: ${c.front} || A: ${c.back}`).join('\n');
-                        const morePrompt = `Вече имаме няколко флашкарти, но искаме общо ${desired}. По-долу са съществуващите. Създай ДОПЪЛНИТЕЛНО още поне ${missing} нови и различни флашкарти на български върху същата тема. Формат отново: \"Q: <въпрос> || A: <отговор>\" по една на ред, без да повтаряш съществуващите. Съществуващи карти:\n${existingSummary}\n\nКонтекст:\n${context}`;
-                        const resMore = await fetch(WORKER, { method:'POST', body: JSON.stringify({ prompt: morePrompt }) });
-                        const dataMore = await resMore.json();
-                        const rawMore = String(dataMore.answer || '');
-                        const linesMore = rawMore.split('\n').map(l => l.trim()).filter(Boolean);
-                        const extra = [];
-                        linesMore.forEach(line => {
-                            const m4 = line.match(/^Q:\s*(.+?)\s*\|\|\s*A:\s*(.+)$/i);
-                            if(m4){
-                                const front = m4[1].trim();
-                                const back = m4[2].trim();
-                                if(front && back) extra.push({ front, back });
-                            }
-                        });
-                        if(extra.length){
-                            cardsArr = cardsArr.concat(extra);
-                        }
-                    } catch(eMore){ console.warn('extra cards generation failed', eMore); }
-                }
-
-                if(!cardsArr || !cardsArr.length){
-                    console.warn('AI cards answer could not be parsed', data);
-                    console.warn('Raw answer:', raw);
-
-                    // Fallback 2: помолваме AI да обобщи и въпреки това да създаде карти
-                    try {
-                        const fallbackPrompt = `Дори ако информацията изглежда малко или фрагментирана, първо направи кратко резюме (до 10 изречения) на съдържанието по-долу, а след това създай около ${desired} флашкарти на български върху това резюме. Изведи САМО флашкартите, по една на ред, във формат \"Q: <въпрос> || A: <отговор>\" без допълнителни обяснения, текст или преводи. Съдържание:\n\n${context}`;
-                        const res2 = await fetch(WORKER, { method:'POST', body: JSON.stringify({ prompt: fallbackPrompt }) });
-                        const data2 = await res2.json();
-                        const raw2 = String(data2.answer || '');
-                        const lines2 = raw2.split('\n').map(l => l.trim()).filter(Boolean);
-                        const cards2 = [];
-                        lines2.forEach(line => {
-                            const m3 = line.match(/^Q:\s*(.+?)\s*\|\|\s*A:\s*(.+)$/i);
-                            if(m3){
-                                const front = m3[1].trim();
-                                const back = m3[2].trim();
-                                if(front && back) cards2.push({ front, back });
-                            }
-                        });
-                        if(!cards2.length){
-                            console.warn('Fallback summary generation also returned no parsable cards', data2);
-                            alert('AI не успя да генерира карти дори след обобщение. Опитайте отново с друг файл.');
-                            return;
-                        }
-                        cardsArr = cards2;
-                    } catch(e2){
-                        console.warn('Fallback summary generation failed', e2);
-                        alert('Възникна грешка при опит за генериране на карти от резюме.');
-                        return;
-                    }
-                }
-
-                if(cardsArr && cardsArr.length){
-                    creationQueue = creationQueue.concat(cardsArr.map(c => ({ front: c.front || '', back: c.back || '' }))).filter(c => c.front && c.back);
-                    updateQueueUI();
-                    // Уверяваме се, че името на папката е попълнено с новосъздадената библиотека
-                    const deckInput = document.getElementById('deck-in');
-                    if(deckInput && currentDeck && currentDeck.name){ deckInput.value = currentDeck.name; }
-
-                    // If requested, generate the short plan as well (and keep modal open)
-                    if(includePlan){
-                        setImportMode('plan');
-                        showView('create');
-                        await generateStudyPlanFromImport();
-                    } else {
-                        closeImportModal();
-                        showView('create');
-                    }
-                }
-            } catch(e){
-                console.warn('generateCardsFromImport error', e);
-                alert('Възникна грешка при генериране на картите. Отвори конзолата (F12) за подробности.');
-            } finally {
-                if(btn){
-                    btn.disabled = false;
-                    finishImportButtonProgress(btn);
-                    const labelSpan = btn.querySelector('span');
-                    if(labelSpan) labelSpan.textContent = 'Генерирай флашкарти';
-                }
-            }
-        }
-
-        async function generateStudyPlanFromImport(){
-            if(!importSession || !importSession.files || importSession.files.length === 0) return;
-            const btn = document.getElementById('import-plan-generate-btn');
-            const textarea = document.getElementById('import-plan-text');
-            if(btn){ btn.disabled = true; btn.textContent = 'Генериране...'; }
-            const context = buildImportContextText(1200);
-            const prompt = `Ти си преподавател. На базата на следните файлове и откъси създай СЪКРАТЕН, структуриран учебен план/конспект на български. Включи раздели/подзаглавия и ключови точки. Представи ключовите точки като номериран списък (1., 2., 3.). Не добавяй уводни изречения; започни директно с плана. Файлове и съдържание:\n\n${context}`;
-            try{
-                const res = await fetch(WORKER, { method:'POST', body: JSON.stringify({ prompt }) });
-                const data = await res.json();
-                if(textarea){
-                    const raw = (data.answer || '').toString();
-                    textarea.value = normalizePlanToNumberedPoints(raw);
-                }
-            } catch(e){
-                console.warn('generateStudyPlanFromImport error', e);
-                alert('Възникна грешка при генериране на учебния план.');
-            } finally {
-                if(btn){ btn.disabled = false; btn.textContent = 'Регенерирай план'; }
-            }
-        }
-
-        function normalizePlanToNumberedPoints(text){
-            const src = (text || '').toString().replace(/\r\n/g,'\n');
-            const lines = src.split('\n');
-            let n = 1;
-            const out = [];
-            for(const line of lines){
-                const raw = line;
-                const t = raw.trim();
-                if(!t){ out.push(''); continue; }
-
-                // Headings / section markers keep as-is and reset numbering
-                if(/^#{1,6}\s+/.test(t) || /:$/.test(t) || /^(раздел|тема|подтема)\b/i.test(t)){
-                    out.push(raw);
-                    n = 1;
-                    continue;
-                }
-
-                // Convert bullet points to numbering
-                const bullet = t.match(/^[-*•]+\s+(.+)$/);
-                if(bullet){
-                    out.push(`${n}. ${bullet[1].trim()}`);
-                    n += 1;
-                    continue;
-                }
-
-                // Keep existing numbering; also advance counter
-                const existing = t.match(/^(\d+)[\).]\s+(.+)$/);
-                if(existing){
-                    const k = parseInt(existing[1], 10);
-                    out.push(`${k}. ${existing[2].trim()}`);
-                    n = Number.isFinite(k) ? k + 1 : n;
-                    continue;
-                }
-
-                // If it's a plain line (likely a point), number it
-                out.push(`${n}. ${t}`);
-                n += 1;
-            }
-            return out.join('\n').replace(/\n{3,}/g,'\n\n').trim();
-        }
-
-        function downloadTextFile(content, filename, mime){
-            const blob = new Blob([content], { type: mime || 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 2500);
-        }
-
-        function exportPlanAsPdf(planText, filenameBase){
-            const raw = (planText || '').toString().replace(/\r\n/g,'\n').trim();
-            if(!raw){
-                alert('Няма план за изтегляне.');
-                return;
-            }
-            if(!window.jspdf || !window.jspdf.jsPDF){
-                alert('PDF export не е наличен (jsPDF не се зареди).');
-                return;
-            }
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-            const pageW = doc.internal.pageSize.getWidth();
-            const pageH = doc.internal.pageSize.getHeight();
-
-            const scale = 2;
-            const margin = 44; // pt
-            const fontSize = 13; // pt
-            const lineHeight = Math.round(fontSize * 1.5);
-
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.round(pageW * scale);
-            canvas.height = Math.round(pageH * scale);
-            const ctx = canvas.getContext('2d');
-            if(!ctx){
-                alert('Не успях да подготвя PDF (canvas context).');
-                return;
-            }
-
-            const marginPx = margin * scale;
-            const maxWidthPx = (pageW - margin * 2) * scale;
-            const lineHeightPx = lineHeight * scale;
-            const fontPx = fontSize * scale;
-
-            const setBaseTextStyle = () => {
-                ctx.fillStyle = '#0b1220';
-                ctx.font = `${fontPx}px Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif`;
-                ctx.textBaseline = 'top';
-            };
-
-            const wrapLine = (text) => {
-                const cleaned = (text || '').toString();
-                if(!cleaned.trim()) return [''];
-                const words = cleaned.split(/\s+/);
-                const out = [];
-                let line = '';
-                for(const word of words){
-                    const next = line ? `${line} ${word}` : word;
-                    if(ctx.measureText(next).width <= maxWidthPx){
-                        line = next;
-                        continue;
-                    }
-                    if(line){
-                        out.push(line);
-                        line = word;
-                    } else {
-                        // single long token; hard break
-                        out.push(word);
-                        line = '';
-                    }
-                }
-                if(line) out.push(line);
-                return out.length ? out : [''];
-            };
-
-            const allLines = [];
-            const srcLines = raw.split('\n');
-            setBaseTextStyle();
-            for(const srcLine of srcLines){
-                const heading = srcLine.trim().match(/^#{1,6}\s+(.+)$/);
-                if(heading){
-                    allLines.push({ text: heading[1].trim(), heading: true });
-                    continue;
-                }
-                const wrapped = wrapLine(srcLine);
-                wrapped.forEach(t => allLines.push({ text: t, heading: false }));
-            }
-
-            const newPageCanvas = () => {
-                ctx.save();
-                ctx.setTransform(1,0,0,1,0,0);
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.restore();
-                setBaseTextStyle();
-            };
-
-            const commitPage = () => {
-                const img = canvas.toDataURL('image/png');
-                doc.addImage(img, 'PNG', 0, 0, pageW, pageH);
-            };
-
-            newPageCanvas();
-            let y = marginPx;
-            for(let i = 0; i < allLines.length; i++){
-                const line = allLines[i];
-                if(y + lineHeightPx > (canvas.height - marginPx)){
-                    commitPage();
-                    doc.addPage();
-                    newPageCanvas();
-                    y = marginPx;
-                }
-
-                if(line.heading){
-                    ctx.fillStyle = '#0b1220';
-                    ctx.font = `${Math.round(fontPx * 1.15)}px Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif`;
-                    ctx.fillText(line.text, marginPx, y);
-                    y += Math.round(lineHeightPx * 1.15);
-                    setBaseTextStyle();
-                    continue;
-                }
-
-                if(!line.text){
-                    y += lineHeightPx;
-                    continue;
-                }
-                ctx.fillText(line.text, marginPx, y);
-                y += lineHeightPx;
-            }
-
-            // final page
-            commitPage();
-            const safeBase = (filenameBase || 'Учебен план').toString().replace(/[\\/:*?"<>|]+/g,'-').slice(0,80) || 'Учебен план';
-            doc.save(`${safeBase} - план.pdf`);
-        }
-
-        function getImportBaseName(){
-            const deckInput = document.getElementById('deck-in');
-            const nameFromInput = deckInput ? (deckInput.value || '').trim() : '';
-            const base = nameFromInput || (importSession && importSession.deckName) || 'Учебен план';
-            return base.replace(/[\\/:*?"<>|]+/g,'-').slice(0,80) || 'Учебен план';
-        }
-
-        function downloadImportPlan(){
-            const textarea = document.getElementById('import-plan-text');
-            const formatSel = document.getElementById('import-plan-download-format');
-            const raw = textarea ? (textarea.value || '').trim() : '';
-            if(!raw){ alert('Няма план за изтегляне.'); return; }
-            const fmt = formatSel ? (formatSel.value || 'txt') : 'txt';
-            const base = getImportBaseName();
-            if(fmt === 'pdf'){
-                exportPlanAsPdf(raw, base);
-            } else if(fmt === 'md'){
-                const md = raw;
-                downloadTextFile(md + '\n', `${base} - план.md`, 'text/markdown;charset=utf-8');
-            } else {
-                const txt = raw.replace(/^#{1,6}\s+/gm,'');
-                downloadTextFile(txt + '\n', `${base} - план.txt`, 'text/plain;charset=utf-8');
-            }
-        }
-
-        async function saveStudyPlanToDeck(){
-            const deckInput = document.getElementById('deck-in');
-            const desiredName = (deckInput ? deckInput.value : '') || (importSession && importSession.deckName) || 'Нова папка';
-            if(!currentDeck || !currentDeck.id){
-                try{
-                    let { data: deck } = await sb.from('decks').select('id,name').eq('name', desiredName).maybeSingle();
-                    if(!deck){
-                        const { data } = await sb.from('decks').insert({ name: desiredName }).select().single();
-                        deck = data;
-                    }
-                    if(deck && deck.id){
-                        currentDeck = { id: deck.id, name: deck.name || desiredName };
-                        try{ await logRecentLibrary(currentDeck.name || desiredName, currentDeck.id); } catch(_){ }
-                    }
-                } catch(e){
-                    console.warn('ensure deck for plan save failed', e);
-                }
-            }
-            if(!currentDeck || !currentDeck.id){
-                alert('Не успях да създам/намеря папка за запазване.');
-                return;
-            }
-            const textarea = document.getElementById('import-plan-text');
-            const text = textarea ? (textarea.value || '').trim() : '';
-            if(!text){ alert('Няма текст за запазване.'); return; }
-            try{
-                // Upsert: ако вече има план в папката – обновяваме, иначе създаваме.
-                let existing = null;
-                try{
-                    const { data: found } = await sb
-                        .from('flashcards')
-                        .select('id')
-                        .eq('deck_id', currentDeck.id)
-                        .eq('front', 'Учебен план')
-                        .maybeSingle();
-                    existing = found || null;
-                } catch(_){ }
-
-                if(existing && existing.id){
-                    await sb.from('flashcards').update({ back: text }).eq('id', existing.id);
-                } else {
-                    await sb.from('flashcards').insert({ deck_id: currentDeck.id, front: 'Учебен план', back: text });
-                }
-                await logRecentLibrary(currentDeck.name || 'Импорт', currentDeck.id);
-                // При запазване: автоматично изтегляме PDF
-                try{
-                    exportPlanAsPdf(text, getImportBaseName());
-                } catch(_){ }
-                alert('Учебният план е запазен в папката (и свален като PDF).');
-                closeImportModal();
-                goHome();
-            } catch(e){
-                console.warn('saveStudyPlanToDeck error', e);
-                alert('Неуспешно запазване на плана.');
-            }
-        }
-
-        function isProbablyTextFile(file){
-            if(!file) return false;
-            const type = (file.type || '').toLowerCase();
-            const name = (file.name || '').toLowerCase();
-            if(type.startsWith('text/')) return true;
-            if(type.includes('json') || type.includes('xml') || type.includes('yaml') || type.includes('csv')) return true;
-            return /\.(txt|md|csv|json|xml|html?)$/.test(name);
-        }
-
-        // --- StudySpace capsule clipboard persistence (shared across pages) ---
-        const STUDY_CLIPBOARD_DB_NAME = 'studyspace_clipboard_db_v1';
-        const STUDY_CLIPBOARD_STORE = 'files';
-
-        function openStudyClipboardDb(){
-            return new Promise((resolve, reject) => {
-                if(!('indexedDB' in window)) return reject(new Error('IndexedDB not available'));
-                const req = indexedDB.open(STUDY_CLIPBOARD_DB_NAME, 1);
-                req.onupgradeneeded = () => {
-                    const db = req.result;
-                    if(!db.objectStoreNames.contains(STUDY_CLIPBOARD_STORE)){
-                        const store = db.createObjectStore(STUDY_CLIPBOARD_STORE, { keyPath: 'id' });
-                        store.createIndex('createdAt', 'createdAt', { unique: false });
-                    }
-                };
-                req.onsuccess = () => resolve(req.result);
-                req.onerror = () => reject(req.error || new Error('IndexedDB open failed'));
-            });
-        }
-
-        async function getStudyClipboardFileById(id){
-            if(!id) return null;
-            let db;
-            try{ db = await openStudyClipboardDb(); } catch(_){ return null; }
-            return new Promise((resolve) => {
-                try{
-                    const tx = db.transaction(STUDY_CLIPBOARD_STORE, 'readonly');
-                    const store = tx.objectStore(STUDY_CLIPBOARD_STORE);
-                    const req = store.get(id);
-                    req.onsuccess = () => {
-                        const rec = req.result;
-                        if(!rec || !rec.blob) return resolve(null);
-                        try{
-                            const file = new File([rec.blob], rec.name || 'file', { type: rec.type || (rec.blob.type || ''), lastModified: rec.lastModified || Date.now() });
-                            resolve(file);
-                        } catch(_){
-                            resolve(null);
-                        }
-                    };
-                    req.onerror = () => resolve(null);
-                } catch(_){
-                    resolve(null);
-                }
-            });
-        }
-
-        async function startImportFromLocalDrop(fileList){
-            const files = Array.from(fileList || []).filter(Boolean);
-            if(files.length === 0) return;
-
-            const first = files[0];
-            const base = (first.name || 'Материал').replace(/\.[^/.]+$/,'').slice(0,60) || 'Материал';
-            const suggestedDeckName = `Импорт: ${base}`;
-
-            const payload = [];
-            for(const f of files){
-                let text = '';
-                try{
-                    if(isProbablyTextFile(f)){
-                        const full = await f.text();
-                        text = (full || '').toString().slice(0, 20000);
-                    }
-                } catch(e){
-                    text = '';
-                }
-                payload.push({ name: f.name, type: f.type, size: f.size, text });
-            }
-
-            importSession = { deckId: null, deckName: suggestedDeckName, files: payload };
-            const deckInput = document.getElementById('deck-in');
-            if(deckInput && !deckInput.value){ deckInput.value = suggestedDeckName; }
-            openImportModal();
-        }
-
-        async function handleInitialImportIfAny(){
-            let params;
-            try { params = new URLSearchParams(window.location.search || ''); } catch(e){ return; }
-            if(params.get('import') !== '1') return;
-            let raw = null;
-            try { raw = sessionStorage.getItem(IMPORT_KEY); } catch(e){ raw = null; }
-            if(!raw) return;
-            let payload;
-            try { payload = JSON.parse(raw); } catch(e){ return; }
-            if(!Array.isArray(payload) || payload.length === 0) return;
-
-            const first = payload[0] || {};
-            const base = (first.name || 'Материал').replace(/\.[^/.]+$/,'').slice(0,60) || 'Материал';
-            const deckName = `Импорт: ${base}`;
-
-            try{
-                const { data, error } = await sb.from('decks').insert({ name: deckName }).select().single();
-                if(error || !data){
-                    console.warn('import deck create error', error);
-                    return;
-                }
-                currentDeck = { id: data.id, name: data.name };
-                importSession = { deckId: data.id, deckName: data.name, files: payload };
-                const deckInput = document.getElementById('deck-in');
-                if(deckInput) deckInput.value = data.name || '';
-                try { await logRecentLibrary(data.name, data.id); } catch(_){ }
-
-                // Премахваме import флага от URL, за да не се повтаря при рефреш
-                try{
-                    params.delete('import');
-                    const qs = params.toString();
-                    const newUrl = window.location.pathname + (qs ? `?${qs}` : '');
-                    window.history.replaceState({}, '', newUrl);
-                } catch(_){ }
-
-                openImportModal();
-            } catch(e){
-                console.warn('handleInitialImportIfAny failed', e);
-            }
-        }
-        async function runAI() {
-            const q = document.getElementById('q-in').value; if(!q) return;
-            const btn = document.getElementById('genBtn'); btn.innerHTML = `<div class="apple-loader w-4 h-4 mr-2 border-white"></div>`;
-            try { const res = await fetch(WORKER, { method: 'POST', body: JSON.stringify({ prompt: q }) }); const data = await res.json(); document.getElementById('a-out').value = data.answer; document.getElementById('createCard').classList.add('flipped'); } catch(e){}
-            btn.innerHTML = `<i data-lucide="sparkles" class="w-4 h-4"></i> Авто-генериране`;
-        }
-        function addToQueue() {
-            const f = document.getElementById('q-in').value;
-            const b = document.getElementById('a-out').value;
-            if(f && b) {
-                creationQueue.push({front:f, back:b});
-                currentQueueIndex = creationQueue.length - 1;
-                updateQueueUI();
-                flipBack();
-                document.getElementById('q-in').value='';
-            }
-        }
-
-        function loadQueueCard(index){
-            if(index < 0 || index >= creationQueue.length) return;
-            currentQueueIndex = index;
-            const c = creationQueue[index];
-            const qEl = document.getElementById('q-in');
-            const aEl = document.getElementById('a-out');
-            if(qEl) qEl.value = c.front || '';
-            if(aEl) aEl.value = c.back || '';
-            // При избор на карта показваме първо лицето; двойно кликване ще я завърти
-            const cardEl = document.getElementById('createCard');
-            if(cardEl) cardEl.classList.remove('flipped');
-        }
-
-        function updateQueueUI() {
-            const countEl = document.getElementById('q-count');
-            const carousel = document.getElementById('carousel');
-            if(countEl) countEl.innerText = creationQueue.length;
-            if(!carousel) return;
-
-            carousel.innerHTML = '';
-            creationQueue.forEach((c, idx) => {
-                const dot = document.createElement('button');
-                dot.type = 'button';
-                const isActive = idx === currentQueueIndex;
-                dot.className = 'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border focus:outline-none focus:ring-2 focus:ring-blue-400 ' +
-                    (isActive ? 'bg-blue-600 text-white border-blue-600' : 'bg-blue-100 text-blue-600 border-blue-200 hover:bg-blue-200');
-                dot.textContent = String(idx+1);
-                dot.onclick = () => {
-                    loadQueueCard(idx);
-                    updateQueueUI();
-                };
-                carousel.appendChild(dot);
-            });
-        }
-        async function saveAll() {
-            const name = document.getElementById('deck-in').value || 'Нова папка';
-            let { data: deck } = await sb.from('decks').select('id').eq('name', name).maybeSingle();
-            if(!deck) { const { data } = await sb.from('decks').insert({name}).select().single(); deck = data; }
-            await sb.from('flashcards').insert(creationQueue.map(c => ({...c, deck_id: deck.id})));
-
-            // отбелязваме новата/обновената библиотека като последно използвана
-            if (deck && deck.id) await logRecentLibrary(name, deck.id);
-
-            creationQueue = []; updateQueueUI(); goHome();
-        }
-
-        window.onload = async () => {
-            lucide.createIcons();
-            await loadLibrary();
-            await handleInitialImportIfAny();
-        };
+        // Expose small helpers for existing inline attributes (keeps backward compatibility)
+        window.toggleLogoutModal = toggleLogoutModal;
+        window.closeCropper = closeCropper;
+        window.signOut = signOut;
+
+        // Kick off
+        loadProfile();
     </script>
 
-    <!-- Clipboard behavior copied from homepage so capsule works 1:1 -->
+    <!-- Clipboard behavior copied from homepage -->
     <script>
-        (function(){
+        (async function(){
             const clipboard = document.getElementById('homeClipboard');
             const capsule = document.getElementById('homeClipboardCapsule');
             const panel = document.getElementById('homeClipboardPanel');
@@ -2509,93 +999,99 @@
             const STUDY_CLIPBOARD_STORE = 'files';
 
             function openStudyClipboardDb(){
+                if(!('indexedDB' in window)){
+                    return Promise.reject(new Error('IndexedDB unavailable'));
+                }
                 return new Promise((resolve, reject) => {
-                    if(!('indexedDB' in window)) return reject(new Error('IndexedDB not available'));
-                    const req = indexedDB.open(STUDY_CLIPBOARD_DB_NAME, 1);
-                    req.onupgradeneeded = () => {
-                        const db = req.result;
+                    const request = indexedDB.open(STUDY_CLIPBOARD_DB_NAME, 1);
+                    request.onupgradeneeded = () => {
+                        const db = request.result;
                         if(!db.objectStoreNames.contains(STUDY_CLIPBOARD_STORE)){
-                            const store = db.createObjectStore(STUDY_CLIPBOARD_STORE, { keyPath: 'id' });
-                            store.createIndex('createdAt', 'createdAt', { unique: false });
+                            db.createObjectStore(STUDY_CLIPBOARD_STORE, { keyPath: 'id' });
                         }
                     };
-                    req.onsuccess = () => resolve(req.result);
-                    req.onerror = () => reject(req.error || new Error('IndexedDB open failed'));
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error || new Error('IndexedDB open failed'));
                 });
             }
 
             async function persistClipboardItem(item){
                 if(!item || !item.id || !item.file) return;
-                let db;
-                try{ db = await openStudyClipboardDb(); } catch(_){ return; }
-                const rec = {
-                    id: item.id,
-                    name: item.name || (item.file && item.file.name) || 'file',
-                    type: item.type || (item.file && item.file.type) || '',
-                    size: item.size || (item.file && item.file.size) || 0,
-                    lastModified: (item.file && item.file.lastModified) || Date.now(),
-                    createdAt: item.createdAt || Date.now(),
-                    blob: item.file
-                };
-                await new Promise((resolve) => {
-                    try{
+                try{
+                    const db = await openStudyClipboardDb();
+                    await new Promise((resolve, reject) => {
                         const tx = db.transaction(STUDY_CLIPBOARD_STORE, 'readwrite');
                         tx.oncomplete = () => resolve();
-                        tx.onerror = () => resolve();
-                        tx.objectStore(STUDY_CLIPBOARD_STORE).put(rec);
-                    } catch(_){ resolve(); }
-                });
+                        tx.onerror = () => reject(tx.error || new Error('IndexedDB transaction failed'));
+                        const store = tx.objectStore(STUDY_CLIPBOARD_STORE);
+                        store.put({
+                            id: item.id,
+                            name: item.name,
+                            size: item.size,
+                            type: item.type || '',
+                            lastModified: item.file.lastModified || Date.now(),
+                            createdAt: item.createdAt || Date.now(),
+                            blob: item.file
+                        });
+                    });
+                } catch(err){
+                    // Ignore persistence errors
+                }
             }
 
             async function loadPersistedClipboardItems(){
-                let db;
-                try{ db = await openStudyClipboardDb(); } catch(_){ return; }
-                const records = await new Promise((resolve) => {
-                    try{
+                try{
+                    const db = await openStudyClipboardDb();
+                    const records = await new Promise((resolve, reject) => {
                         const tx = db.transaction(STUDY_CLIPBOARD_STORE, 'readonly');
                         const store = tx.objectStore(STUDY_CLIPBOARD_STORE);
-                        const out = [];
-                        const idx = store.index ? store.index('createdAt') : null;
-                        const req = idx ? idx.openCursor(null, 'next') : store.openCursor();
-                        req.onsuccess = () => {
-                            const cursor = req.result;
-                            if(cursor){
-                                out.push(cursor.value);
-                                cursor.continue();
-                            } else {
-                                resolve(out);
-                            }
-                        };
-                        req.onerror = () => resolve([]);
-                    } catch(_){ resolve([]); }
-                });
-
-                const revived = [];
-                records.forEach(rec => {
-                    if(!rec || !rec.blob) return;
-                    let file = null;
-                    try{
-                        file = new File([rec.blob], rec.name || 'file', { type: rec.type || (rec.blob.type || ''), lastModified: rec.lastModified || Date.now() });
-                    } catch(_){
-                        file = null;
-                    }
-                    revived.push({
-                        id: rec.id,
-                        name: rec.name || 'file',
-                        size: rec.size || (rec.blob && rec.blob.size) || 0,
-                        type: rec.type || (rec.blob && rec.blob.type) || '',
-                        displayType: rec.type || 'Файл',
-                        file,
-                        createdAt: rec.createdAt || Date.now(),
-                        previewUrl: null,
-                        previewKind: null,
-                        previewIcon: null,
-                        snippet: '',
-                        previewPrepared: false
+                        const request = store.getAll();
+                        request.onsuccess = () => resolve(request.result || []);
+                        request.onerror = () => reject(request.error || new Error('IndexedDB getAll failed'));
                     });
-                });
+                    return (records || []).map(rec => {
+                        const blob = rec && rec.blob;
+                        const fallbackName = (rec && rec.name) || (blob && blob.name) || 'file';
+                        const fallbackType = (rec && rec.type) || (blob && blob.type) || '';
+                        const fallbackLastModified = (rec && rec.lastModified) || (blob && blob.lastModified) || Date.now();
+                        const file = new File([blob], fallbackName, { type: fallbackType, lastModified: fallbackLastModified });
+                        const mime = rec && rec.type ? rec.type : (file.type || '');
+                        return {
+                            id: rec.id,
+                            name: rec.name || file.name,
+                            size: rec.size || file.size,
+                            type: mime,
+                            displayType: mime || 'Файл',
+                            file,
+                            previewUrl: null,
+                            previewKind: null,
+                            previewIcon: null,
+                            snippet: '',
+                            previewPrepared: false,
+                            createdAt: rec.createdAt || 0
+                        };
+                    }).filter(Boolean);
+                } catch(err){
+                    return [];
+                }
+            }
 
-                clipboardItems = revived.filter(i => i.file);
+            async function syncClipboardFromDb(){
+                try{
+                    const persisted = await loadPersistedClipboardItems();
+                    if(Array.isArray(persisted) && persisted.length > 0){
+                        const existingById = new Map(clipboardItems.map(item => [item.id, item]));
+                        persisted.forEach(item => {
+                            if(item && item.id && !existingById.has(item.id)){
+                                clipboardItems.push(item);
+                            }
+                        });
+                        clipboardItems.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+                    }
+                } catch(err){
+                    // Ignore sync errors
+                }
+                updateClipboardUI();
             }
 
             function formatBytes(bytes){
@@ -2733,11 +1229,9 @@
                 if(event.dataTransfer){
                     event.dataTransfer.effectAllowed = 'copy';
                     event.dataTransfer.setData('text/plain', item.name);
+                    event.dataTransfer.setData('application/x-studyspace-clipboard-id', item.id);
                     try{
                         event.dataTransfer.setData('application/x-study-clipboard', JSON.stringify({ name: item.name, size: item.size, type: item.displayType || 'Файл', mime: item.type || '' }));
-                    } catch(err){}
-                    try{
-                        event.dataTransfer.setData('application/x-studyspace-clipboard-id', item.id);
                     } catch(err){}
                     if(event.dataTransfer.items && typeof event.dataTransfer.items.add === 'function' && item.file){
                         try{ event.dataTransfer.items.add(item.file); } catch(err){}
@@ -2835,29 +1329,32 @@
                 }
             }
 
-            function captureClipboardFiles(files){
+            async function captureClipboardFiles(files){
                 let captured = false;
+                const tasks = [];
                 Array.from(files || []).forEach(file => {
                     const mime = file.type || '';
-                    const id = `${file.name}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
                     const item = {
-                        id,
+                        id: `${file.name}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
                         name: file.name,
                         size: file.size,
                         type: mime,
                         displayType: mime || 'Файл',
                         file,
-                        createdAt: Date.now(),
                         previewUrl: null,
                         previewKind: null,
                         previewIcon: null,
                         snippet: '',
-                        previewPrepared: false
+                        previewPrepared: false,
+                        createdAt: Date.now()
                     };
                     clipboardItems.push(item);
-                    persistClipboardItem(item).catch(()=>{});
+                    tasks.push(persistClipboardItem(item));
                     captured = true;
                 });
+                if(tasks.length){
+                    await Promise.allSettled(tasks);
+                }
                 if(captured){
                     updateClipboardUI();
                 }
@@ -2874,7 +1371,6 @@
             };
 
             clipboard.addEventListener('dragenter', (event) => {
-                if(clipboard.classList.contains('clipboard-disabled')) return;
                 if(!isFileDrag(event)) return;
                 event.preventDefault();
                 dragDepth += 1;
@@ -2885,7 +1381,6 @@
             });
 
             clipboard.addEventListener('dragover', (event) => {
-                if(clipboard.classList.contains('clipboard-disabled')) return;
                 if(!isFileDrag(event)) return;
                 event.preventDefault();
                 if(event.dataTransfer){
@@ -2894,7 +1389,6 @@
             });
 
             clipboard.addEventListener('dragleave', (event) => {
-                if(clipboard.classList.contains('clipboard-disabled')) return;
                 if(!isFileDrag(event)) return;
                 event.preventDefault();
                 dragDepth = Math.max(dragDepth - 1, 0);
@@ -2903,14 +1397,13 @@
                 }
             });
 
-            clipboard.addEventListener('drop', (event) => {
-                if(clipboard.classList.contains('clipboard-disabled')) return;
+            clipboard.addEventListener('drop', async (event) => {
                 if(!isFileDrag(event)) return;
                 event.preventDefault();
                 dragDepth = 0;
                 clipboard.classList.remove('drag-ready');
                 const files = event.dataTransfer ? event.dataTransfer.files : null;
-                if(captureClipboardFiles(files)){
+                if(await captureClipboardFiles(files)){
                     if(!reducedMotion){
                         clipboard.classList.remove('captured');
                         void clipboard.offsetWidth;
@@ -2922,14 +1415,8 @@
             });
 
             capsule.addEventListener('dblclick', async () => {
-                if(clipboard.classList.contains('clipboard-disabled')) return;
-                if(clipboardOpen){
-                    setClipboardOpen(false);
-                    return;
-                }
-                await loadPersistedClipboardItems();
-                updateClipboardUI();
-                setClipboardOpen(true);
+                await syncClipboardFromDb();
+                setClipboardOpen(!clipboardOpen);
             });
 
             let hoverIntentTimer = null;
@@ -2957,17 +1444,11 @@
                 }
             });
 
-            capsule.addEventListener('keydown', (event) => {
+            capsule.addEventListener('keydown', async (event) => {
                 if(event.key === 'Enter' || event.key === ' '){
                     event.preventDefault();
-                    if(clipboardOpen){
-                        setClipboardOpen(false);
-                    } else {
-                        loadPersistedClipboardItems().then(() => {
-                            updateClipboardUI();
-                            setClipboardOpen(true);
-                        });
-                    }
+                    await syncClipboardFromDb();
+                    setClipboardOpen(!clipboardOpen);
                 } else if(event.key === 'Escape' && clipboardOpen){
                     setClipboardOpen(false);
                 }
@@ -2992,14 +1473,8 @@
                 }
             });
 
-            // Initial sync from persistent clipboard (so count/badge is correct everywhere)
-            loadPersistedClipboardItems().then(() => {
-                updateClipboardUI();
-                setClipboardOpen(false);
-            }).catch(() => {
-                updateClipboardUI();
-                setClipboardOpen(false);
-            });
+            await syncClipboardFromDb();
+            setClipboardOpen(false);
         })();
     </script>
 
@@ -3025,7 +1500,6 @@
             const pills = document.querySelectorAll('.pill');
             pills.forEach(pill=>{
                 pill.addEventListener('mousemove', (e)=>{
-                    if(document.body.classList.contains('capsule-locked')) return;
                     const r = pill.getBoundingClientRect();
                     const x = ((e.clientX - r.left)/r.width)*100;
                     const y = ((e.clientY - r.top)/r.height)*100;
@@ -3033,15 +1507,12 @@
                     pill.style.setProperty('--my', y + '%');
                     pill.style.setProperty('--pill-ref-opacity', '0.85');
                 });
-                pill.addEventListener('mouseenter', ()=>{
-                    if(document.body.classList.contains('capsule-locked')) return;
-                    pill.style.setProperty('--pill-ref-opacity','0.85');
-                });
-                pill.addEventListener('mouseleave', ()=>{
-                    pill.style.setProperty('--pill-ref-opacity','0');
-                });
+                pill.addEventListener('mouseenter', ()=> pill.style.setProperty('--pill-ref-opacity','0.85'));
+                pill.addEventListener('mouseleave', ()=> pill.style.setProperty('--pill-ref-opacity','0'));
             });
         })();
     </script>
 </body>
 </html>
+
+
