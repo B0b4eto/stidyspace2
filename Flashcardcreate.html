@@ -2549,7 +2549,7 @@
 
             async function loadPersistedClipboardItems(){
                 let db;
-                try{ db = await openStudyClipboardDb(); } catch(_){ return; }
+                try{ db = await openStudyClipboardDb(); } catch(_){ return []; }
                 const records = await new Promise((resolve) => {
                     try{
                         const tx = db.transaction(STUDY_CLIPBOARD_STORE, 'readonly');
@@ -2595,7 +2595,23 @@
                     });
                 });
 
-                clipboardItems = revived.filter(i => i.file);
+                return revived.filter(i => i.file);
+            }
+
+            async function syncClipboardFromDb(){
+                try{
+                    const persisted = await loadPersistedClipboardItems();
+                    if(Array.isArray(persisted) && persisted.length > 0){
+                        const existingById = new Map(clipboardItems.map(item => [item.id, item]));
+                        persisted.forEach(item => {
+                            if(item && item.id && !existingById.has(item.id)){
+                                clipboardItems.push(item);
+                            }
+                        });
+                        clipboardItems.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+                    }
+                } catch(_){ }
+                updateClipboardUI();
             }
 
             function formatBytes(bytes){
@@ -2923,13 +2939,8 @@
 
             capsule.addEventListener('dblclick', async () => {
                 if(clipboard.classList.contains('clipboard-disabled')) return;
-                if(clipboardOpen){
-                    setClipboardOpen(false);
-                    return;
-                }
-                await loadPersistedClipboardItems();
-                updateClipboardUI();
-                setClipboardOpen(true);
+                await syncClipboardFromDb();
+                setClipboardOpen(!clipboardOpen);
             });
 
             let hoverIntentTimer = null;
@@ -2957,17 +2968,11 @@
                 }
             });
 
-            capsule.addEventListener('keydown', (event) => {
+            capsule.addEventListener('keydown', async (event) => {
                 if(event.key === 'Enter' || event.key === ' '){
                     event.preventDefault();
-                    if(clipboardOpen){
-                        setClipboardOpen(false);
-                    } else {
-                        loadPersistedClipboardItems().then(() => {
-                            updateClipboardUI();
-                            setClipboardOpen(true);
-                        });
-                    }
+                    await syncClipboardFromDb();
+                    setClipboardOpen(!clipboardOpen);
                 } else if(event.key === 'Escape' && clipboardOpen){
                     setClipboardOpen(false);
                 }
@@ -2992,9 +2997,18 @@
                 }
             });
 
+            window.addEventListener('focus', () => {
+                syncClipboardFromDb().catch(() => {});
+            });
+
+            document.addEventListener('visibilitychange', () => {
+                if(document.visibilityState === 'visible'){
+                    syncClipboardFromDb().catch(() => {});
+                }
+            });
+
             // Initial sync from persistent clipboard (so count/badge is correct everywhere)
-            loadPersistedClipboardItems().then(() => {
-                updateClipboardUI();
+            syncClipboardFromDb().then(() => {
                 setClipboardOpen(false);
             }).catch(() => {
                 updateClipboardUI();
