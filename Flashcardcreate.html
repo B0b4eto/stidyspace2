@@ -13,6 +13,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="assets/shared-clipboard.js"></script>
     <style>
         :root {
             --ios-blue: #007AFF;
@@ -2479,54 +2480,78 @@
         };
     </script>
 
-    <!-- Clipboard behavior copied from homepage so capsule works 1:1 -->
+    <!-- Clipboard behavior using shared-clipboard.js for sync across pages -->
     <script>
         (function(){
-            const clipboard = document.getElementById('homeClipboard');
-            const capsule = document.getElementById('homeClipboardCapsule');
-            const panel = document.getElementById('homeClipboardPanel');
-            const list = document.getElementById('homeClipboardList');
-            const countEl = document.getElementById('homeClipboardCount');
-            const emptyEl = document.getElementById('homeClipboardEmpty');
-            if(!clipboard || !capsule || !panel || !list) return;
-
-            const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            const clipboardElementMap = new Map();
-            const TEXT_SNIPPET_TYPES = new Set([
-                'application/json',
-                'application/xml',
-                'application/javascript',
-                'application/x-javascript',
-                'application/svg+xml'
-            ]);
-            const MAX_TEXT_PREVIEW_CHARS = 160;
-            let clipboardItems = [];
-            let clipboardOpen = false;
-            let dragDepth = 0;
-            let dragGhostEl = null;
-
-            const STUDY_CLIPBOARD_DB_NAME = 'studyspace_clipboard_db_v1';
-            const STUDY_CLIPBOARD_STORE = 'files';
-
-            function openStudyClipboardDb(){
-                return new Promise((resolve, reject) => {
-                    if(!('indexedDB' in window)) return reject(new Error('IndexedDB not available'));
-                    const req = indexedDB.open(STUDY_CLIPBOARD_DB_NAME, 1);
-                    req.onupgradeneeded = () => {
-                        const db = req.result;
-                        if(!db.objectStoreNames.contains(STUDY_CLIPBOARD_STORE)){
-                            const store = db.createObjectStore(STUDY_CLIPBOARD_STORE, { keyPath: 'id' });
-                            store.createIndex('createdAt', 'createdAt', { unique: false });
-                        }
-                    };
-                    req.onsuccess = () => resolve(req.result);
-                    req.onerror = () => reject(req.error || new Error('IndexedDB open failed'));
-                });
+            // Initialize shared clipboard system (syncs via IndexedDB + BroadcastChannel)
+            if(typeof window.initStudyClipboard !== 'function'){
+                console.warn('[Flashcardcreate] Shared clipboard not available');
+                return;
             }
 
-            async function persistClipboardItem(item){
-                if(!item || !item.id || !item.file) return;
-                let db;
+            // Initialize the shared clipboard with our DOM elements
+            const clipboardInstance = window.initStudyClipboard({
+                document: document,
+                rootId: 'homeClipboard',
+                capsuleId: 'homeClipboardCapsule',
+                panelId: 'homeClipboardPanel',
+                listId: 'homeClipboardList',
+                countId: 'homeClipboardCount',
+                emptyId: 'homeClipboardEmpty',
+                maxItems: 32,
+                reducedMotion: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            });
+
+            // Store reference globally for debugging if needed
+            if(clipboardInstance){
+                window.studyClipboard = clipboardInstance;
+                console.log('[Flashcardcreate] Shared clipboard initialized successfully');
+            }
+        })();
+    </script>
+
+    <!-- Glare/reflection effect for icon buttons and capsule pill (copied from homepage) -->
+    <script>
+        (function(){
+            if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+            const btns = document.querySelectorAll('.icon-btn');
+            btns.forEach(btn=>{
+                btn.addEventListener('mousemove', (e)=>{
+                    const r = btn.getBoundingClientRect();
+                    const x = ((e.clientX - r.left)/r.width)*100;
+                    const y = ((e.clientY - r.top)/r.height)*100;
+                    btn.style.setProperty('--mx', x + '%');
+                    btn.style.setProperty('--my', y + '%');
+                    btn.style.setProperty('--ref-opacity', '0.9');
+                });
+                btn.addEventListener('mouseenter', ()=> btn.style.setProperty('--ref-opacity','0.9'));
+                btn.addEventListener('mouseleave', ()=> btn.style.setProperty('--ref-opacity','0'));
+            });
+
+            const pills = document.querySelectorAll('.pill');
+            pills.forEach(pill=>{
+                pill.addEventListener('mousemove', (e)=>{
+                    if(document.body.classList.contains('capsule-locked')) return;
+                    const r = pill.getBoundingClientRect();
+                    const x = ((e.clientX - r.left)/r.width)*100;
+                    const y = ((e.clientY - r.top)/r.height)*100;
+                    pill.style.setProperty('--mx', x + '%');
+                    pill.style.setProperty('--my', y + '%');
+                    pill.style.setProperty('--pill-ref-opacity', '0.85');
+                });
+                pill.addEventListener('mouseenter', ()=>{
+                    if(document.body.classList.contains('capsule-locked')) return;
+                    pill.style.setProperty('--pill-ref-opacity','0.85');
+                });
+                pill.addEventListener('mouseleave', ()=>{
+                    pill.style.setProperty('--pill-ref-opacity','0');
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
                 try{ db = await openStudyClipboardDb(); } catch(_){ return; }
                 const rec = {
                     id: item.id,
@@ -2549,7 +2574,7 @@
 
             async function loadPersistedClipboardItems(){
                 let db;
-                try{ db = await openStudyClipboardDb(); } catch(_){ return; }
+                try{ db = await openStudyClipboardDb(); } catch(_){ return []; }
                 const records = await new Promise((resolve) => {
                     try{
                         const tx = db.transaction(STUDY_CLIPBOARD_STORE, 'readonly');
@@ -2595,7 +2620,23 @@
                     });
                 });
 
-                clipboardItems = revived.filter(i => i.file);
+                return revived.filter(i => i.file);
+            }
+
+            async function syncClipboardFromDb(){
+                try{
+                    const persisted = await loadPersistedClipboardItems();
+                    if(Array.isArray(persisted) && persisted.length > 0){
+                        const existingById = new Map(clipboardItems.map(item => [item.id, item]));
+                        persisted.forEach(item => {
+                            if(item && item.id && !existingById.has(item.id)){
+                                clipboardItems.push(item);
+                            }
+                        });
+                        clipboardItems.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+                    }
+                } catch(_){ }
+                updateClipboardUI();
             }
 
             function formatBytes(bytes){
@@ -2923,13 +2964,8 @@
 
             capsule.addEventListener('dblclick', async () => {
                 if(clipboard.classList.contains('clipboard-disabled')) return;
-                if(clipboardOpen){
-                    setClipboardOpen(false);
-                    return;
-                }
-                await loadPersistedClipboardItems();
-                updateClipboardUI();
-                setClipboardOpen(true);
+                await syncClipboardFromDb();
+                setClipboardOpen(!clipboardOpen);
             });
 
             let hoverIntentTimer = null;
@@ -2957,17 +2993,11 @@
                 }
             });
 
-            capsule.addEventListener('keydown', (event) => {
+            capsule.addEventListener('keydown', async (event) => {
                 if(event.key === 'Enter' || event.key === ' '){
                     event.preventDefault();
-                    if(clipboardOpen){
-                        setClipboardOpen(false);
-                    } else {
-                        loadPersistedClipboardItems().then(() => {
-                            updateClipboardUI();
-                            setClipboardOpen(true);
-                        });
-                    }
+                    await syncClipboardFromDb();
+                    setClipboardOpen(!clipboardOpen);
                 } else if(event.key === 'Escape' && clipboardOpen){
                     setClipboardOpen(false);
                 }
@@ -2992,14 +3022,34 @@
                 }
             });
 
-            // Initial sync from persistent clipboard (so count/badge is correct everywhere)
-            loadPersistedClipboardItems().then(() => {
-                updateClipboardUI();
-                setClipboardOpen(false);
-            }).catch(() => {
-                updateClipboardUI();
-                setClipboardOpen(false);
+            window.addEventListener('focus', () => {
+                syncClipboardFromDb().catch(() => {});
             });
+
+            document.addEventListener('visibilitychange', () => {
+                if(document.visibilityState === 'visible'){
+                    syncClipboardFromDb().catch(() => {});
+                }
+            });
+
+            // Initialize the shared clipboard with our DOM elements
+            const clipboardInstance = window.initStudyClipboard({
+                document: document,
+                rootId: 'homeClipboard',
+                capsuleId: 'homeClipboardCapsule',
+                panelId: 'homeClipboardPanel',
+                listId: 'homeClipboardList',
+                countId: 'homeClipboardCount',
+                emptyId: 'homeClipboardEmpty',
+                maxItems: 32,
+                reducedMotion: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            });
+
+            // Store reference globally for debugging if needed
+            if(clipboardInstance){
+                window.studyClipboard = clipboardInstance;
+                console.log('[Flashcardcreate] Shared clipboard initialized successfully');
+            }
         })();
     </script>
 
